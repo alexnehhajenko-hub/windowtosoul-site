@@ -1,0 +1,12 @@
+{
+  "name": "windowtoart",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "replicate": "^0.31.0"
+  }
+}
