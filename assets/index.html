@@ -2,187 +2,64 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>AI Редактор Фото — Создай Картину</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: linear-gradient(180deg, #0f172a, #1e293b);
-      color: #e2e8f0;
-      padding: 20px;
-    }
-
-    h1 {
-      font-size: 26px;
-      text-align: center;
-      margin-bottom: 12px;
-    }
-
-    p {
-      text-align: center;
-      opacity: 0.8;
-      margin-top: -6px;
-      margin-bottom: 20px;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 20px;
-      border-radius: 18px;
-      margin-top: 15px;
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    .upload-box {
-      text-align: center;
-      padding: 18px;
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      margin-bottom: 20px;
-    }
-
-    input[type=file] {
-      display: block;
-      width: 100%;
-      margin-top: 12px;
-    }
-
-    label {
-      display: block;
-      margin-top: 16px;
-      margin-bottom: 6px;
-      opacity: 0.85;
-    }
-
-    select, textarea {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
-      margin-bottom: 12px;
-      font-size: 15px;
-      background: rgba(255,255,255,0.1);
-      color: white;
-    }
-
-    button {
-      width: 100%;
-      padding: 15px;
-      font-size: 17px;
-      border-radius: 14px;
-      border: none;
-      background: linear-gradient(135deg, #3b82f6, #7c3aed);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-    }
-
-    .result {
-      margin-top: 30px;
-      text-align: center;
-    }
-
-    img {
-      width: 100%;
-      border-radius: 14px;
-      margin-top: 12px;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Фото → Картина</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-  <h1>AI Редактор Фото</h1>
-  <p>Загрузи фото → выбери стиль → получи красивый результат ✨</p>
+  <div class="container">
+    <h1>AI Картина из вашего фото</h1>
 
-  <div class="card">
+    <input type="file" id="fileInput" accept="image/*">
+    <br><br>
 
-    <div class="upload-box">
-      <div>📸 Загрузить фото</div>
-      <input type="file" id="photoInput" accept="image/*" />
-    </div>
+    <button id="generateBtn">Создать картину</button>
 
-    <label>Стиль</label>
-    <select id="style">
-      <option value="oil">🎨 Картина маслом</option>
-      <option value="fantasy">🧚 Фэнтези портрет</option>
-      <option value="location">🏞 Красивое место</option>
-    </select>
+    <div id="status"></div>
 
-    <label>Описание сцены (опционально)</label>
-    <textarea id="prompt" rows="3" placeholder="Например: девушка на фоне итальянского побережья на закате"></textarea>
-
-    <button id="createBtn">Сделать фото красивым</button>
-
+    <img id="resultImage" style="display:none; width:100%; margin-top:20px;">
   </div>
 
-  <div class="result" id="resultBox" style="display:none;">
-    <h3>✨ Результат</h3>
-    <img id="resultImage" />
-  </div>
+<script>
+document.getElementById("generateBtn").onclick = async function () {
+  const fileInput = document.getElementById("fileInput");
+  const status = document.getElementById("status");
+  const resultImage = document.getElementById("resultImage");
 
-  <script>
-    async function toBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+  if (!fileInput.files.length) {
+    status.innerHTML = "Загрузите фото!";
+    return;
+  }
+
+  status.innerHTML = "Обработка...";
+
+  const reader = new FileReader();
+  reader.onload = async function () {
+    const base64 = reader.result.split(",")[1];
+
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image: base64,
+        prompt: "oil painting, dramatic lighting, masterpiece"
+      })
+    });
+
+    const data = await res.json();
+    if (data.ok) {
+      resultImage.src = "data:image/png;base64," + data.imageBase64;
+      resultImage.style.display = "block";
+      status.innerHTML = "Готово!";
+    } else {
+      status.innerHTML = "Ошибка: " + (data.error || "unknown");
     }
+  };
 
-    document.getElementById("createBtn").onclick = async () => {
-      const btn = document.getElementById("createBtn");
-      btn.disabled = true;
-      btn.innerText = "Создаю...";
-
-      const style = document.getElementById("style").value;
-      const prompt = document.getElementById("prompt").value;
-
-      const fileInput = document.getElementById("photoInput");
-      if (fileInput.files.length === 0) {
-        btn.disabled = false;
-        btn.innerText = "Сделать фото красивым";
-        return alert("Пожалуйста, выбери фото 📸");
-      }
-
-      const base64 = await toBase64(fileInput.files[0]);
-
-      const payload = {
-        imageBase64: base64,
-        style: style,
-        prompt: prompt
-      };
-
-      const r = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await r.json();
-
-      if (data.ok) {
-        document.getElementById("resultImage").src = data.image;
-        document.getElementById("resultBox").style.display = "block";
-      } else {
-        alert("Ошибка: " + data.error);
-      }
-
-      btn.disabled = false;
-      btn.innerText = "Сделать фото красивым";
-    };
-  </script>
+  reader.readAsDataURL(fileInput.files[0]);
+};
+</script>
 
 </body>
 </html>
