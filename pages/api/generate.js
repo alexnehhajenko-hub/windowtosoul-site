@@ -1,77 +1,140 @@
-export const config = {
-  api: { bodyParser: false },
-};
-
-import formidable from "formidable";
-
-const STABILITY_URL =
-  "https://api.stability.ai/v2beta/stable-image/generate/core";
+import Replicate from "replicate";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
   }
 
-  const apiKey = process.env.STABILITY_API_KEY;
-  if (!apiKey) {
-    return res
-      .status(500)
-      .json({ ok: false, error: "missing_STABILITY_API_KEY" });
+  const replicate_api_key = process.env.REPLICATE_API_TOKEN;
+  if (!replicate_api_key) {
+    return res.status(500).json({ ok: false, error: "missing_replicate_key" });
   }
 
+  const replicate = new Replicate({
+    auth: replicate_api_key,
+  });
+
   try {
-    const form = formidable({});
-    const [fields] = await form.parse(req);
-    const prompt = fields.prompt || "portrait photo, soft daylight, 4k";
+    const { source, style, prompt, imageBase64 } = req.body;
 
-    const fd = new FormData();
-    fd.append("prompt", prompt);
-    fd.append("output_format", "png");
-    fd.append("style_preset", "photographic");
+    if (!prompt || prompt.length < 3) {
+      return res.status(400).json({ ok: false, error: "missing_prompt" });
+    }
 
-    const r = await fetch(STABILITY_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/json",
-      },
-      body: fd,
-    });
+    let imageInput = null;
 
-    const text = await r.text();
-    let data = null;
-    try {
-      data = JSON.parse(text);
-    } catch {}
+    if (source === "photo" && imageBase64) {
+      imageInput = `data:image/png;base64,${imageBase64}`;
+    }
 
-    if (!r.ok) {
-      return res.status(r.status).json({
-        ok: false,
-        status: r.status,
-        error: "stability_error",
-        body: text,
+    // ЛОГИКА ВЫБОРА МОДЕЛИ
+
+    // 1️⃣ ФОТО → ФОТО (улучшение)
+    if (style === "photo") {
+      const output = await replicate.run(
+        "black-forest-labs/flux-schnell", // БЫСТРАЯ И КРАСИВАЯ МОДЕЛЬ
+        {
+          input: {
+            prompt,
+            image: imageInput,
+            guidance: 3,
+            steps: 20,
+            width: 1024,
+            height: 1024
+          }
+        }
+      );
+
+      return res.status(200).json({
+        ok: true,
+        image: output[0],
+        model: "flux-schnell"
       });
     }
 
-    const img =
-      data?.image ||
-      data?.base64 ||
-      (data?.artifacts?.[0]?.base64 || null);
+    // 2️⃣ ФОТО → КАРТИНА МАСЛОМ
+    if (style === "painting" && source === "photo") {
+      const output = await replicate.run(
+        "tencentarc/gfpgan", // улучшение лица
+        {
+          input: {
+            img: imageInput
+          }
+        }
+      );
 
-    if (!img) {
-      return res.status(500).json({ ok: false, error: "no_image_returned" });
+      const improvedFace = output;
+
+      const painted = await replicate.run(
+        "fofr/p3-paint", // модель картины маслом
+        {
+          input: {
+            prompt: prompt + ", oil painting, dramatic light, masterpiece",
+            image: improvedFace,
+            style: "oil",
+            resolution: "1024"
+          }
+        }
+      );
+
+      return res.status(200).json({
+        ok: true,
+        image: painted[0],
+        model: "p3-paint"
+      });
     }
 
-    res.status(200).json({
-      ok: true,
-      imageBase64: img,
-      model: "stable-image-core-v2beta",
+    // 3️⃣ ТЕКСТ → КАРТИНА МАСЛОМ (без фото)
+    if (style === "painting" && source === "text") {
+      const created = await replicate.run(
+        "fofr/p3-paint",
+        {
+          input: {
+            prompt: prompt + ", cinematic oil painting, dramatic sky, beautiful environment, masterpiece",
+            style: "oil",
+            resolution: "1024"
+          }
+        }
+      );
+
+      return res.status(200).json({
+        ok: true,
+        image: created[0],
+        model: "p3-paint"
+      });
+    }
+
+    // 4️⃣ ТЕКСТ → ФОТО (портрет с нуля)
+    if (style === "photo" && source === "text") {
+      const output = await replicate.run(
+        "black-forest-labs/flux-schnell",
+        {
+          input: {
+            prompt,
+            guidance: 3,
+            steps: 22,
+            width: 1024,
+            height: 1024
+          }
+        }
+      );
+
+      return res.status(200).json({
+        ok: true,
+        image: output[0],
+        model: "flux-schnell"
+      });
+    }
+
+    return res.status(400).json({
+      ok: false,
+      error: "unmatched_mode"
     });
   } catch (e) {
     return res.status(500).json({
       ok: false,
       error: "server_error",
-      message: e.message || String(e),
+      message: e.message || String(e)
     });
   }
 }
