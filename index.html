@@ -1,75 +1,74 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WindowToSoul — AI Portrait</title>
-<link rel="stylesheet" href="assets/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WindowToSoul — AI Portrait</title>
+  <link rel="stylesheet" href="assets/style.css">
 
-<style>
-body {
-  background: #0b0e1a;
-  color: white;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 20px;
-}
+  <style>
+    body {
+      background: #0b0e1a;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 20px;
+    }
 
-.container {
-  max-width: 540px;
-  margin: auto;
-}
+    .container {
+      max-width: 540px;
+      margin: auto;
+    }
 
-.block {
-  background: #111427;
-  padding: 22px;
-  border-radius: 22px;
-  margin-bottom: 25px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
-}
+    .block {
+      background: #111427;
+      padding: 22px;
+      border-radius: 22px;
+      margin-bottom: 25px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
 
-h1, h2 {
-  margin-bottom: 12px;
-}
+    h1, h2 {
+      margin-bottom: 12px;
+    }
 
-button {
-  width: 100%;
-  background: linear-gradient(90deg,#a86bff,#e47cff);
-  border: none;
-  border-radius: 16px;
-  padding: 16px;
-  font-size: 18px;
-  font-weight: bold;
-  margin-top: 12px;
-  cursor: pointer;
-}
+    button {
+      width: 100%;
+      background: linear-gradient(90deg,#a86bff,#e47cff);
+      border: none;
+      border-radius: 16px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 12px;
+      cursor: pointer;
+    }
 
-#result img {
-  width: 100%;
-  border-radius: 16px;
-  margin-top: 10px;
-}
+    #result img {
+      width: 100%;
+      border-radius: 16px;
+      margin-top: 10px;
+    }
 
-.style-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+    .style-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
 
-.style-btns button {
-  flex: 1 1 calc(50% - 10px);
-  background: #1c2036;
-  border: 1px solid #333;
-  padding: 14px;
-  border-radius: 14px;
-  font-size: 16px;
-}
+    .style-btns button {
+      flex: 1 1 calc(50% - 10px);
+      background: #1c2036;
+      border: 1px solid #333;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 16px;
+    }
 
-.style-btns button.active {
-  background: #6b46ff;
-  border-color: #a184ff;
-}
-</style>
-
+    .style-btns button.active {
+      background: #6b46ff;
+      border-color: #a184ff;
+    }
+  </style>
 </head>
 <body>
 
@@ -98,10 +97,10 @@ button {
       <button onclick="selectStyle('classic')" id="btn-classic">Классический художник</button>
     </div>
 
-    <textarea id="extra" placeholder="Текст (опционально)" 
+    <textarea id="extra" placeholder="Текст (опционально)"
       style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:#1c2036;color:white;border:1px solid #333;"></textarea>
 
-    <button onclick="generate()">Сделать картиной</button>
+    <button id="generateBtn" onclick="generate()">Сделать картиной</button>
     <p id="error" style="color:#ff6b6b;margin-top:10px"></p>
   </div>
 
@@ -121,7 +120,6 @@ function selectStyle(s) {
   document.querySelectorAll(".style-btns button").forEach(b => b.classList.remove("active"));
   document.getElementById("btn-" + s).classList.add("active");
 }
-
 
 // ---------------------------------------------------------
 // 🔥 Фикс HTTP 413 — уменьшаем фото перед отправкой
@@ -169,24 +167,36 @@ function fileToDataUrl(file) {
   });
 }
 
-
 // ---------------------------------------------------------
 // 🔥 Генерация
 // ---------------------------------------------------------
 async function generate() {
-  document.getElementById("error").innerText = "";
-  document.getElementById("result").innerHTML = "Генерация...";
+  const errorEl = document.getElementById("error");
+  const resultEl = document.getElementById("result");
+  const btn = document.getElementById("generateBtn");
+
+  errorEl.innerText = "";
+  resultEl.style.opacity = 0.8;
+  resultEl.innerHTML = "Генерация портрета…";
+  btn.disabled = true;
 
   let imgData = null;
 
   const file = document.getElementById("photo").files[0];
   if (file) {
-    imgData = await fileToDataUrl(file);
+    try {
+      imgData = await fileToDataUrl(file);
+    } catch (e) {
+      errorEl.innerText = "Ошибка обработки фото: " + e.message;
+      resultEl.innerHTML = "";
+      btn.disabled = false;
+      return;
+    }
   }
 
   const body = {
     style: CURRENT_STYLE,
-    extra: document.getElementById("extra").value || "",
+    text: document.getElementById("extra").value || "",
     photo: imgData
   };
 
@@ -197,23 +207,43 @@ async function generate() {
       body: JSON.stringify(body)
     });
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
 
-    if (!res.ok) {
-      document.getElementById("error").innerText = "Ошибка: " + (data.error || data.message);
-      document.getElementById("result").innerHTML = "";
+    console.log("API /api/generate response:", data);
+
+    if (res.status === 413) {
+      errorEl.innerText = "Фото слишком большое. Попробуйте другое (меньшего размера).";
+      resultEl.innerHTML = "";
+      btn.disabled = false;
       return;
     }
 
-    if (data.image) {
-      document.getElementById("result").innerHTML = `<img src="${data.image}" />`;
+    if (!res.ok) {
+      errorEl.innerText = "Ошибка: " + (data.error || data.message || ("HTTP " + res.status));
+      resultEl.innerHTML = "";
+      btn.disabled = false;
+      return;
+    }
+
+    const imageUrl = data.imageUrl || data.image || null;
+
+    if (imageUrl) {
+      resultEl.style.opacity = 1;
+      resultEl.innerHTML = `<img src="${imageUrl}" alt="AI portrait" />`;
     } else {
-      document.getElementById("result").innerHTML = "Ошибка: нет изображения";
+      resultEl.innerHTML = "Ошибка: сервер не вернул изображение.";
     }
 
   } catch (err) {
-    document.getElementById("error").innerText = "Ошибка: " + err.message;
-    document.getElementById("result").innerHTML = "";
+    errorEl.innerText = "Ошибка сети: " + err.message;
+    resultEl.innerHTML = "";
+  } finally {
+    btn.disabled = false;
   }
 }
 </script>
