@@ -1,55 +1,69 @@
+// api/generate.js — стабильная версия: только текст → картинка
+
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Method not allowed" });
+    const token = process.env.REPLICATE_API_TOKEN;
+    if (!token) {
+      return res.status(500).json({ error: "REPLICATE_API_TOKEN is missing" });
     }
 
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
+    // Читаем «сырое» тело как текст
+    let raw = "";
+    for await (const chunk of req) {
+      raw += chunk;
+    }
+
+    let data = {};
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.error("JSON parse error:", e);
+      return res.status(400).json({ error: "Invalid JSON body" });
+    }
+
+    const userPrompt = (data.prompt || "").trim();
+
+    const basePrompt =
+      "beautiful oil painting portrait of a person, soft warm light, highly detailed, 4k";
+
+    const finalPrompt = userPrompt
+      ? `${basePrompt}, ${userPrompt}`
+      : basePrompt;
+
+    const replicate = new Replicate({ auth: token });
+
+    // Модель: быстрая версия FLUX
+    const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
+      input: {
+        prompt: finalPrompt,
+      },
     });
 
-    const { prompt, imageBase64 } = req.body;
+    const imageUrl = Array.isArray(output) ? output[0] : output;
 
-    let imageUrl = null;
-
-    // Если пользователь загрузил фото — загружаем его на Replicate Files API
-    if (imageBase64) {
-      const uploadResponse = await fetch(
-        "https://api.replicate.com/v1/files",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ content: imageBase64 })
-        }
-      );
-
-      const uploadJson = await uploadResponse.json();
-      imageUrl = uploadJson.url;
+    if (!imageUrl) {
+      return res.status(502).json({
+        error: "No image URL from Replicate",
+        raw: output,
+      });
     }
 
-    // Формируем запрос в FLUX
-    const input = {
-      prompt: prompt || "oil painting portrait of a woman",
-    };
-
-    if (imageUrl) {
-      input.image = imageUrl;
-    }
-
-    const output = await replicate.run(
-      "black-forest-labs/flux-1.1-pro", // или твоя модель
-      { input }
-    );
-
-    res.status(200).json({ output });
-
+    return res.status(200).json({
+      ok: true,
+      imageUrl,
+      usedPrompt: finalPrompt,
+    });
   } catch (err) {
-    console.error("GEN ERROR:", err);
-    res.status(500).json({ error: err.message || "Generation failed" });
+    console.error("REPLICATE ERROR:", err);
+    return res.status(500).json({
+      error: "Generation failed",
+      details: err?.message || String(err),
+    });
   }
 }
