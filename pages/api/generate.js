@@ -1,60 +1,69 @@
-import Replicate from "replicate";
+// api/generate.js
 
-// ВАЖНО: в Vercel должен быть ключ REPLICATE_API_TOKEN
-// со значением из https://replicate.com/account/api-tokens
+const Replicate = require("replicate");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  // Разрешаем только POST
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
 
-  const apiKey = process.env.REPLICATE_API_TOKEN;
-  if (!apiKey) {
-    return res.status(500).json({
-      error: "Missing REPLICATE_API_TOKEN in environment",
-    });
-  }
-
-  try:
-    const { prompt } = req.body || {};
-    const finalPrompt =
-      (prompt && String(prompt).trim().length > 0)
-        ? String(prompt)
-        : "oil painting portrait of a person, warm soft light, highly detailed, 4k";
-
-    const replicate = new Replicate({
-      auth: apiKey,
+  try {
+    // Ждём JSON: { prompt: "...", style: "..." }
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
     });
 
-    // Простой и надёжный пример модели (SDXL)
-    const output = await replicate.run(
-      "stability-ai/stable-diffusion-xl-base-1.0",
-      {
-        input: {
-          prompt: finalPrompt,
-        },
+    req.on("end", async () => {
+      let data = {};
+      try {
+        data = JSON.parse(body || "{}");
+      } catch (e) {
+        // если пришёл кривой JSON
+        return res.status(400).json({ error: "Invalid JSON" });
       }
-    );
 
-    // Replicate чаще всего возвращает массив URL
-    const imageUrl = Array.isArray(output) ? output[0] : output;
+      const style = data.style || "oil painting";
+      const extra = data.prompt || "";
+      const fullPrompt = `${style} portrait, ${extra} cinematic, highly detailed, 4k`;
 
-    if (!imageUrl) {
-      return res.status(502).json({
-        error: "No image URL from Replicate",
-        raw: output,
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
       });
-    }
 
-    return res.status(200).json({
-      output: imageUrl,
-      usedPrompt: finalPrompt,
+      if (!process.env.REPLICATE_API_TOKEN) {
+        return res
+          .status(500)
+          .json({ error: "REPLICATE_API_TOKEN is not set in environment" });
+      }
+
+      // простейший вызов FLUX-1
+      const output = await replicate.run(
+        "black-forest-labs/flux-1:1cfafb0e0faae7cabd1a7595f3237963",
+        {
+          input: {
+            prompt: fullPrompt,
+          },
+        }
+      );
+
+      const imageUrl = Array.isArray(output) ? output[0] : output;
+
+      if (!imageUrl) {
+        return res
+          .status(502)
+          .json({ error: "No image URL from Replicate", raw: output });
+      }
+
+      res.status(200).json({ imageUrl, usedPrompt: fullPrompt });
     });
   } catch (err) {
     console.error("API ERROR:", err);
-    return res.status(500).json({
-      error: "Generation failed",
-      details: err?.message || String(err),
+    res.status(500).json({
+      error: "Server error",
+      details: err.message || String(err),
     });
   }
-}
+};
