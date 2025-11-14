@@ -1,64 +1,57 @@
-// api/generate.js
+// pages/api/generate.js
 
 const Replicate = require("replicate");
 
+// Конфиг для Vercel/Next — пусть не трогает тело запроса сам
 module.exports = async (req, res) => {
+  // Разрешаем только POST-запросы
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
   try {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
+    const token = process.env.REPLICATE_API_TOKEN;
+    if (!token) {
+      res.status(500).json({ error: "REPLICATE_API_TOKEN is missing" });
+      return;
+    }
 
-    req.on("end", async () => {
-      let data = {};
-      try {
-        data = JSON.parse(body || "{}");
-      } catch (e) {
-        return res.status(400).json({ error: "Invalid JSON" });
-      }
+    const replicate = new Replicate({ auth: token });
 
-      const style = data.style || "oil painting";
-      const extra = data.prompt || "";
-      const fullPrompt = `${style}, ${extra}, highly detailed, cinematic, 4k`;
+    // ВРЕМЕННО игнорируем style и extra description.
+    // Просто шлём один жёстко заданный английский промпт.
+    const prompt =
+      "oil painting, classical art portrait of a woman, warm soft light, highly detailed, 4k";
 
-      const replicate = new Replicate({
-        auth: process.env.REPLICATE_API_TOKEN,
-      });
-
-      if (!process.env.REPLICATE_API_TOKEN) {
-        return res
-          .status(500)
-          .json({ error: "REPLICATE_API_TOKEN is missing" });
-      }
-
-      // ВАЖНО: prompt должен быть СТРОКОЙ!
-      const output = await replicate.run(
-        "black-forest-labs/flux-1:1cfafb0e0faae7cabd1a7595f3237963",
-        {
-          input: {
-            prompt: fullPrompt
-          }
+    // ВАЖНО: prompt — обычная строка!
+    const output = await replicate.run(
+      "black-forest-labs/flux-1:1cfafb0e0faae7cabd1a7595f3237963",
+      {
+        input: {
+          prompt: prompt
         }
-      );
-
-      const imageUrl = Array.isArray(output) ? output[0] : output;
-
-      if (!imageUrl) {
-        return res.status(502).json({ error: "Model returned no image" });
       }
+    );
 
-      res.status(200).json({ imageUrl });
-    });
+    // Replicate обычно отдаёт массив ссылок
+    const imageUrl = Array.isArray(output) ? output[0] : output;
+
+    if (!imageUrl) {
+      res.status(502).json({
+        error: "Model returned no image",
+        raw: output
+      });
+      return;
+    }
+
+    // Фронт ждёт поле `output`
+    res.status(200).json({ output: imageUrl, prompt });
   } catch (err) {
-    console.error(err);
+    console.error("REPLICATE ERROR:", err);
     res.status(500).json({
-      error: "Server error",
-      details: err.message || String(err),
+      error: "Generation failed",
+      details: err && err.message ? err.message : String(err)
     });
   }
 };
