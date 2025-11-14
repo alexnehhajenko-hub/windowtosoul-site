@@ -32,6 +32,7 @@
                 Лучше всего работает портрет по плечи, при хорошем освещении.
               </p>
 
+              <!-- ВАЖНО: input внутри label, без лишнего JS -->
               <label class="file-input">
                 <span class="file-button">Выбрать файл</span>
                 <span id="file-name" class="file-name">Файл не выбран</span>
@@ -59,25 +60,13 @@
                 >
                   Картина маслом
                 </button>
-                <button
-                  type="button"
-                  class="style-btn"
-                  data-style="anime"
-                >
+                <button type="button" class="style-btn" data-style="anime">
                   Аниме-портрет
                 </button>
-                <button
-                  type="button"
-                  class="style-btn"
-                  data-style="poster"
-                >
+                <button type="button" class="style-btn" data-style="poster">
                   Кино-постер
                 </button>
-                <button
-                  type="button"
-                  class="style-btn"
-                  data-style="classic"
-                >
+                <button type="button" class="style-btn" data-style="classic">
                   Классический художник
                 </button>
               </div>
@@ -87,8 +76,8 @@
             <div class="step">
               <h2 class="step-title">3. Свой текст (опционально)</h2>
               <p class="step-hint">
-                Можно подсказать атмосферы: “вечернее тёплое освещение”, “в
-                стиле 80-х”, “мягкие пастельные тона” и т.п.
+                Можно подсказать атмосферу: “вечернее тёплое освещение”,
+                “в стиле 80-х”, “мягкие пастельные тона” и т.п.
               </p>
               <textarea
                 id="prompt-input"
@@ -172,7 +161,7 @@
             "classic painter style portrait of the person from the photo, inspired by Rembrandt and old masters, warm tones, detailed brushwork, museum quality",
         };
 
-        // Клик по стилям
+        // Выбор стиля
         styleButtons.addEventListener("click", (e) => {
           const btn = e.target.closest(".style-btn");
           if (!btn) return;
@@ -182,14 +171,9 @@
           currentStyle = btn.dataset.style;
         });
 
-        // Клик по "Выбрать файл"
-        document
-          .querySelector(".file-input")
-          .addEventListener("click", () => photoInput.click());
-
-        // Выбор файла
+        // Срабатывает, когда пользователь выбрал фото
         photoInput.addEventListener("change", () => {
-          const [file] = photoInput.files || [];
+          const file = photoInput.files && photoInput.files[0];
           currentFile = file || null;
 
           if (!file) {
@@ -249,9 +233,7 @@
             const extra = (promptInput.value || "").trim();
             const finalPrompt = extra ? basePrompt + ". " + extra : basePrompt;
 
-            const imageDataUrl = currentFile
-              ? await fileToDataUrl(currentFile)
-              : null;
+            const imageDataUrl = await fileToDataUrl(currentFile);
 
             const response = await fetch("/api/generate", {
               method: "POST",
@@ -267,7 +249,9 @@
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-              throw new Error(data.error || data.details || "HTTP " + response.status);
+              throw new Error(
+                data.error || data.details || "HTTP " + response.status
+              );
             }
 
             const imageUrl = data.imageUrl || data.output;
@@ -289,7 +273,8 @@
           } catch (err) {
             console.error(err);
             setStatus(
-              "Ошибка: " + (err && err.message ? err.message : "Generation failed"),
+              "Ошибка: " +
+                (err && err.message ? err.message : "Generation failed"),
               true
             );
           } finally {
