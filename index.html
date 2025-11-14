@@ -2,128 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Photo → Artwork</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <div class="page">
-    <div class="card">
-      <h1>🎨 AI Photo → Artwork</h1>
-      <p class="subtitle">
-        Upload your photo and get an AI-generated artwork.<br />
-        (Временная версия: пока модель рисует портрет по описанию, фото скоро подключим.)
-      </p>
+  <h1>🎨 AI Photo → Artwork</h1>
 
-      <form id="generate-form">
-        <label class="field-label">1. Upload photo (optional)</label>
-        <input type="file" id="photo-input" accept="image/*" />
+  <p>
+    Upload your photo and get an AI-generated artwork.<br>
+    <small>(Временная версия: если фото не работает — модель создаёт портрет по описанию.)</small>
+  </p>
 
-        <label class="field-label">2. Choose style</label>
-        <select id="style-select">
-          <option value="oil">🖼 Oil painting</option>
-          <option value="fairytale">✨ Fairytale illustration</option>
-          <option value="neon">💡 Cyberpunk / neon</option>
-          <option value="sketch">✏️ Pencil sketch</option>
-        </select>
+  <form id="artForm">
+    <label>1. Upload photo (optional)</label><br>
+    <input type="file" id="photo" accept="image/*"><br><br>
 
-        <label class="field-label">3. Extra details (optional)</label>
-        <textarea
-          id="extra-prompt"
-          rows="3"
-          placeholder="For example: sunset, mountains, golden light, magical atmosphere…"
-        ></textarea>
+    <label>2. Choose style</label><br>
+    <select id="style">
+      <option value="oil painting">🖌️ Oil painting</option>
+      <option value="fantasy art">✨ Fantasy art</option>
+      <option value="realistic">📸 Realistic</option>
+    </select><br><br>
 
-        <button type="submit" id="generate-btn">Generate Artwork</button>
-      </form>
+    <label>3. Extra description (optional)</label><br>
+    <input id="prompt" placeholder="For example: golden light, mountains, sunset…"><br><br>
 
-      <div id="status" class="status"></div>
+    <button type="submit">Generate Artwork</button>
+  </form>
 
-      <div id="result" class="result hidden">
-        <h2>Your artwork</h2>
-        <img id="result-image" alt="AI artwork" />
-        <a id="download-link" href="#" download="ai-artwork.png">Download</a>
-      </div>
-    </div>
-  </div>
+  <p id="status"></p>
+
+  <h2>Your artwork</h2>
+  <img id="resultImage" style="max-width: 90%; display: none;" />
+  <br>
+  <a id="downloadLink" href="#" download="artwork.png" style="display: none;">Download</a>
 
   <script>
-    const form = document.getElementById("generate-form");
-    const btn = document.getElementById("generate-btn");
-    const statusEl = document.getElementById("status");
-    const resultEl = document.getElementById("result");
-    const imgEl = document.getElementById("result-image");
-    const downloadLink = document.getElementById("download-link");
-
-    function buildPrompt() {
-      const style = document.getElementById("style-select").value;
-      const extra = (document.getElementById("extra-prompt").value || "").trim();
-
-      let basePrompt = "";
-
-      if (style === "oil") {
-        basePrompt =
-          "A stunning oil painting portrait of a person, highly detailed, beautiful lighting, museum quality, rich brush strokes, artstation, 4k";
-      } else if (style === "fairytale") {
-        basePrompt =
-          "A magical fairytale illustration of a person in a fantasy landscape, soft pastel colors, whimsical, dreamy, highly detailed, 4k";
-      } else if (style === "neon") {
-        basePrompt =
-          "A cyberpunk neon portrait of a person, dramatic lighting, futuristic city background, vibrant colors, ultra detailed, 4k";
-      } else if (style === "sketch") {
-        basePrompt =
-          "A realistic pencil sketch portrait of a person, fine lines, high contrast, elegant, detailed, on white paper, 4k";
-      }
-
-      if (extra) {
-        basePrompt += ". " + extra;
-      }
-
-      return basePrompt;
-    }
+    const form = document.getElementById("artForm");
+    const status = document.getElementById("status");
+    const resultImage = document.getElementById("resultImage");
+    const downloadLink = document.getElementById("downloadLink");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      status.textContent = "⏳ Generating...";
+      resultImage.style.display = "none";
+      downloadLink.style.display = "none";
 
-      const prompt = buildPrompt();
+      const fileInput = document.getElementById("photo");
+      const style = document.getElementById("style").value;
+      const promptText = document.getElementById("prompt").value;
 
-      btn.disabled = true;
-      btn.textContent = "Generating...";
-      statusEl.textContent = "Calling AI, please wait 10–20 seconds…";
-      resultEl.classList.add("hidden");
+      const formData = new FormData();
+      formData.append("style", style);
+      formData.append("prompt", promptText);
+      if (fileInput.files.length > 0) {
+        formData.append("photo", fileInput.files[0]);
+      }
 
       try {
         const res = await fetch("/api/generate", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ prompt }),
+          body: formData
         });
 
-        const data = await res.json().catch(() => null);
+        const data = await res.json();
 
-        if (!res.ok || !data || !data.ok) {
-          throw new Error(
-            (data && data.error) || "Server error, please try again."
-          );
-        }
+        if (!res.ok) throw new Error(data.error || "Server error");
 
-        if (!data.imageUrl) {
-          throw new Error("No image in AI response.");
-        }
+        resultImage.src = data.output;
+        resultImage.style.display = "block";
 
-        imgEl.src = data.imageUrl;
-        downloadLink.href = data.imageUrl;
-        resultEl.classList.remove("hidden");
-        statusEl.textContent = "Done ✅";
+        downloadLink.href = data.output;
+        downloadLink.style.display = "inline-block";
+
+        status.textContent = "";
       } catch (err) {
-        console.error(err);
-        statusEl.textContent =
-          "Error: " + (err && err.message ? err.message : String(err));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Generate Artwork";
+        status.textContent = "❌ Error: " + err.message;
       }
     });
   </script>
