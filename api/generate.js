@@ -1,75 +1,98 @@
 import Replicate from "replicate";
 
-// Vercel Node.js Serverless Function
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+function readFile(req) {
+  return new Promise((resolve, reject) => {
+    let data = Buffer.alloc(0);
+
+    req.on("data", chunk => {
+      data = Buffer.concat([data, chunk]);
+    });
+
+    req.on("end", () => {
+      resolve(data);
+    });
+
+    req.on("error", reject);
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const replicate = new Replicate({
+    auth: process.env.REPLICATE_API_TOKEN,
+  });
+
   try {
-    // Читаем "сырое" тело и парсим JSON
-    let body = "";
-    for await (const chunk of req) {
-      body += chunk;
-    }
+    const rawBody = await readFile(req);
 
-    let data = {};
-    if (body) {
-      try {
-        data = JSON.parse(body);
-      } catch (e) {
-        console.error("JSON parse error:", e);
-        return res.status(400).json({ error: "Invalid JSON body" });
+    const contentType = req.headers["content-type"] || "";
+    const isMultipart = contentType.startsWith("multipart/form-data");
+
+    let prompt = "oil painting portrait";
+    let extra = "";
+    let imageDataUrl = null;
+
+    if (isMultipart) {
+      // Разбираем multipart вручную
+      const boundary = contentType.split("boundary=")[1];
+      const parts = rawBody.toString().split(`--${boundary}`);
+
+      for (const part of parts) {
+        if (part.includes('name="prompt"')) {
+          prompt = part.split("\r\n\r\n")[1]?.trim() || prompt;
+        }
+
+        if (part.includes('name="extra"')) {
+          extra = part.split("\r\n\r\n")[1]?.trim() || "";
+        }
+
+        if (part.includes('name="photo"') && part.includes("filename=")) {
+          const start = part.indexOf("\r\n\r\n") + 4;
+          const fileBytes = part.slice(start, part.lastIndexOf("\r\n"));
+          const base64 = Buffer.from(fileBytes, "binary").toString("base64");
+          imageDataUrl = `data:image/jpeg;base64,${base64}`;
+        }
       }
+    } else {
+      // JSON (fallback)
+      const json = JSON.parse(rawBody.toString());
+      prompt = json.prompt || prompt;
+      extra = json.extra || "";
+      imageDataUrl = json.image || null;
     }
 
-    const extraPrompt = (data.prompt || "").trim();
-    const style = (data.style || "oil painting").trim();
-    const imageBase64 = data.imageBase64 || null;
+    const finalPrompt = `${prompt}. ${extra}`;
 
-    // Пока FLUX — чисто text-to-image, поэтому картинку только логируем.
-    if (imageBase64) {
-      console.log("Got imageBase64 with length:", imageBase64.length);
+    // 🔥 ВАЖНО: Если фото есть — отправляем dataURL, иначе только текст
+    const input = {
+      prompt: finalPrompt,
+    };
+
+    if (imageDataUrl) {
+      input.image = imageDataUrl;
     }
 
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-    });
+    const output = await replicate.run(
+      "black-forest-labs/flux-1.1-pro",
+      { input }
+    );
 
-    const basePrompt =
-      "beautiful oil painting portrait of a person, warm soft light, highly detailed, cinematic, 4k";
-
-    const fullPrompt = extraPrompt
-      ? `${basePrompt}, ${extraPrompt}`
-      : basePrompt;
-
-    const output = await replicate.run("black-forest-labs/flux-1", {
-      input: {
-        prompt: fullPrompt,
-      },
-    });
-
-    const imageUrl = Array.isArray(output) ? output[0] : output;
-
-    if (!imageUrl) {
-      return res.status(502).json({
-        error: "No image URL from Replicate",
-        raw: output,
-      });
-    }
-
-    return res.status(200).json({
+    res.status(200).json({
       ok: true,
-      imageUrl,
-      usedPrompt: fullPrompt,
-      usedStyle: style,
-      usedPhoto: Boolean(imageBase64),
+      output,
     });
+
   } catch (err) {
-    console.error("API ERROR:", err);
-    return res.status(500).json({
-      error: "Generation failed",
-      details: err?.message || String(err),
-    });
+    console.error("GENERATION ERROR:", err);
+    res.status(500).json({ error: String(err) });
   }
 }
