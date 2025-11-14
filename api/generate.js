@@ -1,37 +1,54 @@
-// api/generate.js
-
 import Replicate from "replicate";
 
-// Очень простой тестовый endpoint: по POST-запросу
-// генерирует один портрет по фиксированному prompt.
+// Vercel Node.js Serverless Function
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const token = process.env.REPLICATE_API_TOKEN;
-    if (!token) {
-      return res.status(500).json({
-        error: "Missing REPLICATE_API_TOKEN on server",
-      });
+    // Читаем "сырое" тело и парсим JSON
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
     }
 
-    // Инициализируем Replicate SDK
-    const replicate = new Replicate({ auth: token });
+    let data = {};
+    if (body) {
+      try {
+        data = JSON.parse(body);
+      } catch (e) {
+        console.error("JSON parse error:", e);
+        return res.status(400).json({ error: "Invalid JSON body" });
+      }
+    }
 
-    // Тестовый prompt — один красивый портрет
-    const prompt =
-      "oil painting portrait of a thoughtful person, warm soft light, highly detailed, 4k";
+    const extraPrompt = (data.prompt || "").trim();
+    const style = (data.style || "oil painting").trim();
+    const imageBase64 = data.imageBase64 || null;
 
-    // ВАЖНО: используем актуальный ID модели без хэшей версии
-    const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
+    // Пока FLUX — чисто text-to-image, поэтому картинку только логируем.
+    if (imageBase64) {
+      console.log("Got imageBase64 with length:", imageBase64.length);
+    }
+
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN,
+    });
+
+    const basePrompt =
+      "beautiful oil painting portrait of a person, warm soft light, highly detailed, cinematic, 4k";
+
+    const fullPrompt = extraPrompt
+      ? `${basePrompt}, ${extraPrompt}`
+      : basePrompt;
+
+    const output = await replicate.run("black-forest-labs/flux-1", {
       input: {
-        prompt,
+        prompt: fullPrompt,
       },
     });
 
-    // Replicate обычно возвращает массив URL
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
@@ -41,10 +58,15 @@ export default async function handler(req, res) {
       });
     }
 
-    // То, что ждёт фронт: поле output — ссылка на картинку
-    return res.status(200).json({ output: imageUrl, prompt });
+    return res.status(200).json({
+      ok: true,
+      imageUrl,
+      usedPrompt: fullPrompt,
+      usedStyle: style,
+      usedPhoto: Boolean(imageBase64),
+    });
   } catch (err) {
-    console.error("REPLICATE ERROR:", err);
+    console.error("API ERROR:", err);
     return res.status(500).json({
       error: "Generation failed",
       details: err?.message || String(err),
