@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Photo → Artwork</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -12,7 +12,7 @@
 
   <p>
     Upload your photo and get an AI-generated artwork.<br>
-    <small>(Временная версия: если фото не работает — модель создаёт портрет по описанию.)</small>
+    <small>(Если фото не работает — AI рисует по описанию.)</small>
   </p>
 
   <form id="artForm">
@@ -23,11 +23,13 @@
     <select id="style">
       <option value="oil painting">🖌️ Oil painting</option>
       <option value="fantasy art">✨ Fantasy art</option>
-      <option value="realistic">📸 Realistic</option>
+      <option value="realistic portrait">📸 Realistic portrait</option>
+      <option value="anime portrait">🎌 Anime style</option>
+      <option value="classical art">🏛 Classical artist</option>
     </select><br><br>
 
     <label>3. Extra description (optional)</label><br>
-    <input id="prompt" placeholder="For example: golden light, mountains, sunset…"><br><br>
+    <input id="prompt" placeholder="For example: warm sunset, golden light"><br><br>
 
     <button type="submit">Generate Artwork</button>
   </form>
@@ -35,9 +37,9 @@
   <p id="status"></p>
 
   <h2>Your artwork</h2>
-  <img id="resultImage" style="max-width: 90%; display: none;" />
+  <img id="resultImage" style="max-width: 90%; display: none;">
   <br>
-  <a id="downloadLink" href="#" download="artwork.png" style="display: none;">Download</a>
+  <a id="downloadLink" download="artwork.png" style="display: none;">Download</a>
 
   <script>
     const form = document.getElementById("artForm");
@@ -45,39 +47,48 @@
     const resultImage = document.getElementById("resultImage");
     const downloadLink = document.getElementById("downloadLink");
 
+    // Convert file to Base64
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      status.textContent = "⏳ Generating...";
+      status.textContent = "⏳ Generating…";
       resultImage.style.display = "none";
       downloadLink.style.display = "none";
 
-      const fileInput = document.getElementById("photo");
+      const photo = document.getElementById("photo").files[0];
       const style = document.getElementById("style").value;
       const promptText = document.getElementById("prompt").value;
 
-      const formData = new FormData();
-      formData.append("style", style);
-      formData.append("prompt", promptText);
-      if (fileInput.files.length > 0) {
-        formData.append("photo", fileInput.files[0]);
-      }
+      let imageBase64 = null;
+      if (photo) imageBase64 = await toBase64(photo);
 
       try {
         const res = await fetch("/api/generate", {
           method: "POST",
-          body: formData
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64,
+            style,
+            promptText
+          })
         });
 
         const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || "Server error");
+        if (!res.ok) throw new Error(JSON.stringify(data.error));
 
         resultImage.src = data.output;
         resultImage.style.display = "block";
 
         downloadLink.href = data.output;
         downloadLink.style.display = "inline-block";
-
         status.textContent = "";
       } catch (err) {
         status.textContent = "❌ Error: " + err.message;
