@@ -4,102 +4,197 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Photo → Artwork</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="assets/style.css" />
+  <style>
+    body {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    small {
+      color: #555;
+    }
+    label {
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="search"],
+    select {
+      width: 100%;
+      max-width: 460px;
+      padding: 8px 10px;
+      margin-top: 4px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px 18px;
+      font-size: 1rem;
+      border-radius: 999px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    #status {
+      margin-top: 12px;
+      min-height: 24px;
+      font-weight: 500;
+    }
+    #status.error {
+      color: #b91c1c;
+    }
+    #status.ok {
+      color: #166534;
+    }
+    #previewWrapper {
+      margin-top: 24px;
+    }
+    #resultImage {
+      max-width: 100%;
+      border-radius: 12px;
+      display: none;
+    }
+    #downloadLink {
+      display: none;
+      margin-top: 8px;
+      display: inline-block;
+    }
+  </style>
 </head>
-
 <body>
   <h1>🎨 AI Photo → Artwork</h1>
 
   <p>
-    Upload your photo and get an AI-generated artwork.<br>
-    <small>(Если фото не работает — AI рисует по описанию.)</small>
+    Upload your photo and get an AI-generated artwork.<br />
+    <small>(Временная версия: фото пока игнорируется — картинка рисуется по описанию и выбранному стилю.)</small>
   </p>
 
   <form id="artForm">
-    <label>1. Upload photo (optional)</label><br>
-    <input type="file" id="photo" accept="image/*"><br><br>
+    <p>
+      <label for="photo">1. Upload photo (optional)</label><br />
+      <input type="file" id="photo" accept="image/*" />
+      <br /><small>Сейчас фото не используется — только текстовый запрос.</small>
+    </p>
 
-    <label>2. Choose style</label><br>
-    <select id="style">
-      <option value="oil painting">🖌️ Oil painting</option>
-      <option value="fantasy art">✨ Fantasy art</option>
-      <option value="realistic portrait">📸 Realistic portrait</option>
-      <option value="classical art">🏛 Classical art</option>
-      <option value="cinematic art">🎬 Cinematic</option>
-    </select><br><br>
+    <p>
+      <label for="styleSelect">2. Choose style</label><br />
+      <select id="styleSelect">
+        <option value="oil painting portrait, warm colors, soft brush strokes">
+          🖌️ Oil painting
+        </option>
+        <option value="fantasy illustration, epic lighting, magical atmosphere">
+          ✨ Fantasy art
+        </option>
+        <option value="cinematic portrait, realistic photography, 85mm lens, shallow depth of field">
+          📸 Realistic cinematic
+        </option>
+        <option value="classical renaissance painting, detailed, dramatic chiaroscuro">
+          🏛 Classical art
+        </option>
+      </select>
+    </p>
 
-    <label>3. Extra description (optional)</label><br>
-    <input id="prompt" placeholder="For example: warm sunset, mountains"><br><br>
+    <p>
+      <label for="extraPrompt">3. Extra description (optional)</label><br />
+      <input
+        type="text"
+        id="extraPrompt"
+        placeholder="For example: warm sunset, mountains, golden light…"
+      />
+    </p>
 
-    <button type="submit">Generate Artwork</button>
+    <p>
+      <button type="submit" id="submitBtn">Generate Artwork</button>
+    </p>
   </form>
 
   <p id="status"></p>
 
   <h2>Your artwork</h2>
-  <img id="resultImage" style="max-width: 90%; display: none;" />
-  <br>
-  <a id="downloadLink" href="#" download="artwork.png" style="display: none;">Download</a>
+  <div id="previewWrapper">
+    <img id="resultImage" alt="AI artwork" />
+    <br />
+    <a id="downloadLink" href="#" download="artwork.png">Download</a>
+  </div>
 
   <script>
-    async function fileToBase64(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(",")[1]);
-        reader.readAsDataURL(file);
-      });
+    const form = document.getElementById("artForm");
+    const statusEl = document.getElementById("status");
+    const imgEl = document.getElementById("resultImage");
+    const downloadEl = document.getElementById("downloadLink");
+    const styleEl = document.getElementById("styleSelect");
+    const extraEl = document.getElementById("extraPrompt");
+    const submitBtn = document.getElementById("submitBtn");
+
+    function setStatus(msg, type) {
+      statusEl.textContent = msg || "";
+      statusEl.className = "";
+      if (type) statusEl.classList.add(type);
     }
 
-    const form = document.getElementById("artForm");
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      setStatus("⏳ Generating artwork…", "ok");
+      imgEl.style.display = "none";
+      downloadEl.style.display = "none";
+      submitBtn.disabled = true;
 
-      const status = document.getElementById("status");
-      const resultImage = document.getElementById("resultImage");
-      const downloadLink = document.getElementById("downloadLink");
+      const style = styleEl.value.trim();
+      const extra = extraEl.value.trim();
 
-      status.textContent = "⏳ Generating...";
-      resultImage.style.display = "none";
-      downloadLink.style.display = "none";
-
-      const fileInput = document.getElementById("photo");
-      const style = document.getElementById("style").value;
-      const promptText = document.getElementById("prompt").value;
-
-      let base64 = null;
-      if (fileInput.files.length > 0) {
-        base64 = await fileToBase64(fileInput.files[0]);
-      }
-
-      const body = {
-        imageBase64: base64,
-        style: style,
-        promptText: promptText
-      };
+      const prompt =
+        (style ? style + ", " : "") +
+        (extra || "beautiful portrait, highly detailed, 4k");
 
       try {
         const res = await fetch("/api/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt }),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) {
+          throw new Error(data.error || "Server error");
+        }
 
-        resultImage.src = data.output;
-        resultImage.style.display = "block";
+        if (!data.output) {
+          throw new Error("No image URL in response");
+        }
 
-        downloadLink.href = data.output;
-        downloadLink.style.display = "inline-block";
+        imgEl.src = data.output;
+        imgEl.onload = () => {
+          imgEl.style.display = "block";
+        };
+        imgEl.onerror = () => {
+          setStatus("❌ Error: image load failed", "error");
+        };
 
-        status.textContent = "";
+        downloadEl.href = data.output;
+        downloadEl.style.display = "inline-block";
+
+        setStatus("✅ Done! Scroll down to see your artwork.", "ok");
       } catch (err) {
-        status.textContent = "❌ Error: " + err.message;
+        console.error(err);
+        setStatus("❌ Error: " + (err.message || "Unknown error"), "error");
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   </script>
-
 </body>
 </html>
