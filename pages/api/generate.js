@@ -1,9 +1,3 @@
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
@@ -12,46 +6,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const formData = await new Promise((resolve, reject) => {
-      const chunks = [];
-      req.on("data", (chunk) => chunks.push(chunk));
-      req.on("end", () => {
-        const buffer = Buffer.concat(chunks);
-        resolve(buffer);
-      });
-      req.on("error", reject);
-    });
+    const { imageBase64, style, promptText } = req.body;
 
-    // Extract file manually
-    const boundary = req.headers["content-type"].split("boundary=")[1];
-    const parts = formData.toString().split(`--${boundary}`);
-
-    let fileBuffer = null;
-    let promptText = "oil painting portrait";
-
-    for (let part of parts) {
-      if (part.includes('name="photo"') && part.includes("filename=")) {
-        const fileStart = part.indexOf("\r\n\r\n") + 4;
-        const fileContent = part.substring(fileStart, part.lastIndexOf("\r\n"));
-        fileBuffer = Buffer.from(fileContent, "binary");
-      }
-
-      if (part.includes('name="prompt"')) {
-        const start = part.indexOf("\r\n\r\n") + 4;
-        promptText = part.substring(start, part.lastIndexOf("\r\n"));
-      }
-    }
+    // Формируем общий промпт
+    let finalPrompt = `${style}, ${promptText || ""}`.trim();
 
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN,
     });
 
     const input = {
-      prompt: promptText,
+      prompt: finalPrompt,
     };
 
-    if (fileBuffer) {
-      input.image = fileBuffer;
+    // если есть фото — отправляем base64
+    if (imageBase64) {
+      input.image = `data:image/png;base64,${imageBase64}`;
     }
 
     const output = await replicate.run(
@@ -59,9 +29,18 @@ export default async function handler(req, res) {
       { input }
     );
 
-    res.status(200).json({ output });
+    // Replicate возвращает массив URL — берём первый
+    const imageUrl = Array.isArray(output) ? output[0] : output;
+
+    res.status(200).json({ output: imageUrl });
   } catch (e) {
     console.error("API ERROR:", e);
     res.status(500).json({ error: "Generation failed", details: e.message });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: true, // теперь включаем JSON-парсер
+  },
+};
