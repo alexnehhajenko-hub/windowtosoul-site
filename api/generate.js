@@ -1,92 +1,102 @@
-import Replicate from "replicate";
+// api/generate.js
+//
+// Серверная функция Vercel для генерации портретов через Replicate + FLUX.
+// Сейчас работаем только по текстовому описанию (фото игнорируем),
+// но поле photo можно уже слать — дальше подключим стиль по фото.
 
-// Отключаем встроенный bodyParser, сами читаем JSON.
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+import Replicate from "replicate";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-async function readJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", (chunk) => {
-      data += chunk;
-    });
-    req.on("end", () => {
-      if (!data) return resolve({});
-      try {
-        resolve(JSON.parse(data));
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on("error", reject);
-  });
+function buildPrompt(style, userText) {
+  const styleKey = style || "oil";
+
+  const STYLE_PROMPTS = {
+    oil: "oil painting portrait of a person, soft warm light, rich brush strokes, highly detailed, 4k, artstation, dramatic lighting",
+    anime: "anime style portrait, delicate line art, soft pastel colors, big expressive eyes, clean background, highly detailed illustration",
+    poster: "cinematic movie poster portrait, dramatic lighting, sharp contrast, realistic skin, subtle film grain, 4k",
+    classic: "classical oil painting portrait in the style of old masters, realistic skin tones, soft shadows, warm colors, detailed brushwork, 4k",
+  };
+
+  const base = STYLE_PROMPTS[styleKey] || STYLE_PROMPTS.oil;
+
+  const userPart = (userText && String(userText).trim())
+    ? String(userText).trim()
+    : "beautiful portrait of a person, front view, soft background";
+
+  // Итоговый prompt: стиль + пользовательский текст.
+  return `${base}. ${userPart}`;
 }
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const body = await readJsonBody(req);
-    const prompt = (body && body.prompt) || "";
-    const imageDataUrl = body && body.imageDataUrl;
-
-    if (!prompt || typeof prompt !== "string") {
-      return res.status(400).json({ error: "Prompt is required" });
+    // --- Безопасно читаем тело запроса (Vercel может прислать строку) ---
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
     }
+    body = body || {};
 
+    const { style, text, photo } = body;
+
+    // Пока фото игнорируем, но оставляем на будущее.
+    // Если фото есть — просто усиливаем prompt фразой про сохранение лица.
+    const prompt = buildPrompt(style, text) +
+      (photo ? ". Keep the same person and overall appearance as in the reference photo." : "");
+
+    // ВАЖНО: здесь всегда есть prompt, поэтому ошибка "Prompt is required"
+    // от Replicate больше появляться не должна.
     const input = {
       prompt,
-      num_inference_steps: 28,
-      guidance_scale: 3.5,
+      // Немного параметров качества / скорости
+      steps: 24,
+      guidance: 3.5,
+      aspect_ratio: "3:4",
+      output_format: "png",
     };
 
-    // Если пришло фото — включаем режим image-to-image
-    if (imageDataUrl && typeof imageDataUrl === "string") {
-      // Replicate принимает data: URL или https-ссылку
-      input.image = imageDataUrl;
-      input.strength = 0.65; // 0–1: чем меньше, тем больше похоже на исходное фото
-    }
+    const output = await replicate.run("black-forest-labs/flux-1", { input });
 
-    const output = await replicate.run("black-forest-labs/flux-1", {
-      input,
-    });
-
+    // Replicate обычно возвращает массив URL
     let imageUrl = null;
-
     if (Array.isArray(output) && output.length > 0) {
       imageUrl = output[0];
     } else if (typeof output === "string") {
       imageUrl = output;
-    } else if (
-      output &&
-      typeof output === "object" &&
-      Array.isArray(output.output)
-    ) {
+    } else if (output && output.output && Array.isArray(output.output)) {
       imageUrl = output.output[0];
     }
 
     if (!imageUrl) {
       return res.status(502).json({
-        error: "No image URL returned from Replicate",
+        error: "No image URL from Replicate",
         raw: output,
       });
     }
 
-    return res.status(200).json({ imageUrl });
+    return res.status(200).json({
+      ok: true,
+      imageUrl,
+      prompt,
+    });
   } catch (err) {
-    console.error("API /api/generate error:", err);
+    console.error("API /api/generate ERROR:", err);
+
+    const msg = err?.message || String(err || "");
     return res.status(500).json({
       error: "Generation failed",
-      details: err && err.message ? err.message : String(err),
+      details: msg,
     });
   }
 }
