@@ -3,14 +3,12 @@
 const Replicate = require("replicate");
 
 module.exports = async (req, res) => {
-  // Разрешаем только POST
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
   try {
-    // Ждём JSON: { prompt: "...", style: "..." }
     let body = "";
     req.on("data", (chunk) => {
       body += chunk.toString();
@@ -21,13 +19,12 @@ module.exports = async (req, res) => {
       try {
         data = JSON.parse(body || "{}");
       } catch (e) {
-        // если пришёл кривой JSON
         return res.status(400).json({ error: "Invalid JSON" });
       }
 
       const style = data.style || "oil painting";
       const extra = data.prompt || "";
-      const fullPrompt = `${style} portrait, ${extra} cinematic, highly detailed, 4k`;
+      const fullPrompt = `${style}, ${extra}, highly detailed, cinematic, 4k`;
 
       const replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
@@ -36,31 +33,29 @@ module.exports = async (req, res) => {
       if (!process.env.REPLICATE_API_TOKEN) {
         return res
           .status(500)
-          .json({ error: "REPLICATE_API_TOKEN is not set in environment" });
+          .json({ error: "REPLICATE_API_TOKEN is missing" });
       }
 
-      // простейший вызов FLUX-1
+      // ВАЖНО: prompt должен быть СТРОКОЙ!
       const output = await replicate.run(
         "black-forest-labs/flux-1:1cfafb0e0faae7cabd1a7595f3237963",
         {
           input: {
-            prompt: fullPrompt,
-          },
+            prompt: fullPrompt
+          }
         }
       );
 
       const imageUrl = Array.isArray(output) ? output[0] : output;
 
       if (!imageUrl) {
-        return res
-          .status(502)
-          .json({ error: "No image URL from Replicate", raw: output });
+        return res.status(502).json({ error: "Model returned no image" });
       }
 
-      res.status(200).json({ imageUrl, usedPrompt: fullPrompt });
+      res.status(200).json({ imageUrl });
     });
   } catch (err) {
-    console.error("API ERROR:", err);
+    console.error(err);
     res.status(500).json({
       error: "Server error",
       details: err.message || String(err),
