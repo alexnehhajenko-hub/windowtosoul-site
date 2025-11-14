@@ -1,14 +1,19 @@
 // api/generate.js
 //
-// Серверная функция Vercel для генерации портретов через Replicate + FLUX.
-// Сейчас работаем только по текстовому описанию (фото игнорируем),
-// но поле photo можно уже слать — дальше подключим стиль по фото.
+// Генерация портретов через Replicate.
+//  - без фото  -> FLUX (text-to-image)
+//  - с фото    -> SDXL (image-to-image, примерная модель)
+//
+// ВАЖНО: если Replicate вернёт ошибку про модель или параметры,
+// смотри текст ошибки в логах Vercel и пришли мне скрин — подправим slug/поля.
 
 import Replicate from "replicate";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
+
+// ---------- Помощник для сборки промпта ----------
 
 function buildPrompt(style, userText) {
   const styleKey = style || "oil";
@@ -23,13 +28,78 @@ function buildPrompt(style, userText) {
   const base = STYLE_PROMPTS[styleKey] || STYLE_PROMPTS.oil;
 
   const userPart =
-    userText && String(userText).trim()
+    userText && String(userText).trim().length > 0
       ? String(userText).trim()
-      : "beautiful portrait of a person, front view, soft background";
+      : "beautiful portrait of an adult person, front view, soft background";
 
-  // Итоговый prompt: стиль + пользовательский текст.
   return `${base}. ${userPart}`;
 }
+
+// ---------- Ветки генерации ----------
+
+// 1) FLUX: текст → картинка (как у нас уже работало)
+async function generateWithFlux(prompt) {
+  const input = {
+    prompt,
+    steps: 24,
+    guidance: 3.5,
+    aspect_ratio: "3:4",
+    output_format: "png",
+  };
+
+  const output = await replicate.run("black-forest-labs/flux-1", { input });
+
+  let imageUrl = null;
+  if (Array.isArray(output) && output.length > 0) {
+    imageUrl = output[0];
+  } else if (typeof output === "string") {
+    imageUrl = output;
+  } else if (output && output.output && Array.isArray(output.output)) {
+    imageUrl = output.output[0];
+  }
+
+  if (!imageUrl) {
+    throw new Error("No image URL from FLUX");
+  }
+
+  return imageUrl;
+}
+
+// 2) SDXL (пример): фото + текст → картинка
+// здесь мы пробуем использовать фото как референс.
+// Если модель / поля отличаются — Replicate вернёт понятную ошибку.
+async function generateWithPhoto(prompt, photoDataUrl) {
+  // photoDataUrl — это data:image/jpeg;base64,....
+  // Большинство моделей Replicate ждут просто image (URL или base64).
+  const input = {
+    prompt,
+    image: photoDataUrl,
+    strength: 0.7,          // насколько сильно менять фото (0.0–1.0)
+    negative_prompt:
+      "blurry, distorted face, extra limbs, deformed, low quality, text, watermark",
+  };
+
+  // ⚠️ Пример модели. Если в логах будет ошибка MODEL_NOT_FOUND или про input,
+  // пришли скрин — подберём другой slug/поля.
+  const output = await replicate.run("stability-ai/sdxl", { input });
+
+  let imageUrl = null;
+  if (Array.isArray(output) && output.length > 0) {
+    imageUrl = output[0];
+  } else if (typeof output === "string") {
+    imageUrl = output;
+  } else if (output && output.output && Array.isArray(output.output)) {
+    imageUrl = output.output[0];
+  }
+
+  if (!imageUrl) {
+    throw new Error("No image URL from SDXL");
+  }
+
+  return imageUrl;
+}
+
+// ---------- HTTP-обработчик ----------
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -38,7 +108,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- Безопасно читаем тело запроса (Vercel может прислать строку) ---
+    // Vercel иногда даёт body строкой — аккуратно парсим
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -49,57 +119,33 @@ export default async function handler(req, res) {
     }
     body = body || {};
 
-    const { style, text, photo } = body;
+    // с фронта мы шлём: { style, extra, photo }
+    const { style, extra, photo } = body;
 
-    // Пока фото игнорируем, но оставляем на будущее.
-    // Если фото есть — просто усиливаем prompt фразой про сохранение лица.
-    const prompt =
-      buildPrompt(style, text) +
-      (photo
-        ? ". Keep the same person and overall appearance as in the reference photo."
-        : "");
+    const promptBase = buildPrompt(style, extra);
 
-    // Здесь всегда есть prompt.
-    const input = {
-      prompt,
-      // Параметры качества / скорости — можно потом подкрутить
-      steps: 24,
-      guidance: 3.5,
-      aspect_ratio: "3:4",
-      output_format: "png",
-    };
+    let finalPrompt = promptBase;
+    let imageUrl;
 
-    // 🔴 БЫЛО: "black-forest-labs/flux-1"
-    // ✅ СТАВИМ: модель, к которой у тебя точно есть доступ
-    const output = await replicate.run("black-forest-labs/flux-dev", {
-      input,
-    });
-
-    // Replicate обычно возвращает массив URL
-    let imageUrl = null;
-    if (Array.isArray(output) && output.length > 0) {
-      imageUrl = output[0];
-    } else if (typeof output === "string") {
-      imageUrl = output;
-    } else if (output && output.output && Array.isArray(output.output)) {
-      imageUrl = output.output[0];
-    }
-
-    if (!imageUrl) {
-      return res.status(502).json({
-        error: "No image URL from Replicate",
-        raw: output,
-      });
+    if (photo) {
+      // Ветка с фото: пробуем сохранить похожесть лица
+      finalPrompt =
+        promptBase +
+        ". Keep the same person and facial features as in the reference photo, same age and general appearance.";
+      imageUrl = await generateWithPhoto(finalPrompt, photo);
+    } else {
+      // Ветка без фото: обычная текстовая генерация
+      imageUrl = await generateWithFlux(finalPrompt);
     }
 
     return res.status(200).json({
       ok: true,
-      imageUrl,
-      prompt,
+      image: imageUrl,
+      prompt: finalPrompt,
+      usedPhoto: !!photo,
     });
   } catch (err) {
     console.error("API /api/generate ERROR:", err);
-
     const msg = err?.message || String(err || "");
     return res.status(500).json({
       error: "Generation failed",
