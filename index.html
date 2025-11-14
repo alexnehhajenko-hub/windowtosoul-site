@@ -1,167 +1,302 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WindowToSoul • AI Photo → Artwork</title>
-  <link rel="stylesheet" href="assets/style.css" />
-</head>
-<body>
-  <div class="page">
-    <header class="header">
-      <h1>🎨 AI Photo → Artwork</h1>
-      <p class="subtitle">
-        Тестовая версия: 4 стиля портретов. Сейчас модель рисует <b>по описанию</b>.
-        Фото позже подключим как стиль по фото.
-      </p>
-    </header>
-
-    <main class="layout">
-      <!-- Левая колонка: настройки -->
-      <section class="card settings">
-        <h2>1. Выберите стиль</h2>
-
-        <div class="styles">
-          <button class="style-btn active" data-style="oil">
-            Картина маслом
-          </button>
-          <button class="style-btn" data-style="anime">
-            Аниме-портрет
-          </button>
-          <button class="style-btn" data-style="poster">
-            Кино-постер
-          </button>
-          <button class="style-btn" data-style="classic">
-            Классический художник
-          </button>
+  <head>
+    <meta charset="UTF-8" />
+    <title>WindowToSoul • AI Photo → Artwork</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <div class="logo">🪟 WindowToSoul</div>
+        <div class="header-tagline">
+          Онлайн-портрет • AI стилизация по фото
         </div>
+      </header>
 
-        <h2>2. Опишите желаемый портрет</h2>
-        <p class="hint">
-          Например: <i>молодая женщина в жёлтом платье, тёплый свет, фон как у Рембрандта</i>
-        </p>
-        <textarea id="prompt" rows="3" placeholder="Ваше описание (можно по-русски)..."></textarea>
-
-        <!-- Заготовка под фото (пока только UI, на бэкенд не уходит) -->
-        <h2>3. Фото (опционально)</h2>
-        <p class="hint small">
-          Фото сейчас <b>не влияет</b> на результат — только готовим загрузку.
-        </p>
-        <input type="file" id="photo" accept="image/*" />
-
-        <button id="generateBtn" class="primary-btn">
-          Сгенерировать портрет
-        </button>
-
-        <p id="status" class="status"></p>
-      </section>
-
-      <!-- Правая колонка: результат -->
-      <section class="card result">
-        <h2>Ваш результат</h2>
-        <div id="imageFrame" class="image-frame">
-          <p class="placeholder">
-            Здесь появится портрет после генерации.
+      <main class="layout">
+        <!-- Левая карточка: форма -->
+        <section class="card card-form">
+          <h1 class="card-title">🎨 AI Photo → Artwork</h1>
+          <p class="card-subtitle">
+            Загрузите фото, выберите стиль — и получите картину, готовую к
+            печати и сторис.
           </p>
-          <img id="resultImage" alt="AI artwork" />
-        </div>
 
-        <a id="downloadLink" class="download-link" href="#" download="artwork.png">
-          Скачать изображение
-        </a>
-      </section>
-    </main>
+          <form id="art-form">
+            <!-- Шаг 1: фото -->
+            <div class="step">
+              <h2 class="step-title">1. Загрузите фото</h2>
+              <p class="step-hint">
+                Лучше всего работает портрет по плечи, при хорошем освещении.
+              </p>
 
-    <footer class="footer">
-      <p>WindowToSoul • тестовый стенд для 4 стилей (Replicate + FLUX)</p>
-    </footer>
-  </div>
+              <label class="file-input">
+                <span class="file-button">Выбрать файл</span>
+                <span id="file-name" class="file-name">Файл не выбран</span>
+                <input
+                  id="photo-input"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                />
+              </label>
 
-  <script>
-    // --- Константы стилей (только текст, фото пока не используем) ---
-    const STYLE_PRESETS = {
-      oil: "oil painting portrait, warm soft cinematic light, detailed brush strokes, rich colors, masterpiece, 4k",
-      anime: "anime style portrait, clean line art, soft shading, vibrant colours, detailed eyes, portrait, 4k",
-      poster: "cinematic movie poster portrait, dramatic lighting, high contrast, film look, detailed face, 4k",
-      classic: "classical painter portrait, inspired by Rembrandt and Vermeer, soft warm light, realistic, oil on canvas, 4k"
-    };
+              <div id="photo-preview" class="photo-preview hidden">
+                <img id="photo-img" alt="Предпросмотр фото" />
+              </div>
+            </div>
 
-    let currentStyle = "oil";
+            <!-- Шаг 2: стиль -->
+            <div class="step">
+              <h2 class="step-title">2. Выберите стиль</h2>
+              <div class="style-grid" id="style-buttons">
+                <button
+                  type="button"
+                  class="style-btn style-btn--active"
+                  data-style="oil"
+                >
+                  Картина маслом
+                </button>
+                <button
+                  type="button"
+                  class="style-btn"
+                  data-style="anime"
+                >
+                  Аниме-портрет
+                </button>
+                <button
+                  type="button"
+                  class="style-btn"
+                  data-style="poster"
+                >
+                  Кино-постер
+                </button>
+                <button
+                  type="button"
+                  class="style-btn"
+                  data-style="classic"
+                >
+                  Классический художник
+                </button>
+              </div>
+            </div>
 
-    const styleButtons = document.querySelectorAll(".style-btn");
-    const promptEl = document.getElementById("prompt");
-    const statusEl = document.getElementById("status");
-    const generateBtn = document.getElementById("generateBtn");
-    const resultImage = document.getElementById("resultImage");
-    const imageFrame = document.getElementById("imageFrame");
-    const downloadLink = document.getElementById("downloadLink");
+            <!-- Шаг 3: доп. текст -->
+            <div class="step">
+              <h2 class="step-title">3. Свой текст (опционально)</h2>
+              <p class="step-hint">
+                Можно подсказать атмосферы: “вечернее тёплое освещение”, “в
+                стиле 80-х”, “мягкие пастельные тона” и т.п.
+              </p>
+              <textarea
+                id="prompt-input"
+                class="prompt-input"
+                rows="3"
+                placeholder="Например: сделать немного моложе, тёплый свет, мягкие тени"
+              ></textarea>
+            </div>
 
-    // Переключение стилей
-    styleButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        styleButtons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        currentStyle = btn.dataset.style;
-      });
-    });
+            <!-- Кнопка -->
+            <div class="step step-submit">
+              <button id="generate-btn" class="primary-btn" type="submit">
+                <span id="btn-label">Сделать картиной</span>
+                <span id="btn-spinner" class="btn-spinner hidden">⏳</span>
+              </button>
+              <p id="status" class="status-line"></p>
+            </div>
+          </form>
+        </section>
 
-    // Клик по "Сгенерировать"
-    generateBtn.addEventListener("click", async () => {
-      const userText = (promptEl.value || "").trim();
+        <!-- Правая карточка: результат -->
+        <section class="card card-result">
+          <h2 class="card-title">Ваш результат</h2>
+          <p class="card-subtitle">
+            После генерации сюда подгружается портрет в высоком разрешении.
+          </p>
 
-      if (!userText) {
-        alert("Пожалуйста, опишите портрет (можно одно предложение).");
-        return;
-      }
+          <div id="result-container" class="result-box">
+            <div class="result-placeholder">
+              Здесь появится портрет после генерации.
+            </div>
+          </div>
 
-      const base = STYLE_PRESETS[currentStyle] || STYLE_PRESETS.oil;
-      const fullPrompt = base + ", " + userText;
+          <a
+            id="download-link"
+            class="download-btn hidden"
+            href="#"
+            download="windowtosoul-portrait.png"
+          >
+            ⬇️ Скачать в высоком качестве
+          </a>
 
-      statusEl.textContent = "⏳ Генерация… 15–30 секунд";
-      statusEl.className = "status loading";
-      generateBtn.disabled = true;
+          <p class="hint-small">
+            В MVP-версии всё бесплатно. В боевом режиме здесь будет оплата перед
+            скачиванием.
+          </p>
+        </section>
+      </main>
 
-      // Пока фото не отправляем — работаем только с текстом
-      const payload = {
-        style: currentStyle,
-        prompt: fullPrompt
-      };
+      <footer class="page-footer">
+        WindowToSoul • тестовый стенд для 4 стилей (Replicate + FLUX)
+      </footer>
+    </div>
 
-      try {
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
+    <script>
+      (function () {
+        const form = document.getElementById("art-form");
+        const photoInput = document.getElementById("photo-input");
+        const fileNameEl = document.getElementById("file-name");
+        const photoPreview = document.getElementById("photo-preview");
+        const photoImg = document.getElementById("photo-img");
+        const styleButtons = document.getElementById("style-buttons");
+        const promptInput = document.getElementById("prompt-input");
+        const statusEl = document.getElementById("status");
+        const btn = document.getElementById("generate-btn");
+        const btnLabel = document.getElementById("btn-label");
+        const btnSpinner = document.getElementById("btn-spinner");
+        const resultContainer = document.getElementById("result-container");
+        const downloadLink = document.getElementById("download-link");
+
+        let currentStyle = "oil";
+        let currentFile = null;
+
+        const styleBasePrompts = {
+          oil: "oil painting portrait of the person from the photo, rich brush strokes, warm cinematic light, highly detailed, 4k resolution",
+          anime:
+            "anime style portrait of the person from the photo, clean lines, soft lighting, detailed illustration, trending on pixiv",
+          poster:
+            "cinematic movie poster style portrait of the person from the photo, dramatic lighting, epic atmosphere, ultra detailed, 4k",
+          classic:
+            "classic painter style portrait of the person from the photo, inspired by Rembrandt and old masters, warm tones, detailed brushwork, museum quality",
+        };
+
+        // Клик по стилям
+        styleButtons.addEventListener("click", (e) => {
+          const btn = e.target.closest(".style-btn");
+          if (!btn) return;
+          [...styleButtons.querySelectorAll(".style-btn")].forEach((b) =>
+            b.classList.toggle("style-btn--active", b === btn)
+          );
+          currentStyle = btn.dataset.style;
         });
 
-        const data = await res.json();
+        // Клик по "Выбрать файл"
+        document
+          .querySelector(".file-input")
+          .addEventListener("click", () => photoInput.click());
 
-        if (!res.ok || !data.imageUrl) {
-          const msg = (data && (data.error || data.details)) || "Server error";
-          throw new Error(msg);
+        // Выбор файла
+        photoInput.addEventListener("change", () => {
+          const [file] = photoInput.files || [];
+          currentFile = file || null;
+
+          if (!file) {
+            fileNameEl.textContent = "Файл не выбран";
+            photoPreview.classList.add("hidden");
+            photoImg.src = "";
+            return;
+          }
+
+          fileNameEl.textContent = file.name;
+
+          const url = URL.createObjectURL(file);
+          photoImg.onload = () => URL.revokeObjectURL(url);
+          photoImg.src = url;
+          photoPreview.classList.remove("hidden");
+        });
+
+        function setLoading(isLoading) {
+          if (isLoading) {
+            btn.disabled = true;
+            btnLabel.textContent = "Генерируем…";
+            btnSpinner.classList.remove("hidden");
+          } else {
+            btn.disabled = false;
+            btnLabel.textContent = "Сделать картиной";
+            btnSpinner.classList.add("hidden");
+          }
         }
 
-        // Показать картинку
-        resultImage.src = data.imageUrl;
-        resultImage.style.display = "block";
-        imageFrame.classList.add("has-image");
+        function setStatus(message, isError = false) {
+          statusEl.textContent = message || "";
+          statusEl.classList.toggle("status-line--error", !!isError);
+        }
 
-        // Скачать
-        downloadLink.href = data.imageUrl;
-        downloadLink.style.display = "inline-block";
+        function fileToDataUrl(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
 
-        statusEl.textContent = "✅ Готово!";
-        statusEl.className = "status success";
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = "❌ Ошибка: " + err.message;
-        statusEl.className = "status error";
-      } finally {
-        generateBtn.disabled = false;
-      }
-    });
-  </script>
-</body>
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          setStatus("");
+
+          if (!currentFile) {
+            setStatus("Пожалуйста, загрузите фото (портрет).", true);
+            return;
+          }
+
+          setLoading(true);
+
+          try {
+            const basePrompt = styleBasePrompts[currentStyle] || "";
+            const extra = (promptInput.value || "").trim();
+            const finalPrompt = extra ? basePrompt + ". " + extra : basePrompt;
+
+            const imageDataUrl = currentFile
+              ? await fileToDataUrl(currentFile)
+              : null;
+
+            const response = await fetch("/api/generate", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                prompt: finalPrompt,
+                imageDataUrl,
+              }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+              throw new Error(data.error || data.details || "HTTP " + response.status);
+            }
+
+            const imageUrl = data.imageUrl || data.output;
+            if (!imageUrl) {
+              throw new Error("Сервер не вернул ссылку на изображение.");
+            }
+
+            resultContainer.innerHTML = "";
+            const img = document.createElement("img");
+            img.src = imageUrl;
+            img.alt = "Результат генерации";
+            img.className = "result-image";
+            resultContainer.appendChild(img);
+
+            downloadLink.href = imageUrl;
+            downloadLink.classList.remove("hidden");
+
+            setStatus("Готово! Можно скачивать портрет.");
+          } catch (err) {
+            console.error(err);
+            setStatus(
+              "Ошибка: " + (err && err.message ? err.message : "Generation failed"),
+              true
+            );
+          } finally {
+            setLoading(false);
+          }
+        });
+      })();
+    </script>
+  </body>
 </html>
