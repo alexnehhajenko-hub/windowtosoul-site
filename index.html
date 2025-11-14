@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Photo → Artwork</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
@@ -24,12 +24,12 @@
       <option value="oil painting">🖌️ Oil painting</option>
       <option value="fantasy art">✨ Fantasy art</option>
       <option value="realistic portrait">📸 Realistic portrait</option>
-      <option value="anime portrait">🎌 Anime style</option>
-      <option value="classical art">🏛 Classical artist</option>
+      <option value="classical art">🏛 Classical art</option>
+      <option value="cinematic art">🎬 Cinematic</option>
     </select><br><br>
 
     <label>3. Extra description (optional)</label><br>
-    <input id="prompt" placeholder="For example: warm sunset, golden light"><br><br>
+    <input id="prompt" placeholder="For example: warm sunset, mountains"><br><br>
 
     <button type="submit">Generate Artwork</button>
   </form>
@@ -37,63 +37,69 @@
   <p id="status"></p>
 
   <h2>Your artwork</h2>
-  <img id="resultImage" style="max-width: 90%; display: none;">
+  <img id="resultImage" style="max-width: 90%; display: none;" />
   <br>
-  <a id="downloadLink" download="artwork.png" style="display: none;">Download</a>
+  <a id="downloadLink" href="#" download="artwork.png" style="display: none;">Download</a>
 
   <script>
-    const form = document.getElementById("artForm");
-    const status = document.getElementById("status");
-    const resultImage = document.getElementById("resultImage");
-    const downloadLink = document.getElementById("downloadLink");
-
-    // Convert file to Base64
-    function toBase64(file) {
-      return new Promise((resolve, reject) => {
+    async function fileToBase64(file) {
+      return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
+        reader.onloadend = () => resolve(reader.result.split(",")[1]);
         reader.readAsDataURL(file);
       });
     }
 
+    const form = document.getElementById("artForm");
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      status.textContent = "⏳ Generating…";
+
+      const status = document.getElementById("status");
+      const resultImage = document.getElementById("resultImage");
+      const downloadLink = document.getElementById("downloadLink");
+
+      status.textContent = "⏳ Generating...";
       resultImage.style.display = "none";
       downloadLink.style.display = "none";
 
-      const photo = document.getElementById("photo").files[0];
+      const fileInput = document.getElementById("photo");
       const style = document.getElementById("style").value;
       const promptText = document.getElementById("prompt").value;
 
-      let imageBase64 = null;
-      if (photo) imageBase64 = await toBase64(photo);
+      let base64 = null;
+      if (fileInput.files.length > 0) {
+        base64 = await fileToBase64(fileInput.files[0]);
+      }
+
+      const body = {
+        imageBase64: base64,
+        style: style,
+        promptText: promptText
+      };
 
       try {
         const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageBase64,
-            style,
-            promptText
-          })
+          body: JSON.stringify(body)
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(JSON.stringify(data.error));
+
+        if (!res.ok) throw new Error(data.error);
 
         resultImage.src = data.output;
         resultImage.style.display = "block";
 
         downloadLink.href = data.output;
         downloadLink.style.display = "inline-block";
+
         status.textContent = "";
       } catch (err) {
         status.textContent = "❌ Error: " + err.message;
       }
     });
   </script>
+
 </body>
 </html>
