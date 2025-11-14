@@ -1,53 +1,53 @@
 // api/generate.js
+
 import Replicate from "replicate";
 
+// Очень простой тестовый endpoint: по POST-запросу
+// генерирует один портрет по фиксированному prompt.
 export default async function handler(req, res) {
-  // Разрешаем только POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Проверяем, есть ли токен
-  if (!process.env.REPLICATE_API_TOKEN) {
-    return res.status(500).json({
-      error: "REPLICATE_API_TOKEN is missing",
-    });
-  }
-
   try {
-    // Инициализируем клиент Replicate
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-    });
+    const token = process.env.REPLICATE_API_TOKEN;
+    if (!token) {
+      return res.status(500).json({
+        error: "Missing REPLICATE_API_TOKEN on server",
+      });
+    }
 
-    // Временный тест: не читаем тело запроса, просто рисуем одну картинку по промпту
+    // Инициализируем Replicate SDK
+    const replicate = new Replicate({ auth: token });
+
+    // Тестовый prompt — один красивый портрет
     const prompt =
-      "oil painting portrait of a person, warm soft light, highly detailed, 4k";
+      "oil painting portrait of a thoughtful person, warm soft light, highly detailed, 4k";
 
-    // Вызываем FLUX-1 через Replicate
-    const output = await replicate.run("black-forest-labs/flux-1", {
+    // ВАЖНО: используем актуальный ID модели без хэшей версии
+    const output = await replicate.run("black-forest-labs/flux-1.1-pro", {
       input: {
         prompt,
       },
     });
 
-    // Replicate чаще всего возвращает массив url-ов
+    // Replicate обычно возвращает массив URL
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
     if (!imageUrl) {
       return res.status(502).json({
-        error: "No image URL returned from Replicate",
+        error: "No image URL from Replicate",
         raw: output,
       });
     }
 
-    // То, что ждёт фронтенд: поле output — ссылка на картинку
+    // То, что ждёт фронт: поле output — ссылка на картинку
     return res.status(200).json({ output: imageUrl, prompt });
-  } catch (e) {
-    console.error("API /api/generate ERROR:", e);
+  } catch (err) {
+    console.error("REPLICATE ERROR:", err);
     return res.status(500).json({
       error: "Generation failed",
-      details: e?.message || String(e),
+      details: err?.message || String(err),
     });
   }
 }
