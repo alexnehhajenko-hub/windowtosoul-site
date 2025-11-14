@@ -4,62 +4,121 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Photo → Artwork</title>
-  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
-  <main class="page">
-    <section class="card">
+  <div class="page">
+    <header class="page-header">
       <h1>🎨 AI Photo → Artwork</h1>
       <p class="subtitle">
-        Тестовая версия: генерирует один масляный портрет по умолчанию.
+        Тестовая версия: масляный портрет.<br>
+        Сейчас добавили загрузку фото — модель пока рисует <strong>по описанию</strong>,
+        но фото уже отправляется на сервер (подготовка к стилизации по фото).
       </p>
+    </header>
 
-      <button id="generateBtn">Generate test portrait</button>
-      <p id="status" class="status"></p>
+    <main class="card">
+      <form id="artForm" class="form">
+        <!-- 1. Фото -->
+        <div class="form-field">
+          <label class="label">1. Upload photo (optional)</label>
+          <input type="file" id="photoInput" accept="image/*" />
+          <p class="hint">
+            Фото сейчас <strong>не влияет</strong> на результат — только тестируем загрузку.
+          </p>
+        </div>
 
-      <h2>Your artwork</h2>
-      <div id="resultBox" class="result-box">
-        <img id="resultImage" alt="AI artwork result" />
-      </div>
-    </section>
-  </main>
+        <!-- 2. Описание -->
+        <div class="form-field">
+          <label class="label">2. Extra description (optional)</label>
+          <input
+            type="text"
+            id="promptInput"
+            placeholder="For example: young woman in a yellow dress, soft warm light"
+          />
+        </div>
+
+        <!-- Кнопка -->
+        <button type="submit" id="generateBtn" class="btn-primary">
+          Generate portrait
+        </button>
+
+        <!-- Статус -->
+        <p id="statusText" class="status"></p>
+      </form>
+
+      <!-- Результат -->
+      <section class="result">
+        <h2>Your artwork</h2>
+        <div class="art-frame">
+          <img id="resultImage" alt="AI artwork" style="display:none;" />
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script>
-    const btn = document.getElementById("generateBtn");
-    const statusEl = document.getElementById("status");
-    const imgEl = document.getElementById("resultImage");
-    const boxEl = document.getElementById("resultBox");
+    const form = document.getElementById("artForm");
+    const photoInput = document.getElementById("photoInput");
+    const promptInput = document.getElementById("promptInput");
+    const statusText = document.getElementById("statusText");
+    const resultImage = document.getElementById("resultImage");
+    const generateBtn = document.getElementById("generateBtn");
 
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      statusEl.textContent = "⏳ Generating...";
-      imgEl.src = "";
-      boxEl.classList.remove("has-image");
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      statusText.textContent = "⏳ Generating…";
+      resultImage.style.display = "none";
+      generateBtn.disabled = true;
 
       try {
+        let imageBase64 = null;
+
+        if (photoInput.files && photoInput.files[0]) {
+          const dataUrl = await fileToBase64(photoInput.files[0]);
+          // dataUrl = "data:image/png;base64,AAAA..."
+          const parts = dataUrl.split(",");
+          imageBase64 = parts.length === 2 ? parts[1] : dataUrl;
+        }
+
+        const payload = {
+          prompt: promptInput.value || "",
+          style: "oil painting", // пока один стиль, позже добавим выбор стиля
+          imageBase64,           // сервер пока только логирует это поле
+        };
+
         const res = await fetch("/api/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}) // бэкенд сам подставляет тестовый prompt
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         });
 
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.error || "Server error");
-        }
-        if (!data.output) {
-          throw new Error("No image URL from server");
+        if (!res.ok || !data.imageUrl) {
+          throw new Error(data.error || "Generation failed");
         }
 
-        imgEl.src = data.output;
-        boxEl.classList.add("has-image");
-        statusEl.textContent = "";
+        resultImage.src = data.imageUrl;
+        resultImage.style.display = "block";
+        statusText.textContent = "";
       } catch (err) {
         console.error(err);
-        statusEl.textContent = "❌ Error: " + err.message;
+        statusText.textContent = "❌ Error: " + (err.message || "Generation failed");
       } finally {
-        btn.disabled = false;
+        generateBtn.disabled = false;
       }
     });
   </script>
