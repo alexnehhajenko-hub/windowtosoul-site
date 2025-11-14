@@ -1,9 +1,0 @@
-{
-  "name": "windowtosoul-site",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {},
-  "dependencies": {
-    "replicate": "^0.31.0"
-  }
-}
