@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Photo Art Generator</title>
+
+    <link rel="stylesheet" href="style.css" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .box {
+            padding: 20px;
+            background: #222;
+            border-radius: 12px;
+            max-width: 450px;
+            margin: auto;
+        }
+
+        input[type="file"] {
+            margin-top: 20px;
+            background: #333;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            width: 100%;
+            color: white;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            background: #6A5ACD;
+            color: white;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        img {
+            margin-top: 20px;
+            max-width: 100%;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🎨 AI Photo → Artwork</h1>
+
+    <div class="box">
+        <p>Upload your photo and get an AI-generated artwork</p>
+
+        <input type="file" id="photoInput" accept="image/*" />
+
+        <button id="generateBtn">Generate Artwork</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const button = document.getElementById("generateBtn");
+        const photoInput = document.getElementById("photoInput");
+        const resultDiv = document.getElementById("result");
+
+        button.onclick = async () => {
+            const file = photoInput.files[0];
+            if (!file) {
+                alert("Please upload a photo");
+                return;
+            }
+
+            button.disabled = true;
+            button.innerText = "Generating...";
+
+            // Convert to Base64
+            const base64 = await toBase64(file);
+
+            // Send to API
+            const res = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    image: base64,
+                    prompt: "beautiful oil painting, dramatic lighting, artistic, masterpiece"
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.error) {
+                alert("Error: " + data.error);
+                button.disabled = false;
+                button.innerText = "Generate Artwork";
+                return;
+            }
+
+            // Show result
+            resultDiv.innerHTML = `<img src="${data.output}" />`;
+
+            button.disabled = false;
+            button.innerText = "Generate Artwork";
+        };
+
+        function toBase64(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>
