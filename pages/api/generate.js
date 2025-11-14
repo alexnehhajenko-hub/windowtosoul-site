@@ -1,61 +1,54 @@
-import Replicate from "replicate";
-
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
+import { IncomingForm } from "formidable";
+import fs from "fs";
+import Replicate from "replicate";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
-    });
+  const form = new IncomingForm();
 
-    // Получаем данные формы
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const body = Buffer.concat(chunks);
-
-    const boundary = req.headers["content-type"].split("boundary=")[1];
-    const parts = body.toString().split(`--${boundary}`);
-
-    let prompt = "portrait, beautiful artwork";
-    let style = "oil painting";
-    let imageBase64 = null;
-
-    for (const part of parts) {
-      if (part.includes('name="prompt"')) {
-        prompt = part.split("\r\n\r\n")[1]?.trim() || prompt;
-      }
-      if (part.includes('name="style"')) {
-        style = part.split("\r\n\r\n")[1]?.trim() || style;
-      }
-      if (part.includes('name="photo"') && part.includes("Content-Type")) {
-        const img = part.split("\r\n\r\n")[1];
-        imageBase64 = img?.trim();
-      }
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      return res.status(500).json({ error: "Form parse error", details: err });
     }
 
-    const fullPrompt = `${style}, ${prompt}`;
+    try {
+      const replicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
 
-    const model = "black-forest-labs/flux-1.1-pro";
+      const prompt = fields.prompt || "a beautiful oil painting portrait";
+      const style = fields.style || "oil painting";
 
-    const output = await replicate.run(model, {
-      input: {
-        prompt: fullPrompt,
-        image: imageBase64 ? `data:image/png;base64,${imageBase64}` : undefined
+      let imageFile = null;
+      if (files.image) {
+        imageFile = fs.readFileSync(files.image.filepath);
       }
-    });
 
-    res.status(200).json({ output: output[0] });
+      const input = {
+        prompt: `${style}, ${prompt}`,
+      };
 
-  } catch (e) {
-    console.error("API error:", e);
-    res.status(500).json({ error: e.message });
-  }
+      if (imageFile) {
+        input.image = imageFile;
+      }
+
+      const output = await replicate.run(
+        "black-forest-labs/flux-1:1cfafb0e0faae7cabd1a7595f3237963",
+        { input }
+      );
+
+      return res.status(200).json({ output });
+    } catch (e) {
+      return res.status(500).json({ error: "Generation failed", details: e });
+    }
+  });
 }
