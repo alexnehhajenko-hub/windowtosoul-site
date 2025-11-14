@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Photo → Artwork</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <h1>🎨 AI Photo → Artwork</h1>
+      <p class="subtitle">
+        Тестовая версия: генерирует один масляный портрет по умолчанию.
+      </p>
+
+      <button id="generateBtn">Generate test portrait</button>
+      <p id="status" class="status"></p>
+
+      <h2>Your artwork</h2>
+      <div id="resultBox" class="result-box">
+        <img id="resultImage" alt="AI artwork result" />
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const btn = document.getElementById("generateBtn");
+    const statusEl = document.getElementById("status");
+    const imgEl = document.getElementById("resultImage");
+    const boxEl = document.getElementById("resultBox");
+
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      statusEl.textContent = "⏳ Generating...";
+      imgEl.src = "";
+      boxEl.classList.remove("has-image");
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}) // бэкенд сам подставляет тестовый prompt
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.error || "Server error");
+        }
+        if (!data.output) {
+          throw new Error("No image URL from server");
+        }
+
+        imgEl.src = data.output;
+        boxEl.classList.add("has-image");
+        statusEl.textContent = "";
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "❌ Error: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
