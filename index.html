@@ -3,59 +3,135 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Oil Portrait</title>
+  <title>Window to Soul – AI Portraits</title>
   <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
   <main class="page">
     <section class="card">
-      <h1>🎨 AI Oil Portrait</h1>
-      <p class="subtitle">
-        Стабильная версия: генерирует масляный портрет по описанию.
-        Фото пока не используем, чтобы не ломалось. Сначала делаем базу.
-      </p>
+      <header class="card-header">
+        <h1>🎨 Window to Soul – AI Portraits</h1>
+        <p class="subtitle">
+          Загрузите фото, выберите стиль и получите красивый AI-портрет.<br />
+          Сейчас фото технически загружается, но результат ещё зависит только от стиля и описания
+          (img2img добавим следующим шагом).
+        </p>
+      </header>
 
-      <div class="form">
-        <label class="label">Describe the portrait (optional)</label>
-        <input
-          id="promptInput"
-          class="input"
-          placeholder="For example: young woman in a yellow dress, sunset, mountains behind"
-        />
+      <form id="artForm" class="form">
+        <!-- Фото -->
+        <div class="field">
+          <label class="label">1. Загрузите ваше фото (пока необязательно)</label>
+          <input type="file" id="photoInput" accept="image/*" />
+          <p class="hint">
+            Фото сейчас отправляется на сервер, но модель ещё работает по тексту и стилю.
+            Мы подготовим img2img после стабильного запуска.
+          </p>
+        </div>
 
-        <button id="generateBtn" class="btn">Generate portrait</button>
+        <!-- Стиль -->
+        <div class="field">
+          <label class="label">2. Выберите стиль</label>
+          <div class="style-row">
+            <label class="style-option">
+              <input type="radio" name="style" value="oil" checked />
+              <span>🖌 Масло</span>
+            </label>
+            <label class="style-option">
+              <input type="radio" name="style" value="anime" />
+              <span>🌸 Аниме</span>
+            </label>
+            <label class="style-option">
+              <input type="radio" name="style" value="fantasy" />
+              <span>✨ Fantasy</span>
+            </label>
+            <label class="style-option">
+              <input type="radio" name="style" value="realistic" />
+              <span>📸 Realistic</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Описание -->
+        <div class="field">
+          <label class="label">3. Добавьте детали (по желанию)</label>
+          <input
+            id="promptInput"
+            class="text-input"
+            placeholder="Например: тёплый свет, горы, закат, золотое платье…"
+          />
+        </div>
+
+        <!-- Кнопка -->
+        <button type="submit" id="generateBtn" class="btn-primary">
+          Сгенерировать портрет
+        </button>
         <p id="statusText" class="status"></p>
-      </div>
+      </form>
 
-      <h2>Your artwork</h2>
-      <div class="result-box" id="resultBox">
-        <img id="resultImage" alt="AI artwork result" style="display:none;" />
-      </div>
+      <!-- Результат -->
+      <section class="result">
+        <h2>Your artwork</h2>
+        <div class="result-box" id="resultBox">
+          <img id="resultImage" alt="AI artwork result" style="display:none;" />
+        </div>
+        <a id="downloadLink" href="#" download="portrait.png" class="download-link" style="display:none;">
+          ⬇ Скачать в хорошем качестве
+        </a>
+      </section>
     </section>
   </main>
 
   <script>
+    const form = document.getElementById("artForm");
+    const photoInput = document.getElementById("photoInput");
     const promptInput = document.getElementById("promptInput");
-    const generateBtn = document.getElementById("generateBtn");
     const statusText = document.getElementById("statusText");
+    const generateBtn = document.getElementById("generateBtn");
     const resultImage = document.getElementById("resultImage");
     const resultBox = document.getElementById("resultBox");
+    const downloadLink = document.getElementById("downloadLink");
 
-    generateBtn.addEventListener("click", async () => {
-      statusText.textContent = "⏳ Generating…";
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusText.textContent = "⏳ Генерируем портрет…";
       generateBtn.disabled = true;
       resultImage.style.display = "none";
+      downloadLink.style.display = "none";
 
       try {
+        let imageBase64 = null;
+        if (photoInput.files && photoInput.files[0]) {
+          const dataUrl = await fileToBase64(photoInput.files[0]);
+          const parts = dataUrl.split(",");
+          imageBase64 = parts.length === 2 ? parts[1] : null;
+        }
+
+        const styleEl = document.querySelector('input[name="style"]:checked');
+        const style = styleEl ? styleEl.value : "oil";
+
+        const payload = {
+          prompt: promptInput.value || "",
+          style,
+          imageBase64, // пока не используем на модели, но уже доставляем на сервер
+        };
+
         const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: promptInput.value || "",
-          }),
+          body: JSON.stringify(payload),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok || !data.imageUrl) {
           throw new Error(data.error || "Generation failed");
@@ -63,10 +139,15 @@
 
         resultImage.src = data.imageUrl;
         resultImage.style.display = "block";
+        resultBox.classList.add("has-image");
+
+        downloadLink.href = data.imageUrl;
+        downloadLink.style.display = "inline-block";
+
         statusText.textContent = "";
       } catch (err) {
         console.error(err);
-        statusText.textContent = "❌ Error: " + (err.message || "Failed");
+        statusText.textContent = "❌ Ошибка: " + (err.message || "Не удалось сгенерировать");
       } finally {
         generateBtn.disabled = false;
       }
