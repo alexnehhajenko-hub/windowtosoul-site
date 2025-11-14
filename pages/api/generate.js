@@ -1,73 +1,60 @@
-// pages/api/generate.js
-
 import Replicate from "replicate";
 
-// Отключаем стандартный bodyParser — мы принимаем form-data,
-// но в этой тестовой версии вообще не читаем тело запроса.
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// ВАЖНО: в Vercel должен быть ключ REPLICATE_API_TOKEN
+// со значением из https://replicate.com/account/api-tokens
 
 export default async function handler(req, res) {
-  // Разрешаем только POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Проверяем, что есть ключ
-  const token = process.env.REPLICATE_API_TOKEN;
-  if (!token) {
+  const apiKey = process.env.REPLICATE_API_TOKEN;
+  if (!apiKey) {
     return res.status(500).json({
-      error: "Missing REPLICATE_API_TOKEN",
+      error: "Missing REPLICATE_API_TOKEN in environment",
     });
   }
 
-  try {
-    // Инициализируем Replicate
+  try:
+    const { prompt } = req.body || {};
+    const finalPrompt =
+      (prompt && String(prompt).trim().length > 0)
+        ? String(prompt)
+        : "oil painting portrait of a person, warm soft light, highly detailed, 4k";
+
     const replicate = new Replicate({
-      auth: token,
+      auth: apiKey,
     });
 
-    // Пока игнорируем фото/форму и шлём простой тестовый промпт
-    const prompt =
-      "oil painting portrait of a person, warm soft light, highly detailed, cinematic, 4k";
-
-    // ⚠️ ВАЖНО:
-    // здесь ОБЯЗАТЕЛЬНО должна быть СТРОКА вида owner/model:version
-    // без этого и была ошибка "The string did not match the expected pattern"
+    // Простой и надёжный пример модели (SDXL)
     const output = await replicate.run(
-      "black-forest-labs/flux-1:1cfafb0e0faae7cabd1a7595f3237963",
+      "stability-ai/stable-diffusion-xl-base-1.0",
       {
         input: {
-          prompt,
-          num_outputs: 1,
-          aspect_ratio: "1:1",
+          prompt: finalPrompt,
         },
       }
     );
 
-    // Replicate обычно возвращает массив URL
+    // Replicate чаще всего возвращает массив URL
     const imageUrl = Array.isArray(output) ? output[0] : output;
 
-    if (!imageUrl || typeof imageUrl !== "string") {
+    if (!imageUrl) {
       return res.status(502).json({
         error: "No image URL from Replicate",
         raw: output,
       });
     }
 
-    // То, что ждёт фронт: поле output — ссылка на картинку
     return res.status(200).json({
       output: imageUrl,
-      prompt,
+      usedPrompt: finalPrompt,
     });
-  } catch (e) {
-    console.error("REPLICATE ERROR:", e);
+  } catch (err) {
+    console.error("API ERROR:", err);
     return res.status(500).json({
       error: "Generation failed",
-      details: e?.message || String(e),
+      details: err?.message || String(err),
     });
   }
 }
