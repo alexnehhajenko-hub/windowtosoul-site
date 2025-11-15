@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>WindowToSoul – Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- ВАЖНО: подключаем стили из папки assets -->
+  <!-- Стили из папки assets -->
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
@@ -32,47 +32,63 @@
       </div>
     </section>
 
-    <div class="selection-row" id="selectionRow">
-      <!-- сюда JS добавляет чипы с выбранными параметрами -->
+    <!-- Кнопки и выбранные эффекты (будут скрываться при генерации) -->
+    <div class="controls" id="controls">
+      <div class="selection-row" id="selectionRow">
+        <!-- сюда JS добавляет чипы с выбранными параметрами -->
+      </div>
+
+      <section class="button-list">
+        <button class="btn-main" id="btnStyle">
+          <span class="btn-icon">🎨</span>
+          <span>Стиль портрета</span>
+        </button>
+
+        <button class="btn-main" id="btnSkin">
+          <span class="btn-icon">✨</span>
+          <span>Эффект кожи</span>
+        </button>
+
+        <button class="btn-main" id="btnMimic">
+          <span class="btn-icon">🙂</span>
+          <span>Мимика</span>
+        </button>
+
+        <button class="btn-main" id="btnGreetings">
+          <span class="btn-icon">💌</span>
+          <span>Поздравления</span>
+        </button>
+
+        <button class="btn-main btn-secondary" id="btnGenerate">
+          <span class="btn-icon">⚡️</span>
+          <span>Генерировать</span>
+        </button>
+
+        <div class="btn-row-split">
+          <button class="btn-half" id="btnAddPhoto">
+            <span class="btn-icon">📷</span>
+            <span>Добавить фото</span>
+          </button>
+          <button class="btn-half btn-pay" id="btnPay">
+            <span class="btn-icon">💳</span>
+            <span>Оплатить</span>
+          </button>
+        </div>
+      </section>
     </div>
 
-    <section class="button-list">
-      <button class="btn-main" id="btnStyle">
-        <span class="btn-icon">🎨</span>
-        <span>Стиль портрета</span>
-      </button>
-
-      <button class="btn-main" id="btnSkin">
-        <span class="btn-icon">✨</span>
-        <span>Эффект кожи</span>
-      </button>
-
-      <button class="btn-main" id="btnMimic">
-        <span class="btn-icon">🙂</span>
-        <span>Мимика</span>
-      </button>
-
-      <button class="btn-main" id="btnGreetings">
-        <span class="btn-icon">💌</span>
-        <span>Поздравления</span>
-      </button>
-
-      <button class="btn-main btn-secondary" id="btnGenerate">
-        <span class="btn-icon">⚡️</span>
-        <span>Генерировать</span>
-      </button>
-
-      <div class="btn-row-split">
-        <button class="btn-half" id="btnAddPhoto">
-          <span class="btn-icon">📷</span>
-          <span>Добавить фото</span>
-        </button>
-        <button class="btn-half btn-pay" id="btnPay">
-          <span class="btn-icon">💳</span>
-          <span>Оплатить</span>
-        </button>
-      </div>
-    </section>
+    <!-- Кнопка скачивания (маленькая, появляется после генерации) -->
+    <div class="download-row">
+      <a
+        id="downloadLink"
+        class="btn-download"
+        href="#"
+        download="windowtosoul-portrait.png"
+        style="display: none;"
+      >
+        Скачать портрет
+      </a>
+    </div>
 
     <footer class="footer">
       Тестовый интерфейс. В финальной версии здесь будут ссылки:<br>
@@ -83,7 +99,7 @@
   <!-- Скрытый input для загрузки фото -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Нижняя панель (sheet) для выбора эффектов -->
+  <!-- Центровая панель (sheet) для выбора эффектов -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
@@ -102,7 +118,7 @@
     </div>
   </div>
 
-  <!-- ВАЖНО: скрипт тоже из assets -->
+  <!-- Скрипт из assets -->
   <script src="./assets/main.js"></script>
 </body>
 </html>
