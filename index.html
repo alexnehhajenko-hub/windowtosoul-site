@@ -245,6 +245,49 @@
       height: 14px;
     }
 
+    /* Эффекты кожи */
+    .effect-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .effect-label {
+      margin-top: 14px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8e93c7;
+    }
+
+    .effect-btn {
+      border-radius: 999px;
+      border: 1px solid #313553;
+      background: rgba(11, 13, 30, 0.85);
+      color: #d6dbff;
+      padding: 6px 11px;
+      font-size: 12px;
+      line-height: 1.2;
+      cursor: pointer;
+      transition: all 0.12s ease-out;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .effect-btn span {
+      opacity: 0.7;
+      font-size: 11px;
+    }
+
+    .effect-btn.active {
+      border-color: #b892ff;
+      background: radial-gradient(circle at top, #8b5dff, #26143f);
+      color: #fff;
+      box-shadow: 0 10px 18px rgba(76, 36, 150, 0.5);
+    }
+
     footer {
       margin-top: 10px;
       font-size: 11px;
@@ -270,32 +313,33 @@
         <span class="badge-dot"></span>
         WindowToSoul • FLUX Kontext Pro (Replicate)
       </div>
-      <h1>Сделать портрет из фото</h1>
+      <h1>Сделать портрет из фото или текста</h1>
       <p class="subtitle">
-        Загрузите фото, выберите стиль — и модель FLUX превращает снимок
-        в художественный портрет. Сейчас генерация работает именно <b>по фото</b>,
-        текст — только как дополнение.
+        Загрузите фото и/или опишите себя текстом — модель FLUX
+        превращает это в художественный портрет. Лучший результат даёт <b>портретное фото</b>,
+        но можно сгенерировать и <b>только по тексту</b>.
       </p>
     </header>
 
     <!-- Блок 1 — фото -->
     <section class="block">
-      <h2>1. Фото</h2>
+      <h2>1. Фото (по желанию)</h2>
       <p class="helper">
-        Обязательно загрузите портрет, где видно лицо. Мы уменьшим фото до безопасного
-        размера — это помогает избегать ошибок 413.
+        Для более точного похожего портрета загрузите фото, где хорошо видно лицо.
+        Мы уменьшим снимок до безопасного размера — это помогает избегать ошибок 413.
+        Если фото нет, модель нарисует образ по тексту.
       </p>
       <div class="file-row">
         <input type="file" id="photo" accept="image/*" />
       </div>
     </section>
 
-    <!-- Блок 2 — стиль + текст -->
+    <!-- Блок 2 — стиль + текст + эффекты -->
     <section class="block">
-      <h2>2. Выберите стиль</h2>
+      <h2>2. Стиль, текст и эффекты</h2>
       <p class="helper">
-        Сейчас модель работает только с фото. Текст — это дополнительное описание
-        (например: «чуть моложе, тёплый свет»), но сам по себе без фото не запускается.
+        Выберите художественный стиль, добавьте текст (опционально) и при желании
+        включите косметические эффекты: убрать морщины, омолодить, сгладить кожу.
       </p>
 
       <div class="style-btns">
@@ -340,9 +384,42 @@
         </button>
       </div>
 
+      <div class="effect-label">Косметические эффекты (опционально)</div>
+      <div class="effect-row">
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="no-wrinkles"
+          onclick="toggleEffect(this)"
+        >
+          Убрать морщины
+          <span>мягкая ретушь кожи</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="younger"
+          onclick="toggleEffect(this)"
+        >
+          Омолодить
+          <span>−10 лет по виду</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="smooth-skin"
+          onclick="toggleEffect(this)"
+        >
+          Сгладить кожу
+          <span>ровный тон и свет</span>
+        </button>
+      </div>
+
       <textarea
         id="extra"
-        placeholder="Доп. текст (опционально): «тёплый свет, мягкие тени»"
+        placeholder="Опишите, каким хотите быть на портрете: «чуть моложе, тёплый свет, мягкие тени»"
       ></textarea>
 
       <button id="generate-btn" class="primary-btn" onclick="generate()">
@@ -375,19 +452,36 @@
   </div>
 
   <script>
+    // Текущий стиль
     let CURRENT_STYLE = "oil";
+
+    // Активные эффекты кожи
+    const ACTIVE_EFFECTS = new Set();
 
     function selectStyle(style) {
       CURRENT_STYLE = style;
       document
-        .querySelectorAll('.style-btn')
-        .forEach((b) => b.classList.remove('active'));
-      const btn = document.getElementById('btn-' + style);
-      if (btn) btn.classList.add('active');
+        .querySelectorAll(".style-btn")
+        .forEach((b) => b.classList.remove("active"));
+      const btn = document.getElementById("btn-" + style);
+      if (btn) btn.classList.add("active");
     }
 
-    // уменьшение фото до 1024px по большей стороне
-    function fileToDataUrl(file) {
+    function toggleEffect(button) {
+      const effectKey = button.dataset.effect;
+      if (!effectKey) return;
+
+      if (ACTIVE_EFFECTS.has(effectKey)) {
+        ACTIVE_EFFECTS.delete(effectKey);
+        button.classList.remove("active");
+      } else {
+        ACTIVE_EFFECTS.add(effectKey);
+        button.classList.add("active");
+      }
+    }
+
+    // Уменьшение фото до ~1024px по большей стороне
+    function resizeImage(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         const img = new Image();
@@ -406,10 +500,10 @@
               h = maxSide;
             }
 
-            const canvas = document.createElement('canvas');
+            const canvas = document.createElement("canvas");
             canvas.width = w;
             canvas.height = h;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext("2d");
             ctx.drawImage(img, 0, 0, w, h);
 
             try {
@@ -434,63 +528,69 @@
       const resultEl = document.getElementById("result");
       const buttonEl = document.getElementById("generate-btn");
       const downloadBtn = document.getElementById("download-btn");
+      const extraInput = document.getElementById("extra");
+      const fileInput = document.getElementById("photo");
 
       errorEl.textContent = "";
       resultEl.textContent = "Генерируем портрет…";
       resultEl.style.opacity = "0.8";
       downloadBtn.disabled = true;
-
       buttonEl.disabled = true;
 
-      const file = document.getElementById("photo").files[0];
+      const extraText = (extraInput.value || "").trim();
+      const file = fileInput.files[0];
 
-      // Не запускаем без фото
-      if (!file) {
+      // Разрешаем:
+      // - фото + (опциональный) текст/эффекты
+      // - только текст
+      // - только эффекты
+      if (!file && !extraText && ACTIVE_EFFECTS.size === 0) {
         errorEl.textContent =
-          "Сейчас генерация работает только по фото. Пожалуйста, загрузите портрет.";
-        resultEl.textContent = "Добавьте фото и попробуйте ещё раз.";
+          "Добавьте фото, текст или включите хотя бы один эффект.";
+        resultEl.textContent = "Нужно что-то, от чего оттолкнётся модель 🙂";
         buttonEl.disabled = false;
         return;
       }
 
-      let imgData = null;
-      try {
-        imgData = await fileToDataUrl(file);
-      } catch (err) {
-        errorEl.textContent = "Не удалось обработать фото: " + err.message;
-        resultEl.textContent = "";
-        buttonEl.disabled = false;
-        return;
+      let photoData = null;
+      if (file) {
+        try {
+          photoData = await resizeImage(file);
+        } catch (err) {
+          errorEl.textContent = "Не удалось обработать фото: " + err.message;
+          resultEl.textContent = "";
+          buttonEl.disabled = false;
+          return;
+        }
       }
 
       const body = {
         style: CURRENT_STYLE,
-        text: document.getElementById("extra").value || "",
-        photo: imgData,
+        text: extraText || null,
+        photo: photoData, // может быть null → режим "только текст"
+        effects: Array.from(ACTIVE_EFFECTS) // ["no-wrinkles", "younger", "smooth-skin"]
       };
 
       try {
         const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify(body)
         });
 
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          throw new Error("Сервер вернул некорректный ответ.");
+        }
 
         if (!res.ok) {
-          errorEl.textContent =
-            "Ошибка: " + (data.error || data.message || res.status);
-          resultEl.textContent = "";
-          buttonEl.disabled = false;
-          return;
+          throw new Error(data.error || data.message || String(res.status));
         }
 
         if (!data.image) {
-          errorEl.textContent = "Ошибка: нет изображения от сервера";
-          resultEl.textContent = "";
-          buttonEl.disabled = false;
-          return;
+          throw new Error("Нет изображения от сервера.");
         }
 
         const img = document.createElement("img");
