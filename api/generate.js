@@ -1,44 +1,100 @@
-// api/generate.js — FLUX KONTEKT PRO (FULL)
-// Работает с текстом + фото
+// api/generate.js
+// Генерация портрета по фото + тексту через FLUX Kontext Pro (Replicate).
 
+import fs from "fs";
 import Replicate from "replicate";
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
+
+// Преобразуем dataURL из браузера во временный файл в /tmp
+async function dataUrlToTempFile(dataUrl) {
+  // Если это уже обычный URL (https://...), просто вернём строку
+  if (typeof dataUrl === "string" && dataUrl.startsWith("http")) {
+    return dataUrl;
+  }
+
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+    throw new Error("Invalid photo format");
+  }
+
+  const [meta, base64] = dataUrl.split(",");
+  if (!base64) {
+    throw new Error("Invalid data URL");
+  }
+
+  const match = /data:image\/([^;]+);base64/.exec(meta);
+  const ext = match?.[1] || "jpg";
+
+  const buffer = Buffer.from(base64, "base64");
+  const filePath = `/tmp/wts-photo-${Date.now()}.${ext}`;
+
+  await fs.promises.writeFile(filePath, buffer);
+  return fs.createReadStream(filePath);
+}
+
+// Строим prompt под выбранный стиль
+function buildPrompt(style, text) {
+  const stylePrefix =
+    {
+      oil: "oil painting portrait, detailed, soft warm light, artistic",
+      anime: "anime style portrait, clean lines, soft pastel shading, anime style, big expressive eyes",
+      poster: "cinematic movie poster portrait, dramatic lighting, film look, highly detailed",
+      classic:
+        "classical old master portrait, realism, warm tones, detailed brushwork, soft shadows",
+    }[style] || "realistic portrait, soft light, highly detailed";
+
+  const userPrompt = (text && String(text).trim()) || "";
+  const merged = `${stylePrefix}. ${userPrompt}`.trim();
+
+  return merged.length > 0
+    ? merged
+    : "realistic portrait of the same person as on the photo, soft light, detailed skin texture";
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    // --- Парсим тело запроса ---
+    // --- Безопасный парсинг тела ---
     let body = req.body;
     if (typeof body === "string") {
-      try { body = JSON.parse(body); } catch { body = {}; }
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
     }
+    body = body || {};
 
     const { style, text, photo } = body;
 
-    // --- Строим prompt ---
-    const userPrompt = text?.trim() || "";
-    const stylePrefix = {
-      oil: "oil painting portrait, detailed, soft warm light, artistic",
-      anime: "anime style portrait, clean lines, soft pastel shading",
-      poster: "cinematic movie poster portrait, dramatic lighting",
-      classic: "classical old master portrait, realism, warm tones"
-    }[style] || "realistic portrait";
+    // Для Kontext фото ОБЯЗАТЕЛЬНО
+    if (!photo) {
+      return res.status(400).json({
+        error: "Photo is required for this mode",
+      });
+    }
 
-    const prompt = `${stylePrefix}. ${userPrompt}`.trim();
+    const prompt = buildPrompt(style, text);
 
-    // --- Собираем input для Replicate ---
+    // Подготовим файл для input_image
+    const inputImage = await dataUrlToTempFile(photo);
+
     const input = {
       prompt,
-      input_image: photo || null,   // <-- ВАЖНО! Правильное поле
-      output_format: "jpg"
+      input_image: inputImage,
+      output_format: "jpg",
     };
 
-    console.log("INPUT TO REPLICATE:", input);
-
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN
+    console.log("WTS /api/generate → input:", {
+      hasPhoto: !!photo,
+      style,
+      prompt,
     });
 
     const output = await replicate.run(
@@ -46,27 +102,31 @@ export default async function handler(req, res) {
       { input }
     );
 
-    // output = объект, у которого есть .url()
-    const imageUrl = output?.url ? output.url() : null;
+    // В новых клиентах Replicate для Kontext возвращается объект с .url()
+    let imageUrl = null;
+    if (output && typeof output.url === "function") {
+      imageUrl = output.url();
+    } else if (typeof output === "string") {
+      imageUrl = output;
+    }
 
     if (!imageUrl) {
-      return res.status(500).json({
-        error: "No image URL returned",
-        raw: output
+      console.error("No image URL returned from Replicate:", output);
+      return res.status(502).json({
+        error: "No image URL returned from Replicate",
       });
     }
 
     return res.status(200).json({
       ok: true,
       image: imageUrl,
-      prompt
+      prompt,
     });
-
   } catch (err) {
-    console.error("GENERATION ERROR:", err);
+    console.error("GENERATION ERROR /api/generate:", err);
     return res.status(500).json({
       error: "Generation failed",
-      details: err?.message || String(err)
+      details: err?.message || String(err),
     });
   }
 }
