@@ -1,8 +1,23 @@
-// api/generate.js — FLUX-KONTEXT-PRO (Stable)
-//
-// Работает с текстом и фото. Возвращает image URL стабильно.
+// api/generate.js — FLUX-Kontext-Pro (Replicate)
+// Работает с текстом и/или фото, поддерживает эффекты кожи (морщины, омоложение и т.п.)
 
 import Replicate from "replicate";
+
+// Базовые стили
+const STYLE_PREFIX = {
+  oil: "oil painting portrait, detailed, soft warm light, artistic",
+  anime: "anime style portrait, clean lines, soft pastel shading",
+  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
+  classic: "classical old master portrait, realism, warm tones, detailed skin",
+  default: "realistic portrait, detailed face, soft studio lighting"
+};
+
+// Эффекты ретуши кожи
+const EFFECT_PROMPTS = {
+  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
+  younger: "looks 10 years younger, fresh and rested face, lively eyes",
+  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting"
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -10,7 +25,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Парсим тело
+    // Парсим тело запроса
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -20,25 +35,40 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo } = body;
+    const { style, text, photo, effects } = body || {};
 
-    // Стиль
-    const stylePrefix = {
-      oil: "oil painting portrait, detailed, soft warm light, artistic",
-      anime: "anime style portrait, clean lines, soft pastel shading",
-      poster: "cinematic movie poster portrait, dramatic lighting",
-      classic: "classical old master portrait, realism, warm tones"
-    }[style] || "realistic portrait";
+    // --- 1. Стиль ---
+    const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    const userPrompt = text?.trim() || "";
-    const prompt = `${stylePrefix}. ${userPrompt}`.trim();
+    // --- 2. Пользовательский текст ---
+    const userPrompt = (text || "").trim();
 
-    // Входные данные для Replicate
+    // --- 3. Эффекты кожи (кнопки) ---
+    let effectsPrompt = "";
+    if (Array.isArray(effects) && effects.length > 0) {
+      effectsPrompt = effects
+        .map((key) => EFFECT_PROMPTS[key])
+        .filter(Boolean)
+        .join(", ");
+    }
+
+    // --- 4. Итоговый prompt ---
+    const promptParts = [stylePrefix];
+    if (userPrompt) promptParts.push(userPrompt);
+    if (effectsPrompt) promptParts.push(effectsPrompt);
+
+    const prompt = promptParts.join(". ").trim();
+
+    // --- 5. Вход для Replicate ---
     const input = {
       prompt,
-      input_image: photo || null, // ВАЖНО
       output_format: "jpg"
     };
+
+    // ВАЖНО: не передаём input_image, если фото нет (режим "только текст")
+    if (photo) {
+      input.input_image = photo;
+    }
 
     console.log("INPUT TO REPLICATE:", input);
 
@@ -73,10 +103,11 @@ export default async function handler(req, res) {
       // Иногда Replicate имеет метод url()
       try {
         imageUrl = output.url();
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
 
-    // Проверка
     if (!imageUrl) {
       return res.status(500).json({
         error: "No image URL returned",
@@ -89,7 +120,6 @@ export default async function handler(req, res) {
       image: imageUrl,
       prompt
     });
-
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     return res.status(500).json({
