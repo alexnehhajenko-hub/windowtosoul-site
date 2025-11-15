@@ -4,10 +4,16 @@
 
 import Replicate from "replicate";
 
-// Усиленный стиль "Картина маслом"
+// Стили, усиленный oil и новый beauty
 const STYLE_PREFIX = {
+  // Новый стиль: светлый, гладкая кожа, без морщин, бьюти-портрет
+  beauty:
+    "soft beauty portrait, studio lighting, bright airy tones, smooth flawless skin, no wrinkles, gentle high-end retouch, subtle glow, k-beauty style, pastel background, flattering look",
+
+  // Художественная картина маслом (можно оставлять как есть)
   oil:
     "dramatic oil painting portrait, impasto style, very visible thick brush strokes, rich oil paint texture, canvas texture, painterly background, face slightly stylized, not photorealistic, strong painterly look, soft edges",
+
   anime: "anime style portrait, clean lines, soft pastel shading",
   poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
   classic: "classical old master portrait, realism, warm tones, detailed skin",
@@ -33,7 +39,7 @@ const EFFECT_PROMPTS = {
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Поздравления — без жёстких русских фраз, только стиль + факт русской надписи
+// Поздравления — стиль + факт русской надписи (без жёстких фраз)
 const GREETING_PROMPTS = {
   "new-year":
     "festive New Year greeting portrait, glowing warm lights, snow, elegant russian handwritten greeting text on the image",
@@ -136,7 +142,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ВАЖНО: prompt не отдаём на фронт
+    // prompt не отдаём наружу
     return res.status(200).json({
       ok: true,
       image: imageUrl
