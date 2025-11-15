@@ -4,8 +4,10 @@
 
 import Replicate from "replicate";
 
+// Усиленный стиль "Картина маслом"
 const STYLE_PREFIX = {
-  oil: "oil painting portrait, detailed, soft warm light, artistic",
+  oil:
+    "dramatic oil painting portrait, impasto style, very visible thick brush strokes, rich oil paint texture, canvas texture, painterly background, face slightly stylized, not photorealistic, strong painterly look, soft edges",
   anime: "anime style portrait, clean lines, soft pastel shading",
   poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
   classic: "classical old master portrait, realism, warm tones, detailed skin",
