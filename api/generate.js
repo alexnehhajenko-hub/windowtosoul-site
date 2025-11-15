@@ -1,5 +1,6 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
 // Фото / текст / эффекты кожи / мимика / поздравления
+// Без возврата prompt на фронт
 
 import Replicate from "replicate";
 
@@ -30,16 +31,16 @@ const EFFECT_PROMPTS = {
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Поздравления
+// Поздравления — без жёстких русских фраз, только стиль + факт русской надписи
 const GREETING_PROMPTS = {
   "new-year":
-    "festive New Year greeting card style, warm lights, fireworks, decorative typography in Russian that says 'С Новым годом!'",
+    "festive New Year greeting portrait, glowing warm lights, snow, elegant russian handwritten greeting text on the image",
   birthday:
-    "birthday greeting portrait, balloons, confetti, festive composition, decorative typography in Russian that says 'С днём рождения!'",
+    "birthday greeting portrait, balloons, confetti, festive composition, elegant russian handwritten birthday greeting text on the image",
   funny:
-    "playful and humorous greeting card style, bright colors, fun composition, decorative lettering in Russian with a funny greeting",
+    "playful humorous greeting portrait, bright colors, fun composition, creative russian handwritten funny greeting text on the image",
   scary:
-    "dark horror greeting card style, spooky lighting, eerie atmosphere, creepy decorative lettering in Russian with a scary greeting"
+    "dark horror themed greeting portrait, spooky lighting, eerie atmosphere, creepy russian handwritten horror greeting text on the image"
 };
 
 export default async function handler(req, res) {
@@ -66,7 +67,7 @@ export default async function handler(req, res) {
     // 2. Пользовательский текст
     const userPrompt = (text || "").trim();
 
-    // 3. Эффекты
+    // 3. Эффекты (кожа + мимика)
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
@@ -81,7 +82,7 @@ export default async function handler(req, res) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
-    // 5. Итоговый prompt
+    // 5. Итоговый prompt (остаётся только на сервере, пользователю не отдаём)
     const promptParts = [stylePrefix];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
@@ -129,15 +130,14 @@ export default async function handler(req, res) {
 
     if (!imageUrl) {
       return res.status(500).json({
-        error: "No image URL returned",
-        raw: output
+        error: "No image URL returned"
       });
     }
 
+    // ВАЖНО: prompt не отдаём на фронт
     return res.status(200).json({
       ok: true,
-      image: imageUrl,
-      prompt
+      image: imageUrl
     });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
