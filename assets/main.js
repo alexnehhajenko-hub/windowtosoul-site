@@ -1,6 +1,5 @@
 // -------------------- НАСТРОЙКИ И ДАННЫЕ --------------------
 
-// Стили портрета, которые выбирает пользователь
 const PORTRAIT_STYLES = [
   "Classic Portrait",
   "Oil Painting",
@@ -10,8 +9,6 @@ const PORTRAIT_STYLES = [
   "Futuristic / Cyber"
 ];
 
-// Маппинг "человеческое название" -> код стиля для бэкенда
-// (зависит от того, что ждёт /api/generate: oil / anime / poster / classic)
 const STYLE_CODE_MAP = {
   "Classic Portrait": "classic",
   "Oil Painting": "oil",
@@ -37,7 +34,6 @@ const MIMIC_OPTIONS = [
   "Surprise"
 ];
 
-// Подмешиваемые описания в текстовый промпт (НЕ поздравления!)
 const SKIN_PROMPTS = {
   "Smooth Skin": "smooth, even, soft skin",
   "Remove Wrinkles": "less visible wrinkles, subtle anti-age retouch",
@@ -54,7 +50,6 @@ const MIMIC_PROMPTS = {
   "Surprise": "slight surprise, open eyes"
 };
 
-// Поздравления — текст ВЕРХОМ НА КАРТИНКЕ, НЕ в промпте ИИ
 const GREETINGS = {
   newYear: [
     "Happy New Year!",
@@ -105,13 +100,13 @@ const GREETING_CATEGORY_LABELS = {
 // -------------------- СОСТОЯНИЕ --------------------
 
 const state = {
-  styleName: null,          // человеческое название (Classic Portrait и т.п.)
+  styleName: null,
   skinEffect: null,
   mimic: null,
   greetingCategory: null,
   greetingText: null,
   hasPhoto: false,
-  photoFile: null           // исходный файл, который выбрал пользователь
+  photoFile: null
 };
 
 // -------------------- DOM --------------------
@@ -141,7 +136,7 @@ const sheetOptionsRow = document.getElementById("sheetOptionsRow");
 
 const generateStatus = document.getElementById("generateStatus");
 
-// -------------------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ UI --------------------
+// -------------------- UI --------------------
 
 function updateSelectionPills() {
   selectionRow.innerHTML = "";
@@ -201,7 +196,7 @@ function clearSheet() {
   sheetOptionsTitle.textContent = "Варианты";
 }
 
-// -------------------- ПАНЕЛИ ВЫБОРА --------------------
+// -------------------- ПАНЕЛИ --------------------
 
 function openStyleSheet() {
   clearSheet();
@@ -213,9 +208,7 @@ function openStyleSheet() {
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = name;
-    if (state.styleName === name) {
-      chip.classList.add("selected");
-    }
+    if (state.styleName === name) chip.classList.add("selected");
     chip.addEventListener("click", () => {
       state.styleName = name;
       hideSheet();
@@ -230,16 +223,14 @@ function openStyleSheet() {
 function openSkinSheet() {
   clearSheet();
   sheetTitle.textContent = "Эффект кожи";
-  sheetDescription.textContent = "Выберите улучшение кожи (для промпта ИИ, не фильтр Instagram).";
+  sheetDescription.textContent = "Выберите улучшение кожи (подмешивается в промпт).";
 
   SKIN_EFFECTS.forEach((name) => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = name;
-    if (state.skinEffect === name) {
-      chip.classList.add("selected");
-    }
+    if (state.skinEffect === name) chip.classList.add("selected");
     chip.addEventListener("click", () => {
       state.skinEffect = name;
       hideSheet();
@@ -254,16 +245,14 @@ function openSkinSheet() {
 function openMimicSheet() {
   clearSheet();
   sheetTitle.textContent = "Мимика";
-  sheetDescription.textContent = "Выберите эмоциональное выражение лица (подмешивается в промпт).";
+  sheetDescription.textContent = "Выберите эмоциональное выражение лица.";
 
   MIMIC_OPTIONS.forEach((name) => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = name;
-    if (state.mimic === name) {
-      chip.classList.add("selected");
-    }
+    if (state.mimic === name) chip.classList.add("selected");
     chip.addEventListener("click", () => {
       state.mimic = name;
       hideSheet();
@@ -283,9 +272,7 @@ function renderGreetingOptions(categoryKey) {
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = text;
-    if (state.greetingText === text) {
-      chip.classList.add("selected");
-    }
+    if (state.greetingText === text) chip.classList.add("selected");
     chip.addEventListener("click", () => {
       state.greetingCategory = categoryKey;
       state.greetingText = text;
@@ -300,12 +287,10 @@ function renderGreetingOptions(categoryKey) {
 function openGreetingsSheet() {
   clearSheet();
   sheetTitle.textContent = "Поздравления";
-  sheetDescription.textContent =
-    "Выберите категорию и текст. Эта надпись будет поверх портрета, не вшита в ИИ-промпт.";
+  sheetDescription.textContent = "Выберите категорию и текст. Текст будет поверх портрета.";
 
   sheetCategoryTitle.style.display = "block";
   sheetCategoryRow.style.display = "flex";
-
   sheetCategoryRow.innerHTML = "";
 
   Object.keys(GREETINGS).forEach((key) => {
@@ -313,9 +298,7 @@ function openGreetingsSheet() {
     catChip.type = "button";
     catChip.className = "chip chip-category";
     catChip.textContent = GREETING_CATEGORY_LABELS[key] || key;
-    if (state.greetingCategory === key) {
-      catChip.classList.add("selected");
-    }
+    if (state.greetingCategory === key) catChip.classList.add("selected");
     catChip.addEventListener("click", () => {
       state.greetingCategory = key;
       Array.from(sheetCategoryRow.children).forEach((el) =>
@@ -336,11 +319,9 @@ function openGreetingsSheet() {
   showSheet();
 }
 
-// -------------------- ЗАГРУЗКА ФОТО --------------------
+// -------------------- ФОТО --------------------
 
-btnAddPhoto.addEventListener("click", () => {
-  fileInput.click();
-});
+btnAddPhoto.addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", (event) => {
   const file = event.target.files && event.target.files[0];
@@ -357,8 +338,6 @@ fileInput.addEventListener("change", (event) => {
   };
   reader.readAsDataURL(file);
 });
-
-// -------------------- РЕСАЙЗ КАРТИНКИ (как в старом коде) --------------------
 
 function resizeImage(file) {
   return new Promise((resolve, reject) => {
@@ -398,7 +377,7 @@ function resizeImage(file) {
   });
 }
 
-// -------------------- ЛОАДЕР (оверлей в превью) --------------------
+// -------------------- ЛОАДЕР --------------------
 
 function setLoading(isLoading) {
   if (isLoading) {
@@ -412,19 +391,17 @@ function setLoading(isLoading) {
   }
 }
 
-// -------------------- ГЛАВНАЯ ФУНКЦИЯ ГЕНЕРАЦИИ --------------------
+// -------------------- ГЕНЕРАЦИЯ --------------------
 
 async function generatePortrait() {
   if (!state.hasPhoto || !state.photoFile) {
-    alert("Сначала добавьте фото, затем выбирайте эффекты и запускайте генерацию.");
+    alert("Сначала добавьте фото, затем выберите эффекты и запустите генерацию.");
     return;
   }
 
-  // Базовый стиль: если пользователь ничего не выбрал — ставим Classic
   const styleName = state.styleName || "Classic Portrait";
   const styleCode = STYLE_CODE_MAP[styleName] || "classic";
 
-  // Собираем текстовый промпт из кожи и мимики
   const parts = [];
   if (state.skinEffect && SKIN_PROMPTS[state.skinEffect]) {
     parts.push(SKIN_PROMPTS[state.skinEffect]);
@@ -432,12 +409,9 @@ async function generatePortrait() {
   if (state.mimic && MIMIC_PROMPTS[state.mimic]) {
     parts.push(MIMIC_PROMPTS[state.mimic]);
   }
-
-  // Можно добавить базовую фразу, чтобы не было пусто
   if (!parts.length) {
     parts.push("high quality portrait, detailed face");
   }
-
   const finalText = parts.join(", ");
 
   setLoading(true);
@@ -472,11 +446,9 @@ async function generatePortrait() {
       throw new Error("Ответ без изображения.");
     }
 
-    // В превью показываем уже СГЕНЕРИРОВАННОЕ изображение
     previewImage.src = data.image;
     previewImage.style.display = "block";
     previewPlaceholder.style.display = "none";
-    // Текст-поздравление остаётся поверх, как и было
   } catch (err) {
     console.error(err);
     alert(err.message || "Ошибка генерации портрета.");
@@ -485,22 +457,21 @@ async function generatePortrait() {
   }
 }
 
-// -------------------- КНОПКА ОПЛАТЫ (пока-заглушка) --------------------
+// -------------------- ОПЛАТА (ПОКА ЗАГЛУШКА) --------------------
 
 btnPay.addEventListener("click", () => {
   alert(
-    "Здесь появится окно с соглашением (16+, условия, возвраты) и переход к оплате.\n" +
-      "Платёжный провайдер подключим позже."
+    "Здесь будет окно с согласием (16+, условия, возвраты) и переход к оплате.\n" +
+      "Платёж подключим позже."
   );
 });
 
-// -------------------- ПОДКЛЮЧЕНИЕ КНОПОК И ШИТА --------------------
+// -------------------- ПОДПИСКА НА СОБЫТИЯ --------------------
 
 btnStyle.addEventListener("click", openStyleSheet);
 btnSkin.addEventListener("click", openSkinSheet);
 btnMimic.addEventListener("click", openMimicSheet);
 btnGreetings.addEventListener("click", openGreetingsSheet);
-
 btnGenerate.addEventListener("click", generatePortrait);
 
 sheetCloseBtn.addEventListener("click", hideSheet);
@@ -508,6 +479,5 @@ sheetBackdrop.addEventListener("click", (event) => {
   if (event.target === sheetBackdrop) hideSheet();
 });
 
-// Стартовая инициализация
 updateSelectionPills();
 updateGreetingOverlay();
