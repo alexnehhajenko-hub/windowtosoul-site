@@ -1,61 +1,86 @@
+// api/generate.js — FLUX-KONTEXT-PRO (Stable)
+//
+// Работает с текстом и фото. Возвращает image URL стабильно.
+
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    // Парсим тело
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    }
 
     const { style, text, photo } = body;
 
+    // Стиль
     const stylePrefix = {
-      oil: "oil painting portrait, detailed, warm light",
-      anime: "anime portrait, clean pastel lines",
-      poster: "cinematic movie poster, dramatic contrast",
-      classic: "classical old master painting"
+      oil: "oil painting portrait, detailed, soft warm light, artistic",
+      anime: "anime style portrait, clean lines, soft pastel shading",
+      poster: "cinematic movie poster portrait, dramatic lighting",
+      classic: "classical old master portrait, realism, warm tones"
     }[style] || "realistic portrait";
 
-    const prompt = `${stylePrefix}. ${text || ""}`.trim();
+    const userPrompt = text?.trim() || "";
+    const prompt = `${stylePrefix}. ${userPrompt}`.trim();
+
+    // Входные данные для Replicate
+    const input = {
+      prompt,
+      input_image: photo || null, // ВАЖНО
+      output_format: "jpg"
+    };
+
+    console.log("INPUT TO REPLICATE:", input);
 
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    console.log("START PREDICTION FOR:", prompt);
+    const output = await replicate.run(
+      "black-forest-labs/flux-kontext-pro",
+      { input }
+    );
 
-    const prediction = await replicate.predictions.create({
-      model: "black-forest-labs/flux-kontext-pro",
-      input: {
-        prompt,
-        input_image: photo,
-        output_format: "jpg"
-      },
-    });
+    console.log("RAW OUTPUT FROM REPLICATE:", output);
 
-    console.log("PREDICTION CREATED:", prediction.id);
+    // ------ Универсальный поиск URL в ответе ------
+    let imageUrl = null;
 
-    // Ждём завершения
-    let result = prediction;
-    while (!["succeeded", "failed", "canceled"].includes(result.status)) {
-      await new Promise(r => setTimeout(r, 1500));
-      result = await replicate.predictions.get(result.id);
+    if (Array.isArray(output)) {
+      // Если массив URL (частый случай)
+      imageUrl = output[0];
+    } else if (output?.output) {
+      // Если объект с полем output
+      if (Array.isArray(output.output)) {
+        imageUrl = output.output[0];
+      } else if (typeof output.output === "string") {
+        imageUrl = output.output;
+      }
+    } else if (typeof output === "string") {
+      // Если просто строка
+      imageUrl = output;
+    } else if (output?.url) {
+      // Иногда Replicate имеет метод url()
+      try {
+        imageUrl = output.url();
+      } catch {}
     }
 
-    if (result.status !== "succeeded") {
-      return res.status(500).json({
-        error: "Generation failed",
-        details: result
-      });
-    }
-
-    const imageUrl = result.output?.[0];
-
+    // Проверка
     if (!imageUrl) {
       return res.status(500).json({
-        error: "No output returned from Replicate",
-        details: result
+        error: "No image URL returned",
+        raw: output
       });
     }
 
@@ -66,10 +91,10 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error("GEN ERROR:", err);
+    console.error("GENERATION ERROR:", err);
     return res.status(500).json({
-      error: "Server error",
-      details: err.message || err
+      error: "Generation failed",
+      details: err?.message || String(err)
     });
   }
 }
