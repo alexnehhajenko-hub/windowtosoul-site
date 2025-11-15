@@ -101,7 +101,7 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin-top: 4px;
+      margin-top: 8px;
     }
 
     .style-btn {
@@ -245,16 +245,81 @@
       height: 14px;
     }
 
-    .effect-label {
-      margin-top: 14px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #8e93c7;
+    footer {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #6f739f;
+      text-align: center;
     }
 
+    /* -------- Раскрывающиеся секции (настройки) -------- */
+
+    .settings-section {
+      margin-top: 10px;
+      border-radius: 16px;
+      background: rgba(9, 11, 30, 0.85);
+      border: 1px solid #313553;
+      overflow: hidden;
+    }
+
+    .settings-toggle {
+      width: 100%;
+      padding: 9px 12px;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: #e0e4ff;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .settings-toggle-label {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .settings-toggle-title {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 11px;
+      color: #b1b6ff;
+    }
+
+    .settings-toggle-sub {
+      font-size: 11px;
+      color: #7e84c0;
+    }
+
+    .settings-toggle-indicator {
+      font-size: 12px;
+      opacity: 0.8;
+      transition: transform 0.15s ease-out;
+    }
+
+    .settings-toggle.open .settings-toggle-indicator {
+      transform: rotate(-180deg);
+    }
+
+    .settings-body {
+      display: none;
+      padding: 8px 10px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .settings-body.open {
+      display: block;
+    }
+
+    /* Эффекты / поздравления */
+
     .effect-row {
-      margin-top: 8px;
+      margin-top: 6px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -289,13 +354,6 @@
       background: radial-gradient(circle at top, #8b5dff, #26143f);
       color: #fff;
       box-shadow: 0 10px 18px rgba(76, 36, 150, 0.5);
-    }
-
-    footer {
-      margin-top: 10px;
-      font-size: 11px;
-      color: #6f739f;
-      text-align: center;
     }
 
     @media (min-width: 700px) {
@@ -333,222 +391,287 @@
       </div>
     </section>
 
-    <!-- Блок 2 — стиль + эффекты + поздравление -->
+    <!-- Блок 2 — настройки (все в раскрывающихся секциях) -->
     <section class="block">
-      <h2>2. Стиль, эффекты и поздравление</h2>
+      <h2>2. Настройки портрета</h2>
       <p class="helper">
-        Выберите стиль, эффекты обработки и, если нужно, тип поздравления.
+        Стиль, эффекты кожи, эмоции и поздравление можно настроить по отдельности.
       </p>
 
-      <div class="style-btns">
+      <!-- Стиль -->
+      <div class="settings-section">
         <button
           type="button"
-          id="btn-beauty"
-          class="style-btn active"
-          onclick="selectStyle('beauty')"
+          class="settings-toggle open"
+          data-section="style"
+          onclick="toggleSection('style')"
         >
-          Красивый портрет
-          <span>Светлый, гладкая кожа, без морщин</span>
+          <div class="settings-toggle-label">
+            <span class="settings-toggle-title">Стиль портрета</span>
+            <span class="settings-toggle-sub">Красивый портрет, масло, аниме и др.</span>
+          </div>
+          <span class="settings-toggle-indicator">▼</span>
         </button>
+        <div class="settings-body open" id="section-style">
+          <div class="style-btns">
+            <button
+              type="button"
+              id="btn-beauty"
+              class="style-btn active"
+              onclick="selectStyle('beauty')"
+            >
+              Красивый портрет
+              <span>Светлый, гладкая кожа, без морщин</span>
+            </button>
 
-        <button
-          type="button"
-          id="btn-oil"
-          class="style-btn"
-          onclick="selectStyle('oil')"
-        >
-          Картина маслом
-          <span>Художественный стиль с мазками</span>
-        </button>
+            <button
+              type="button"
+              id="btn-oil"
+              class="style-btn"
+              onclick="selectStyle('oil')"
+            >
+              Картина маслом
+              <span>Художественный стиль с мазками</span>
+            </button>
 
-        <button
-          type="button"
-          id="btn-anime"
-          class="style-btn"
-          onclick="selectStyle('anime')"
-        >
-          Аниме
-          <span>Стиль аниме-персонажа</span>
-        </button>
+            <button
+              type="button"
+              id="btn-anime"
+              class="style-btn"
+              onclick="selectStyle('anime')"
+            >
+              Аниме
+              <span>Стиль аниме-персонажа</span>
+            </button>
 
-        <button
-          type="button"
-          id="btn-poster"
-          class="style-btn"
-          onclick="selectStyle('poster')"
-        >
-          Кино-постер
-          <span>Контрастный, как в фильме</span>
-        </button>
+            <button
+              type="button"
+              id="btn-poster"
+              class="style-btn"
+              onclick="selectStyle('poster')"
+            >
+              Кино-постер
+              <span>Контрастный, как в фильме</span>
+            </button>
 
-        <button
-          type="button"
-          id="btn-classic"
-          class="style-btn"
-          onclick="selectStyle('classic')"
-        >
-          Классический художник
-          <span>Старые мастера</span>
-        </button>
+            <button
+              type="button"
+              id="btn-classic"
+              class="style-btn"
+              onclick="selectStyle('classic')"
+            >
+              Классический художник
+              <span>Старые мастера</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="effect-label">Эффекты кожи</div>
-      <div class="effect-row">
+      <!-- Эффекты кожи -->
+      <div class="settings-section">
         <button
           type="button"
-          class="effect-btn"
-          data-effect="no-wrinkles"
-          onclick="toggleEffect(this)"
+          class="settings-toggle"
+          data-section="skin"
+          onclick="toggleSection('skin')"
         >
-          Убрать морщины
-          <span>мягкая ретушь</span>
+          <div class="settings-toggle-label">
+            <span class="settings-toggle-title">Эффекты кожи</span>
+            <span class="settings-toggle-sub">Морщины, омоложение, сглаживание</span>
+          </div>
+          <span class="settings-toggle-indicator">▼</span>
         </button>
+        <div class="settings-body" id="section-skin">
+          <div class="effect-row">
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="no-wrinkles"
+              onclick="toggleEffect(this)"
+            >
+              Убрать морщины
+              <span>мягкая ретушь</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="younger"
-          onclick="toggleEffect(this)"
-        >
-          Омолодить на 20 лет
-          <span>минус ~20 лет</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="younger"
+              onclick="toggleEffect(this)"
+            >
+              Омолодить на 20 лет
+              <span>минус ~20 лет</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="smooth-skin"
-          onclick="toggleEffect(this)"
-        >
-          Сгладить кожу
-          <span>ровный тон</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="smooth-skin"
+              onclick="toggleEffect(this)"
+            >
+              Сгладить кожу
+              <span>ровный тон</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="effect-label">Эмоции и мимика</div>
-      <div class="effect-row">
+      <!-- Эмоции и мимика -->
+      <div class="settings-section">
         <button
           type="button"
-          class="effect-btn"
-          data-effect="smile-soft"
-          onclick="toggleEffect(this)"
+          class="settings-toggle"
+          data-section="emotions"
+          onclick="toggleSection('emotions')"
         >
-          Лёгкая улыбка
-          <span>спокойное настроение</span>
+          <div class="settings-toggle-label">
+            <span class="settings-toggle-title">Эмоции и мимика</span>
+            <span class="settings-toggle-sub">Улыбка, смех, глаза и выражение</span>
+          </div>
+          <span class="settings-toggle-indicator">▼</span>
         </button>
+        <div class="settings-body" id="section-emotions">
+          <div class="effect-row">
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="smile-soft"
+              onclick="toggleEffect(this)"
+            >
+              Лёгкая улыбка
+              <span>спокойное настроение</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="smile-big"
-          onclick="toggleEffect(this)"
-        >
-          Улыбка шире
-          <span>больше эмоций</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="smile-big"
+              onclick="toggleEffect(this)"
+            >
+              Улыбка шире
+              <span>больше эмоций</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="smile-hollywood"
-          onclick="toggleEffect(this)"
-        >
-          Голливудская улыбка
-          <span>видны зубы</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="smile-hollywood"
+              onclick="toggleEffect(this)"
+            >
+              Голливудская улыбка
+              <span>видны зубы</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="laugh"
-          onclick="toggleEffect(this)"
-        >
-          Смех
-          <span>яркий смех</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="laugh"
+              onclick="toggleEffect(this)"
+            >
+              Смех
+              <span>яркий смех</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="neutral"
-          onclick="toggleEffect(this)"
-        >
-          Нейтральное лицо
-          <span>спокойное</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="neutral"
+              onclick="toggleEffect(this)"
+            >
+              Нейтральное лицо
+              <span>спокойное</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="serious"
-          onclick="toggleEffect(this)"
-        >
-          Серьёзное лицо
-          <span>без улыбки</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="serious"
+              onclick="toggleEffect(this)"
+            >
+              Серьёзное лицо
+              <span>без улыбки</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="eyes-bigger"
-          onclick="toggleEffect(this)"
-        >
-          Глаза больше
-          <span>чуть крупнее</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="eyes-bigger"
+              onclick="toggleEffect(this)"
+            >
+              Глаза больше
+              <span>чуть крупнее</span>
+            </button>
 
-        <button
-          type="button"
-          class="effect-btn"
-          data-effect="eyes-brighter"
-          onclick="toggleEffect(this)"
-        >
-          Глаза ярче
-          <span>выразительный взгляд</span>
-        </button>
+            <button
+              type="button"
+              class="effect-btn"
+              data-effect="eyes-brighter"
+              onclick="toggleEffect(this)"
+            >
+              Глаза ярче
+              <span>выразительный взгляд</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="effect-label">Поздравление (опционально)</div>
-      <div class="effect-row">
+      <!-- Поздравление -->
+      <div class="settings-section">
         <button
           type="button"
-          class="greeting-btn"
-          data-greeting="new-year"
-          onclick="selectGreeting(this)"
+          class="settings-toggle"
+          data-section="greeting"
+          onclick="toggleSection('greeting')"
         >
-          Новый год
-          <span>новогодняя открытка</span>
+          <div class="settings-toggle-label">
+            <span class="settings-toggle-title">Поздравление</span>
+            <span class="settings-toggle-sub">Новый год, ДР, смешное, страшное</span>
+          </div>
+          <span class="settings-toggle-indicator">▼</span>
         </button>
+        <div class="settings-body" id="section-greeting">
+          <div class="effect-row">
+            <button
+              type="button"
+              class="greeting-btn"
+              data-greeting="new-year"
+              onclick="selectGreeting(this)"
+            >
+              Новый год
+              <span>новогодний антураж</span>
+            </button>
 
-        <button
-          type="button"
-          class="greeting-btn"
-          data-greeting="birthday"
-          onclick="selectGreeting(this)"
-        >
-          День рождения
-          <span>день рождения</span>
-        </button>
+            <button
+              type="button"
+              class="greeting-btn"
+              data-greeting="birthday"
+              onclick="selectGreeting(this)"
+            >
+              День рождения
+              <span>праздничный фон</span>
+            </button>
 
-        <button
-          type="button"
-          class="greeting-btn"
-          data-greeting="funny"
-          onclick="selectGreeting(this)"
-        >
-          Смешное
-          <span>игривый стиль</span>
-        </button>
+            <button
+              type="button"
+              class="greeting-btn"
+              data-greeting="funny"
+              onclick="selectGreeting(this)"
+            >
+              Смешное
+              <span>игривый стиль</span>
+            </button>
 
-        <button
-          type="button"
-          class="greeting-btn"
-          data-greeting="scary"
-          onclick="selectGreeting(this)"
-        >
-          Страшное
-          <span>жуткий стиль</span>
-        </button>
+            <button
+              type="button"
+              class="greeting-btn"
+              data-greeting="scary"
+              onclick="selectGreeting(this)"
+            >
+              Страшное
+              <span>жуткий стиль</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <textarea
@@ -622,7 +745,6 @@
 
       const alreadySelected = CURRENT_GREETING === value;
 
-      // Сброс всех
       document
         .querySelectorAll(".greeting-btn")
         .forEach((b) => b.classList.remove("active"));
@@ -634,6 +756,21 @@
 
       CURRENT_GREETING = value;
       button.classList.add("active");
+    }
+
+    // Раскрытие/сворачивание секций настроек
+    function toggleSection(name) {
+      const body = document.getElementById("section-" + name);
+      if (!body) return;
+      const isOpen = body.classList.contains("open");
+      body.classList.toggle("open", !isOpen);
+
+      const toggleBtn = document.querySelector(
+        '.settings-toggle[data-section="' + name + '"]'
+      );
+      if (toggleBtn) {
+        toggleBtn.classList.toggle("open", !isOpen);
+      }
     }
 
     // Уменьшение фото до ~1024px по большей стороне
