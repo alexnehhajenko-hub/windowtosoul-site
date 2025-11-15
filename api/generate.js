@@ -1,9 +1,8 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Работает с текстом и/или фото, поддерживает эффекты кожи (морщины, омоложение и т.п.)
+// Фото / текст / эффекты кожи / мимика
 
 import Replicate from "replicate";
 
-// Базовые стили
 const STYLE_PREFIX = {
   oil: "oil painting portrait, detailed, soft warm light, artistic",
   anime: "anime style portrait, clean lines, soft pastel shading",
@@ -12,11 +11,22 @@ const STYLE_PREFIX = {
   default: "realistic portrait, detailed face, soft studio lighting"
 };
 
-// Эффекты ретуши кожи
+// Эффекты обработки кожи + мимика
 const EFFECT_PROMPTS = {
+  // кожа
   "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
-  younger: "looks 10 years younger, fresh and rested face, lively eyes",
-  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting"
+  younger: "looks 20 years younger, fresh and healthy skin, lively eyes",
+  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting",
+
+  // мимика
+  "smile-soft": "subtle soft smile, calm and relaxed expression",
+  "smile-big": "big warm smile, expressive and friendly face",
+  "smile-hollywood": "wide hollywood smile, visible white teeth, confident look",
+  laugh: "laughing with a bright smile, joyful and natural expression",
+  neutral: "neutral face expression, relaxed, no visible strong emotion",
+  serious: "serious face, no smile, focused expression",
+  "eyes-bigger": "slightly bigger eyes, more open and attentive look",
+  "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
 export default async function handler(req, res) {
@@ -25,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Парсим тело запроса
+    // Парсим тело
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -37,40 +47,38 @@ export default async function handler(req, res) {
 
     const { style, text, photo, effects } = body || {};
 
-    // --- 1. Стиль ---
+    // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // --- 2. Пользовательский текст ---
+    // 2. Пользовательский текст
     const userPrompt = (text || "").trim();
 
-    // --- 3. Эффекты кожи (кнопки) ---
+    // 3. Эффекты → в prompt
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
-        .map((key) => EFFECT_PROMPTS[key])
+        .map((k) => EFFECT_PROMPTS[k])
         .filter(Boolean)
         .join(", ");
     }
 
-    // --- 4. Итоговый prompt ---
+    // 4. Итоговый prompt
     const promptParts = [stylePrefix];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
 
     const prompt = promptParts.join(". ").trim();
 
-    // --- 5. Вход для Replicate ---
+    // 5. Вход в модель Replicate
     const input = {
       prompt,
       output_format: "jpg"
     };
 
-    // ВАЖНО: не передаём input_image, если фото нет (режим "только текст")
+    // Фото добавляем только если есть
     if (photo) {
       input.input_image = photo;
     }
-
-    console.log("INPUT TO REPLICATE:", input);
 
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN
@@ -81,26 +89,17 @@ export default async function handler(req, res) {
       { input }
     );
 
-    console.log("RAW OUTPUT FROM REPLICATE:", output);
-
-    // ------ Универсальный поиск URL в ответе ------
+    // Поиск URL
     let imageUrl = null;
 
     if (Array.isArray(output)) {
-      // Если массив URL (частый случай)
       imageUrl = output[0];
     } else if (output?.output) {
-      // Если объект с полем output
-      if (Array.isArray(output.output)) {
-        imageUrl = output.output[0];
-      } else if (typeof output.output === "string") {
-        imageUrl = output.output;
-      }
+      if (Array.isArray(output.output)) imageUrl = output.output[0];
+      else if (typeof output.output === "string") imageUrl = output.output;
     } else if (typeof output === "string") {
-      // Если просто строка
       imageUrl = output;
     } else if (output?.url) {
-      // Иногда Replicate имеет метод url()
       try {
         imageUrl = output.url();
       } catch {
