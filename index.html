@@ -1,913 +1,299 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1"
-  />
-  <title>WindowToSoul — AI портрет</title>
-
+  <meta charset="utf-8">
+  <title>WindowToSoul – Тестовый экран</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * {
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      margin: 0;
-      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #2b123f 0%, #05030a 55%, #020008 100%);
+      color: #f8ecff;
       min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      background: radial-gradient(circle at top, #1b1640 0, #050712 55%, #020309 100%);
-      color: #f5f5ff;
-    }
-
-    .page {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 20px 16px 40px;
-    }
-
-    header {
-      margin-bottom: 22px;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      font-size: 11px;
-      border-radius: 999px;
-      background: rgba(120, 120, 255, 0.12);
-      border: 1px solid rgba(160, 160, 255, 0.35);
-      color: #d6d6ff;
-    }
-
-    .badge-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #7cffb1;
-      box-shadow: 0 0 0 4px rgba(124, 255, 177, 0.16);
-    }
-
-    h1 {
-      margin: 14px 0 4px;
-      font-size: 26px;
-      letter-spacing: 0.02em;
-    }
-
-    .subtitle {
-      margin: 0;
-      font-size: 14px;
-      color: #a0a4d8;
-      max-width: 420px;
-    }
-
-    .block {
-      background: radial-gradient(circle at top left, #262a55 0, #111427 35%, #080a18 100%);
-      padding: 20px 18px 18px;
-      border-radius: 22px;
-      margin-bottom: 18px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(153, 132, 255, 0.16);
-    }
-
-    .block h2 {
-      margin: 0 0 12px;
-      font-size: 18px;
-    }
-
-    .block p.helper {
-      margin: 0 0 10px;
-      font-size: 13px;
-      color: #a0a4d8;
-    }
-
-    .file-row {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
+      justify-content: center;
+      align-items: stretch;
     }
 
-    input[type='file'] {
-      font-size: 13px;
-      max-width: 100%;
+    .app {
+      width: 100%;
+      max-width: 420px;
+      padding: 16px 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    .style-btns {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .style-btn {
-      border-radius: 14px;
-      border: 1px solid #313553;
-      padding: 13px 10px;
-      background: linear-gradient(135deg, #191b33, #111427);
-      color: #e0e4ff;
-      font-size: 15px;
-      font-weight: 500;
+    .app-header {
       text-align: center;
-      cursor: pointer;
-      transition: all 0.15s ease-out;
+      margin-bottom: 4px;
     }
 
-    .style-btn span {
-      display: block;
-      font-size: 11px;
-      color: #8e93c7;
-      margin-top: 4px;
-    }
-
-    .style-btn.active {
-      border-color: #b892ff;
-      background: linear-gradient(135deg, #7f4dff, #e674ff);
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
-        0 14px 32px rgba(57, 22, 150, 0.7);
-      color: #fff;
-    }
-
-    .style-btn.active span {
-      color: #f3e6ff;
-    }
-
-    textarea {
-      width: 100%;
-      margin-top: 12px;
-      padding: 11px 12px;
-      border-radius: 14px;
-      border: 1px solid #313553;
-      background: #101222;
-      color: #f5f5ff;
-      font-size: 14px;
-      resize: vertical;
-      min-height: 60px;
-    }
-
-    textarea::placeholder {
-      color: #696f9c;
-    }
-
-    .primary-btn {
-      width: 100%;
-      margin-top: 14px;
-      border: none;
-      border-radius: 16px;
-      padding: 15px 4px;
-      font-size: 17px;
+    .app-title {
+      font-size: 20px;
       font-weight: 600;
-      cursor: pointer;
-      background: linear-gradient(90deg, #a86bff, #e47cff);
-      color: #0a0719;
-      box-shadow: 0 18px 30px rgba(114, 51, 255, 0.66);
-      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fce7ff;
     }
 
-    .primary-btn:active {
-      transform: translateY(1px);
-      box-shadow: 0 10px 20px rgba(114, 51, 255, 0.4);
+    .app-subtitle {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.7;
     }
 
-    .primary-btn[disabled] {
-      opacity: 0.6;
-      cursor: default;
-      box-shadow: none;
-    }
-
-    .error {
-      margin-top: 9px;
-      font-size: 13px;
-      color: #ff8080;
-      min-height: 14px;
-    }
-
-    #result {
-      margin-top: 8px;
-      border-radius: 18px;
-      border: 1px dashed rgba(129, 134, 185, 0.6);
-      min-height: 180px;
+    .preview-box {
+      position: relative;
+      border-radius: 20px;
+      background: radial-gradient(circle at top, #3b214f 0%, #140819 55%, #050309 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 18px 45px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+      padding: 10px;
+      overflow: hidden;
+      min-height: 220px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 10px;
+    }
+
+    .preview-placeholder {
       text-align: center;
+      opacity: 0.6;
       font-size: 14px;
-      color: #868bc4;
-      background: radial-gradient(
-        circle at top,
-        rgba(132, 99, 255, 0.14),
-        rgba(9, 11, 27, 0.95)
-      );
-      overflow: hidden;
     }
 
-    #result img {
-      width: 100%;
-      max-height: 480px;
-      object-fit: contain;
-      border-radius: 14px;
-      display: block;
-    }
-
-    .download-row {
-      margin-top: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-start;
-    }
-
-    .ghost-btn {
-      border-radius: 999px;
-      border: 1px solid rgba(180, 168, 255, 0.7);
-      background: rgba(12, 14, 30, 0.8);
-      color: #e2deff;
-      padding: 8px 14px;
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-    }
-
-    .ghost-btn:disabled {
-      opacity: 0.4;
-      cursor: default;
-    }
-
-    .ghost-btn svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    footer {
-      margin-top: 10px;
+    .preview-label {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 11px;
-      color: #6f739f;
-      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      opacity: 0.7;
     }
 
-    /* -------- Раскрывающиеся секции (настройки) -------- */
-
-    .settings-section {
-      margin-top: 10px;
-      border-radius: 16px;
-      background: rgba(9, 11, 30, 0.85);
-      border: 1px solid #313553;
-      overflow: hidden;
-    }
-
-    .settings-toggle {
-      width: 100%;
-      padding: 9px 12px;
-      border: none;
-      outline: none;
-      background: transparent;
-      color: #e0e4ff;
-      font-size: 13px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-    }
-
-    .settings-toggle-label {
+    .button-list {
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
+      gap: 10px;
+      margin-top: 4px;
     }
 
-    .settings-toggle-title {
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 11px;
-      color: #b1b6ff;
-    }
-
-    .settings-toggle-sub {
-      font-size: 11px;
-      color: #7e84c0;
-    }
-
-    .settings-toggle-indicator {
-      font-size: 12px;
-      opacity: 0.8;
-      transition: transform 0.15s ease-out;
-    }
-
-    .settings-toggle.open .settings-toggle-indicator {
-      transform: rotate(-180deg);
-    }
-
-    .settings-body {
-      display: none;
-      padding: 8px 10px 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
-    }
-
-    .settings-body.open {
-      display: block;
-    }
-
-    /* Эффекты / поздравления */
-
-    .effect-row {
-      margin-top: 6px;
+    .btn-row-split {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
     }
 
-    .effect-btn,
-    .greeting-btn {
-      border-radius: 999px;
-      border: 1px solid #313553;
-      background: rgba(11, 13, 30, 0.85);
-      color: #d6dbff;
-      padding: 6px 11px;
-      font-size: 12px;
-      line-height: 1.2;
+    .btn-main,
+    .btn-half {
+      position: relative;
+      border: none;
+      outline: none;
       cursor: pointer;
-      transition: all 0.12s ease-out;
-      display: inline-flex;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 14px 18px;
+      color: #fff5ff;
+      background: linear-gradient(135deg, #ff4fad, #c83fff 40%, #7c3cff 100%);
+      box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.06),
+        0 2px 0 rgba(255, 255, 255, 0.22) inset,
+        0 -3px 10px rgba(0, 0, 0, 0.6) inset;
+      display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      gap: 8px;
+      transition:
+        transform 0.08s ease-out,
+        box-shadow 0.08s ease-out,
+        filter 0.12s ease-out;
+    }
+
+    .btn-main {
+      width: 100%;
+    }
+
+    .btn-half {
+      flex: 1;
+      font-size: 13px;
+      padding-inline: 8px;
+    }
+
+    .btn-main span,
+    .btn-half span {
       white-space: nowrap;
     }
 
-    .effect-btn span,
-    .greeting-btn span {
-      opacity: 0.7;
-      font-size: 11px;
+    .btn-main::after,
+    .btn-half::after {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      background: radial-gradient(circle at top left,
+        rgba(255, 255, 255, 0.18) 0,
+        transparent 55%);
+      opacity: 0.9;
+      pointer-events: none;
     }
 
-    .effect-btn.active,
-    .greeting-btn.active {
-      border-color: #b892ff;
-      background: radial-gradient(circle at top, #8b5dff, #26143f);
-      color: #fff;
-      box-shadow: 0 10px 18px rgba(76, 36, 150, 0.5);
+    .btn-main:active,
+    .btn-half:active {
+      transform: translateY(1px) scale(0.985);
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.9),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 1px 0 rgba(255, 255, 255, 0.12) inset,
+        0 -2px 6px rgba(0, 0, 0, 0.7) inset;
+      filter: brightness(0.96);
     }
 
-    @media (min-width: 700px) {
-      .page {
-        padding-top: 26px;
-      }
+    .btn-secondary {
+      background: linear-gradient(135deg, #2c2f55, #3b2d7a);
+    }
 
-      h1 {
-        font-size: 30px;
+    .btn-pay {
+      background: linear-gradient(135deg, #ffe45f, #ff9b3d 40%, #ff4b4b 100%);
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 2px 0 rgba(255, 250, 220, 0.5) inset,
+        0 -3px 10px rgba(0, 0, 0, 0.7) inset;
+      color: #2b0d0d;
+    }
+
+    .btn-icon {
+      font-size: 16px;
+    }
+
+    .footer {
+      margin-top: auto;
+      font-size: 10px;
+      opacity: 0.55;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .footer a {
+      color: #f5c5ff;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (min-height: 780px) {
+      .preview-box {
+        min-height: 260px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <div class="badge">
-        <span class="badge-dot"></span>
-        WindowToSoul
-      </div>
-      <h1>AI-портрет из фото или текста</h1>
-      <p class="subtitle">
-        Фото и/или текст → стиль → эффекты лица → при желании поздравление.
-      </p>
+  <div class="app">
+    <header class="app-header">
+      <div class="app-title">WINDOWTOSOUL</div>
+      <div class="app-subtitle">Тестовый интерфейс · 6 кнопок</div>
     </header>
 
-    <!-- Блок 1 — фото -->
-    <section class="block">
-      <h2>1. Фото</h2>
-      <p class="helper">
-        Портрет, где видно лицо. Можно работать только по тексту.
-      </p>
-      <div class="file-row">
-        <input type="file" id="photo" accept="image/*" />
+    <section class="preview-box">
+      <div class="preview-label">Предпросмотр</div>
+      <div class="preview-placeholder" id="previewPlaceholder">
+        Загрузите фото и выберите эффекты,<br>здесь появится портрет.
       </div>
     </section>
 
-    <!-- Блок 2 — настройки (все в раскрывающихся секциях) -->
-    <section class="block">
-      <h2>2. Настройки портрета</h2>
-      <p class="helper">
-        Стиль, эффекты кожи, эмоции и поздравление можно настроить по отдельности.
-      </p>
-
-      <!-- Стиль -->
-      <div class="settings-section">
-        <button
-          type="button"
-          class="settings-toggle open"
-          data-section="style"
-          onclick="toggleSection('style')"
-        >
-          <div class="settings-toggle-label">
-            <span class="settings-toggle-title">Стиль портрета</span>
-            <span class="settings-toggle-sub">Красивый портрет, масло, аниме и др.</span>
-          </div>
-          <span class="settings-toggle-indicator">▼</span>
-        </button>
-        <div class="settings-body open" id="section-style">
-          <div class="style-btns">
-            <button
-              type="button"
-              id="btn-beauty"
-              class="style-btn active"
-              onclick="selectStyle('beauty')"
-            >
-              Красивый портрет
-              <span>Светлый, гладкая кожа, без морщин</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-oil"
-              class="style-btn"
-              onclick="selectStyle('oil')"
-            >
-              Картина маслом
-              <span>Художественный стиль с мазками</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-anime"
-              class="style-btn"
-              onclick="selectStyle('anime')"
-            >
-              Аниме
-              <span>Стиль аниме-персонажа</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-poster"
-              class="style-btn"
-              onclick="selectStyle('poster')"
-            >
-              Кино-постер
-              <span>Контрастный, как в фильме</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-classic"
-              class="style-btn"
-              onclick="selectStyle('classic')"
-            >
-              Классический художник
-              <span>Старые мастера</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Эффекты кожи -->
-      <div class="settings-section">
-        <button
-          type="button"
-          class="settings-toggle"
-          data-section="skin"
-          onclick="toggleSection('skin')"
-        >
-          <div class="settings-toggle-label">
-            <span class="settings-toggle-title">Эффекты кожи</span>
-            <span class="settings-toggle-sub">Морщины, омоложение, сглаживание</span>
-          </div>
-          <span class="settings-toggle-indicator">▼</span>
-        </button>
-        <div class="settings-body" id="section-skin">
-          <div class="effect-row">
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="no-wrinkles"
-              onclick="toggleEffect(this)"
-            >
-              Убрать морщины
-              <span>мягкая ретушь</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="younger"
-              onclick="toggleEffect(this)"
-            >
-              Омолодить на 20 лет
-              <span>минус ~20 лет</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="smooth-skin"
-              onclick="toggleEffect(this)"
-            >
-              Сгладить кожу
-              <span>ровный тон</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Эмоции и мимика -->
-      <div class="settings-section">
-        <button
-          type="button"
-          class="settings-toggle"
-          data-section="emotions"
-          onclick="toggleSection('emotions')"
-        >
-          <div class="settings-toggle-label">
-            <span class="settings-toggle-title">Эмоции и мимика</span>
-            <span class="settings-toggle-sub">Улыбка, смех, глаза и выражение</span>
-          </div>
-          <span class="settings-toggle-indicator">▼</span>
-        </button>
-        <div class="settings-body" id="section-emotions">
-          <div class="effect-row">
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="smile-soft"
-              onclick="toggleEffect(this)"
-            >
-              Лёгкая улыбка
-              <span>спокойное настроение</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="smile-big"
-              onclick="toggleEffect(this)"
-            >
-              Улыбка шире
-              <span>больше эмоций</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="smile-hollywood"
-              onclick="toggleEffect(this)"
-            >
-              Голливудская улыбка
-              <span>видны зубы</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="laugh"
-              onclick="toggleEffect(this)"
-            >
-              Смех
-              <span>яркий смех</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="neutral"
-              onclick="toggleEffect(this)"
-            >
-              Нейтральное лицо
-              <span>спокойное</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="serious"
-              onclick="toggleEffect(this)"
-            >
-              Серьёзное лицо
-              <span>без улыбки</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="eyes-bigger"
-              onclick="toggleEffect(this)"
-            >
-              Глаза больше
-              <span>чуть крупнее</span>
-            </button>
-
-            <button
-              type="button"
-              class="effect-btn"
-              data-effect="eyes-brighter"
-              onclick="toggleEffect(this)"
-            >
-              Глаза ярче
-              <span>выразительный взгляд</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Поздравление -->
-      <div class="settings-section">
-        <button
-          type="button"
-          class="settings-toggle"
-          data-section="greeting"
-          onclick="toggleSection('greeting')"
-        >
-          <div class="settings-toggle-label">
-            <span class="settings-toggle-title">Поздравление</span>
-            <span class="settings-toggle-sub">Новый год, ДР, смешное, страшное</span>
-          </div>
-          <span class="settings-toggle-indicator">▼</span>
-        </button>
-        <div class="settings-body" id="section-greeting">
-          <div class="effect-row">
-            <button
-              type="button"
-              class="greeting-btn"
-              data-greeting="new-year"
-              onclick="selectGreeting(this)"
-            >
-              Новый год
-              <span>новогодний антураж</span>
-            </button>
-
-            <button
-              type="button"
-              class="greeting-btn"
-              data-greeting="birthday"
-              onclick="selectGreeting(this)"
-            >
-              День рождения
-              <span>праздничный фон</span>
-            </button>
-
-            <button
-              type="button"
-              class="greeting-btn"
-              data-greeting="funny"
-              onclick="selectGreeting(this)"
-            >
-              Смешное
-              <span>игривый стиль</span>
-            </button>
-
-            <button
-              type="button"
-              class="greeting-btn"
-              data-greeting="scary"
-              onclick="selectGreeting(this)"
-            >
-              Страшное
-              <span>жуткий стиль</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <textarea
-        id="extra"
-        placeholder="Доп. текст по желанию: «тёплый свет, мягкие тени»"
-      ></textarea>
-
-      <button id="generate-btn" class="primary-btn" onclick="generate()">
-        Сгенерировать портрет
+    <section class="button-list">
+      <button class="btn-main" id="btnStyle">
+        <span class="btn-icon">🎨</span>
+        <span>Стиль портрета</span>
       </button>
-      <div id="error" class="error"></div>
-    </section>
 
-    <!-- Блок 3 — результат -->
-    <section class="block">
-      <h2>Результат</h2>
-      <div id="result">Здесь появится сгенерированный портрет.</div>
+      <button class="btn-main" id="btnSkin">
+        <span class="btn-icon">✨</span>
+        <span>Эффект кожи</span>
+      </button>
 
-      <div class="download-row">
-        <button id="download-btn" class="ghost-btn" disabled>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M12 16.5 6.75 11.25h3V4.5h4.5v6.75h3L12 16.5ZM5.25 19.5v-1.5h13.5v1.5H5.25Z"
-            />
-          </svg>
-          Скачать портрет
+      <button class="btn-main" id="btnMimic">
+        <span class="btn-icon">🙂</span>
+        <span>Мимика</span>
+      </button>
+
+      <button class="btn-main" id="btnGreetings">
+        <span class="btn-icon">💌</span>
+        <span>Поздравления</span>
+      </button>
+
+      <button class="btn-main btn-secondary" id="btnGenerate">
+        <span class="btn-icon">⚡️</span>
+        <span>Генерировать</span>
+      </button>
+
+      <div class="btn-row-split">
+        <button class="btn-half" id="btnAddPhoto">
+          <span class="btn-icon">📷</span>
+          <span>Добавить фото</span>
+        </button>
+        <button class="btn-half btn-pay" id="btnPay">
+          <span class="btn-icon">💳</span>
+          <span>Оплатить</span>
         </button>
       </div>
     </section>
 
-    <footer>
-      WindowToSoul
+    <footer class="footer">
+      Тестовый экран UI · данные и партнёры будут указаны в Terms &amp; Privacy.<br>
+      В финальной версии здесь будут ссылки: <a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Refunds</a>.
     </footer>
   </div>
 
   <script>
-    // Текущий стиль — по умолчанию "Красивый портрет"
-    let CURRENT_STYLE = "beauty";
-    // Активные эффекты лица
-    const ACTIVE_EFFECTS = new Set();
-    // Текущее поздравление (new-year, birthday, funny, scary)
-    let CURRENT_GREETING = null;
-
-    function selectStyle(style) {
-      CURRENT_STYLE = style;
-      document
-        .querySelectorAll(".style-btn")
-        .forEach((b) => b.classList.remove("active"));
-      const btn = document.getElementById("btn-" + style);
-      if (btn) btn.classList.add("active");
+    function showTestAlert(message) {
+      alert(message + "\n(Сейчас это только тестовый интерфейс, без генерации и оплаты.)");
     }
 
-    function toggleEffect(button) {
-      const effectKey = button.dataset.effect;
-      if (!effectKey) return;
+    document.getElementById("btnStyle").addEventListener("click", () => {
+      showTestAlert("Открыть выбор стиля портрета");
+    });
 
-      if (ACTIVE_EFFECTS.has(effectKey)) {
-        ACTIVE_EFFECTS.delete(effectKey);
-        button.classList.remove("active");
-      } else {
-        ACTIVE_EFFECTS.add(effectKey);
-        button.classList.add("active");
-      }
-    }
+    document.getElementById("btnSkin").addEventListener("click", () => {
+      showTestAlert("Открыть эффекты кожи");
+    });
 
-    // Выбор поздравления (только одно)
-    function selectGreeting(button) {
-      const value = button.dataset.greeting;
-      if (!value) return;
+    document.getElementById("btnMimic").addEventListener("click", () => {
+      showTestAlert("Открыть настройки мимики");
+    });
 
-      const alreadySelected = CURRENT_GREETING === value;
+    document.getElementById("btnGreetings").addEventListener("click", () => {
+      showTestAlert("Открыть список поздравлений и текстов");
+    });
 
-      document
-        .querySelectorAll(".greeting-btn")
-        .forEach((b) => b.classList.remove("active"));
+    document.getElementById("btnGenerate").addEventListener("click", () => {
+      showTestAlert("Здесь будет запуск генерации портрета");
+    });
 
-      if (alreadySelected) {
-        CURRENT_GREETING = null;
-        return;
-      }
+    document.getElementById("btnAddPhoto").addEventListener("click", () => {
+      showTestAlert("Здесь будет выбор / загрузка фото");
+    });
 
-      CURRENT_GREETING = value;
-      button.classList.add("active");
-    }
-
-    // Раскрытие/сворачивание секций настроек
-    function toggleSection(name) {
-      const body = document.getElementById("section-" + name);
-      if (!body) return;
-      const isOpen = body.classList.contains("open");
-      body.classList.toggle("open", !isOpen);
-
-      const toggleBtn = document.querySelector(
-        '.settings-toggle[data-section="' + name + '"]'
-      );
-      if (toggleBtn) {
-        toggleBtn.classList.toggle("open", !isOpen);
-      }
-    }
-
-    // Уменьшение фото до ~1024px по большей стороне
-    function resizeImage(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        const img = new Image();
-
-        reader.onload = (e) => {
-          img.onload = () => {
-            const maxSide = 1024;
-            let w = img.width;
-            let h = img.height;
-
-            if (w > h && w > maxSide) {
-              h = Math.round((h * maxSide) / w);
-              w = maxSide;
-            } else if (h >= w && h > maxSide) {
-              w = Math.round((w * maxSide) / h);
-              h = maxSide;
-            }
-
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, w, h);
-
-            try {
-              const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-              resolve(dataUrl);
-            } catch (err) {
-              reject(err);
-            }
-          };
-
-          img.onerror = reject;
-          img.src = e.target.result;
-        };
-
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    async function generate() {
-      const errorEl = document.getElementById("error");
-      const resultEl = document.getElementById("result");
-      const buttonEl = document.getElementById("generate-btn");
-      const downloadBtn = document.getElementById("download-btn");
-      const extraInput = document.getElementById("extra");
-      const fileInput = document.getElementById("photo");
-
-      errorEl.textContent = "";
-      resultEl.textContent = "Генерируем портрет…";
-      resultEl.style.opacity = "0.8";
-      downloadBtn.disabled = true;
-      buttonEl.disabled = true;
-
-      const extraText = (extraInput.value || "").trim();
-      const file = fileInput.files[0];
-
-      // Разрешаем: фото / текст / эффекты / поздравление (хотя бы что-то одно)
-      if (!file && !extraText && ACTIVE_EFFECTS.size === 0 && !CURRENT_GREETING) {
-        errorEl.textContent =
-          "Добавьте фото, текст, эффекты или выберите поздравление.";
-        resultEl.textContent = "Нужно что-то, от чего оттолкнётся модель.";
-        buttonEl.disabled = false;
-        return;
-      }
-
-      let photoData = null;
-      if (file) {
-        try {
-          photoData = await resizeImage(file);
-        } catch (err) {
-          errorEl.textContent = "Не удалось обработать фото: " + err.message;
-          resultEl.textContent = "";
-          buttonEl.disabled = false;
-          return;
-        }
-      }
-
-      const body = {
-        style: CURRENT_STYLE,
-        text: extraText || null,
-        photo: photoData,
-        effects: Array.from(ACTIVE_EFFECTS),
-        greeting: CURRENT_GREETING
-      };
-
-      try {
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
-
-        let data;
-        try {
-          data = await res.json();
-        } catch (e) {
-          throw new Error("Сервер вернул некорректный ответ.");
-        }
-
-        if (!res.ok) {
-          throw new Error(data.error || data.message || String(res.status));
-        }
-
-        if (!data.image) {
-          throw new Error("Нет изображения от сервера.");
-        }
-
-        const img = document.createElement("img");
-        img.src = data.image;
-        img.alt = "AI портрет";
-
-        resultEl.style.opacity = "1";
-        resultEl.innerHTML = "";
-        resultEl.appendChild(img);
-
-        downloadBtn.disabled = false;
-        downloadBtn.onclick = () => {
-          const a = document.createElement("a");
-          a.href = data.image;
-          a.download = "windowtosoul-portrait.jpg";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        };
-      } catch (err) {
-        errorEl.textContent = "Ошибка: " + err.message;
-        resultEl.textContent = "";
-      } finally {
-        buttonEl.disabled = false;
-      }
-    }
+    document.getElementById("btnPay").addEventListener("click", () => {
+      showTestAlert("Здесь будет окно соглашения и переход к оплате");
+    });
   </script>
 </body>
 </html>
