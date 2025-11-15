@@ -245,7 +245,6 @@
       height: 14px;
     }
 
-    /* Эффекты */
     .effect-label {
       margin-top: 14px;
       font-size: 12px;
@@ -261,7 +260,8 @@
       gap: 8px;
     }
 
-    .effect-btn {
+    .effect-btn,
+    .greeting-btn {
       border-radius: 999px;
       border: 1px solid #313553;
       background: rgba(11, 13, 30, 0.85);
@@ -277,12 +277,14 @@
       white-space: nowrap;
     }
 
-    .effect-btn span {
+    .effect-btn span,
+    .greeting-btn span {
       opacity: 0.7;
       font-size: 11px;
     }
 
-    .effect-btn.active {
+    .effect-btn.active,
+    .greeting-btn.active {
       border-color: #b892ff;
       background: radial-gradient(circle at top, #8b5dff, #26143f);
       color: #fff;
@@ -316,7 +318,7 @@
       </div>
       <h1>AI-портрет из фото или текста</h1>
       <p class="subtitle">
-        Фото и/или текст → выбор стиля и эффектов → готовый портрет.
+        Фото и/или текст → стиль → эффекты лица → при желании поздравление.
       </p>
     </header>
 
@@ -331,11 +333,11 @@
       </div>
     </section>
 
-    <!-- Блок 2 — стиль + текст + эффекты -->
+    <!-- Блок 2 — стиль + эффекты + поздравление -->
     <section class="block">
-      <h2>2. Стиль и эффекты</h2>
+      <h2>2. Стиль, эффекты и поздравление</h2>
       <p class="helper">
-        Выберите художественный стиль, при необходимости добавьте текст и эффекты обработки.
+        Выберите художественный стиль, эффекты обработки и, если нужно, тип поздравления.
       </p>
 
       <div class="style-btns">
@@ -496,6 +498,49 @@
         </button>
       </div>
 
+      <div class="effect-label">Поздравление (опционально)</div>
+      <div class="effect-row">
+        <button
+          type="button"
+          class="greeting-btn"
+          data-greeting="new-year"
+          onclick="selectGreeting(this)"
+        >
+          Новый год
+          <span>«С Новым годом!»</span>
+        </button>
+
+        <button
+          type="button"
+          class="greeting-btn"
+          data-greeting="birthday"
+          onclick="selectGreeting(this)"
+        >
+          День рождения
+          <span>«С днём рождения!»</span>
+        </button>
+
+        <button
+          type="button"
+          class="greeting-btn"
+          data-greeting="funny"
+          onclick="selectGreeting(this)"
+        >
+          Смешное
+          <span>игривое поздравление</span>
+        </button>
+
+        <button
+          type="button"
+          class="greeting-btn"
+          data-greeting="scary"
+          onclick="selectGreeting(this)"
+        >
+          Страшное
+          <span>жуткий стиль</span>
+        </button>
+      </div>
+
       <textarea
         id="extra"
         placeholder="Доп. текст по желанию: «тёплый свет, мягкие тени»"
@@ -533,9 +578,10 @@
   <script>
     // Текущий стиль
     let CURRENT_STYLE = "oil";
-
-    // Активные эффекты
+    // Активные эффекты лица
     const ACTIVE_EFFECTS = new Set();
+    // Текущее поздравление (new-year, birthday, funny, scary)
+    let CURRENT_GREETING = null;
 
     function selectStyle(style) {
       CURRENT_STYLE = style;
@@ -557,6 +603,28 @@
         ACTIVE_EFFECTS.add(effectKey);
         button.classList.add("active");
       }
+    }
+
+    // Выбор поздравления (только одно)
+    function selectGreeting(button) {
+      const value = button.dataset.greeting;
+      if (!value) return;
+
+      const alreadySelected = CURRENT_GREETING === value;
+
+      // Сброс всех
+      document
+        .querySelectorAll(".greeting-btn")
+        .forEach((b) => b.classList.remove("active"));
+
+      if (alreadySelected) {
+        // снятие выбора
+        CURRENT_GREETING = null;
+        return;
+      }
+
+      CURRENT_GREETING = value;
+      button.classList.add("active");
     }
 
     // Уменьшение фото до ~1024px по большей стороне
@@ -619,10 +687,10 @@
       const extraText = (extraInput.value || "").trim();
       const file = fileInput.files[0];
 
-      // Разрешаем: фото / текст / эффекты (хотя бы что-то одно)
-      if (!file && !extraText && ACTIVE_EFFECTS.size === 0) {
+      // Разрешаем: фото / текст / эффекты / поздравление (хотя бы что-то одно)
+      if (!file && !extraText && ACTIVE_EFFECTS.size === 0 && !CURRENT_GREETING) {
         errorEl.textContent =
-          "Добавьте фото, текст или включите хотя бы один эффект.";
+          "Добавьте фото, текст, эффекты или выберите поздравление.";
         resultEl.textContent = "Нужно что-то, от чего оттолкнётся модель.";
         buttonEl.disabled = false;
         return;
@@ -644,7 +712,8 @@
         style: CURRENT_STYLE,
         text: extraText || null,
         photo: photoData,
-        effects: Array.from(ACTIVE_EFFECTS)
+        effects: Array.from(ACTIVE_EFFECTS),
+        greeting: CURRENT_GREETING
       };
 
       try {
