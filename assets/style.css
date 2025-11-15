@@ -14,6 +14,25 @@ body {
   align-items: stretch;
 }
 
+/* Режим "генерация" — показываем только рамку и кнопку скачать */
+
+body.app-generating .app-header,
+body.app-generating .controls,
+body.app-generating .footer {
+  display: none;
+}
+
+body.app-generating .app {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+body.app-generating .preview-box {
+  flex: 1;
+  min-height: auto;
+  height: calc(100vh - 70px);
+}
+
 .app {
   width: 100%;
   max-width: 420px;
@@ -114,13 +133,21 @@ body {
   opacity: 1;
 }
 
+/* Controls (выбранные эффекты + кнопки) */
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 /* Selected options pills */
 
 .selection-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
   min-height: 22px;
 }
 
@@ -140,7 +167,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 4px;
 }
 
 .btn-row-split {
@@ -234,6 +260,33 @@ body {
   font-size: 16px;
 }
 
+/* Кнопка скачать */
+
+.download-row {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  font-size: 13px;
+  border-radius: 999px;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #7c3cff, #c83fff);
+  color: #fdf7ff;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
 /* Footer */
 
 .footer {
@@ -253,14 +306,14 @@ body {
   text-decoration: underline;
 }
 
-/* Bottom sheet */
+/* Центровая модалка (sheet) */
 
 .sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   display: none;
-  align-items: flex-end;
+  align-items: center;          /* центр по вертикали */
   justify-content: center;
   z-index: 20;
 }
@@ -271,18 +324,25 @@ body {
 
 .sheet {
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
+  max-height: 75vh;
   background: radial-gradient(circle at top, #3a264f 0%, #120617 55%, #050308 100%);
-  border-radius: 20px 20px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.95);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.95);
   padding: 12px 16px 18px;
-  animation: sheet-up 0.18s ease-out;
+  animation: sheet-pop 0.18s ease-out;
 }
 
-@keyframes sheet-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+@keyframes sheet-pop {
+  from {
+    transform: translateY(20px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 .sheet-header {
@@ -362,7 +422,7 @@ body {
   letter-spacing: 0.08em;
 }
 
-/* Fake generate status */
+/* Генерация (оверлей) */
 
 .generate-status {
   position: absolute;
