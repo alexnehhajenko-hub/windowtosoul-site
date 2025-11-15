@@ -2,221 +2,38 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>WindowToSoul – Тестовый экран</title>
+  <title>WindowToSoul – Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #2b123f 0%, #05030a 55%, #020008 100%);
-      color: #f8ecff;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 420px;
-      padding: 16px 16px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .app-header {
-      text-align: center;
-      margin-bottom: 4px;
-    }
-
-    .app-title {
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #fce7ff;
-    }
-
-    .app-subtitle {
-      margin-top: 4px;
-      font-size: 12px;
-      opacity: 0.7;
-    }
-
-    .preview-box {
-      position: relative;
-      border-radius: 20px;
-      background: radial-gradient(circle at top, #3b214f 0%, #140819 55%, #050309 100%);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow:
-        0 18px 45px rgba(0, 0, 0, 0.8),
-        0 0 0 1px rgba(255, 255, 255, 0.04);
-      padding: 10px;
-      overflow: hidden;
-      min-height: 220px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .preview-placeholder {
-      text-align: center;
-      opacity: 0.6;
-      font-size: 14px;
-    }
-
-    .preview-label {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      opacity: 0.7;
-    }
-
-    .button-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 4px;
-    }
-
-    .btn-row-split {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-main,
-    .btn-half {
-      position: relative;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      border-radius: 999px;
-      font-size: 15px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      padding: 14px 18px;
-      color: #fff5ff;
-      background: linear-gradient(135deg, #ff4fad, #c83fff 40%, #7c3cff 100%);
-      box-shadow:
-        0 10px 22px rgba(0, 0, 0, 0.8),
-        0 0 0 1px rgba(255, 255, 255, 0.06),
-        0 2px 0 rgba(255, 255, 255, 0.22) inset,
-        0 -3px 10px rgba(0, 0, 0, 0.6) inset;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition:
-        transform 0.08s ease-out,
-        box-shadow 0.08s ease-out,
-        filter 0.12s ease-out;
-    }
-
-    .btn-main {
-      width: 100%;
-    }
-
-    .btn-half {
-      flex: 1;
-      font-size: 13px;
-      padding-inline: 8px;
-    }
-
-    .btn-main span,
-    .btn-half span {
-      white-space: nowrap;
-    }
-
-    .btn-main::after,
-    .btn-half::after {
-      content: "";
-      position: absolute;
-      inset: 1px;
-      border-radius: inherit;
-      background: radial-gradient(circle at top left,
-        rgba(255, 255, 255, 0.18) 0,
-        transparent 55%);
-      opacity: 0.9;
-      pointer-events: none;
-    }
-
-    .btn-main:active,
-    .btn-half:active {
-      transform: translateY(1px) scale(0.985);
-      box-shadow:
-        0 4px 12px rgba(0, 0, 0, 0.9),
-        0 0 0 1px rgba(255, 255, 255, 0.04),
-        0 1px 0 rgba(255, 255, 255, 0.12) inset,
-        0 -2px 6px rgba(0, 0, 0, 0.7) inset;
-      filter: brightness(0.96);
-    }
-
-    .btn-secondary {
-      background: linear-gradient(135deg, #2c2f55, #3b2d7a);
-    }
-
-    .btn-pay {
-      background: linear-gradient(135deg, #ffe45f, #ff9b3d 40%, #ff4b4b 100%);
-      box-shadow:
-        0 10px 24px rgba(0, 0, 0, 0.85),
-        0 0 0 1px rgba(255, 255, 255, 0.1),
-        0 2px 0 rgba(255, 250, 220, 0.5) inset,
-        0 -3px 10px rgba(0, 0, 0, 0.7) inset;
-      color: #2b0d0d;
-    }
-
-    .btn-icon {
-      font-size: 16px;
-    }
-
-    .footer {
-      margin-top: auto;
-      font-size: 10px;
-      opacity: 0.55;
-      text-align: center;
-      line-height: 1.4;
-    }
-
-    .footer a {
-      color: #f5c5ff;
-      text-decoration: none;
-    }
-
-    .footer a:hover {
-      text-decoration: underline;
-    }
-
-    @media (min-height: 780px) {
-      .preview-box {
-        min-height: 260px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
     <header class="app-header">
       <div class="app-title">WINDOWTOSOUL</div>
-      <div class="app-subtitle">Тестовый интерфейс · 6 кнопок</div>
+      <div class="app-subtitle">Выберите эффекты для портрета</div>
     </header>
 
     <section class="preview-box">
       <div class="preview-label">Предпросмотр</div>
+
+      <img id="previewImage" class="preview-image" alt="Preview">
+
       <div class="preview-placeholder" id="previewPlaceholder">
-        Загрузите фото и выберите эффекты,<br>здесь появится портрет.
+        Добавьте фото и выберите эффекты.<br>
+        После подключения ИИ здесь будет ваш портрет.
+      </div>
+
+      <div class="greeting-overlay" id="greetingOverlay"></div>
+
+      <div class="generate-status" id="generateStatus">
+        <div class="spinner"></div>
+        <div class="generate-status-text">Генерация портрета…</div>
       </div>
     </section>
+
+    <div class="selection-row" id="selectionRow">
+      <!-- сюда JS добавляет чипы с выбранными параметрами -->
+    </div>
 
     <section class="button-list">
       <button class="btn-main" id="btnStyle">
@@ -257,43 +74,33 @@
     </section>
 
     <footer class="footer">
-      Тестовый экран UI · данные и партнёры будут указаны в Terms &amp; Privacy.<br>
-      В финальной версии здесь будут ссылки: <a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Refunds</a>.
+      Тестовый интерфейс. В финальной версии здесь будут ссылки:<br>
+      <a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Refunds</a>.
     </footer>
   </div>
 
-  <script>
-    function showTestAlert(message) {
-      alert(message + "\n(Сейчас это только тестовый интерфейс, без генерации и оплаты.)");
-    }
+  <!-- Скрытый input для загрузки фото -->
+  <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-    document.getElementById("btnStyle").addEventListener("click", () => {
-      showTestAlert("Открыть выбор стиля портрета");
-    });
+  <!-- Нижняя панель (sheet) для выбора эффектов -->
+  <div class="sheet-backdrop" id="sheetBackdrop">
+    <div class="sheet">
+      <div class="sheet-header">
+        <div class="sheet-title" id="sheetTitle">Выбор</div>
+        <button class="sheet-close" id="sheetCloseBtn">✕</button>
+      </div>
+      <div class="sheet-description" id="sheetDescription"></div>
 
-    document.getElementById("btnSkin").addEventListener("click", () => {
-      showTestAlert("Открыть эффекты кожи");
-    });
+      <!-- Для категорий (например, поздравления) -->
+      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">Категории</div>
+      <div class="chip-row" id="sheetCategoryRow" style="display:none;"></div>
 
-    document.getElementById("btnMimic").addEventListener("click", () => {
-      showTestAlert("Открыть настройки мимики");
-    });
+      <!-- Основные варианты -->
+      <div class="sheet-section-title" id="sheetOptionsTitle">Варианты</div>
+      <div class="chip-row" id="sheetOptionsRow"></div>
+    </div>
+  </div>
 
-    document.getElementById("btnGreetings").addEventListener("click", () => {
-      showTestAlert("Открыть список поздравлений и текстов");
-    });
-
-    document.getElementById("btnGenerate").addEventListener("click", () => {
-      showTestAlert("Здесь будет запуск генерации портрета");
-    });
-
-    document.getElementById("btnAddPhoto").addEventListener("click", () => {
-      showTestAlert("Здесь будет выбор / загрузка фото");
-    });
-
-    document.getElementById("btnPay").addEventListener("click", () => {
-      showTestAlert("Здесь будет окно соглашения и переход к оплате");
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
