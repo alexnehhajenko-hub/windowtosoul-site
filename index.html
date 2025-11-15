@@ -337,18 +337,28 @@
     <section class="block">
       <h2>2. Стиль, эффекты и поздравление</h2>
       <p class="helper">
-        Выберите художественный стиль, эффекты обработки и, если нужно, тип поздравления.
+        Выберите стиль, эффекты обработки и, если нужно, тип поздравления.
       </p>
 
       <div class="style-btns">
         <button
           type="button"
-          id="btn-oil"
+          id="btn-beauty"
           class="style-btn active"
+          onclick="selectStyle('beauty')"
+        >
+          Красивый портрет
+          <span>Светлый, гладкая кожа, без морщин</span>
+        </button>
+
+        <button
+          type="button"
+          id="btn-oil"
+          class="style-btn"
           onclick="selectStyle('oil')"
         >
           Картина маслом
-          <span>Классический художественный стиль</span>
+          <span>Художественный стиль с мазками</span>
         </button>
 
         <button
@@ -507,7 +517,7 @@
           onclick="selectGreeting(this)"
         >
           Новый год
-          <span>«С Новым годом!»</span>
+          <span>новогодняя открытка</span>
         </button>
 
         <button
@@ -517,7 +527,7 @@
           onclick="selectGreeting(this)"
         >
           День рождения
-          <span>«С днём рождения!»</span>
+          <span>день рождения</span>
         </button>
 
         <button
@@ -527,7 +537,7 @@
           onclick="selectGreeting(this)"
         >
           Смешное
-          <span>игривое поздравление</span>
+          <span>игривый стиль</span>
         </button>
 
         <button
@@ -576,8 +586,8 @@
   </div>
 
   <script>
-    // Текущий стиль
-    let CURRENT_STYLE = "oil";
+    // Текущий стиль — по умолчанию "Красивый портрет"
+    let CURRENT_STYLE = "beauty";
     // Активные эффекты лица
     const ACTIVE_EFFECTS = new Set();
     // Текущее поздравление (new-year, birthday, funny, scary)
@@ -618,7 +628,6 @@
         .forEach((b) => b.classList.remove("active"));
 
       if (alreadySelected) {
-        // снятие выбора
         CURRENT_GREETING = null;
         return;
       }
