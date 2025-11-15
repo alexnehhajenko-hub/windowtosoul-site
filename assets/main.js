@@ -109,6 +109,8 @@ const state = {
   photoFile: null
 };
 
+let hasEnteredGeneratingLayout = false;
+
 // -------------------- DOM --------------------
 
 const previewImage = document.getElementById("previewImage");
@@ -135,6 +137,7 @@ const sheetOptionsTitle = document.getElementById("sheetOptionsTitle");
 const sheetOptionsRow = document.getElementById("sheetOptionsRow");
 
 const generateStatus = document.getElementById("generateStatus");
+const downloadLink = document.getElementById("downloadLink");
 
 // -------------------- UI --------------------
 
@@ -377,7 +380,13 @@ function resizeImage(file) {
   });
 }
 
-// -------------------- ЛОАДЕР --------------------
+// -------------------- ЛОАДЕР И РЕЖИМ ГЕНЕРАЦИИ --------------------
+
+function enterGeneratingLayoutOnce() {
+  if (hasEnteredGeneratingLayout) return;
+  document.body.classList.add("app-generating");
+  hasEnteredGeneratingLayout = true;
+}
 
 function setLoading(isLoading) {
   if (isLoading) {
@@ -399,6 +408,9 @@ async function generatePortrait() {
     return;
   }
 
+  // Переход в режим "только рамка + скачать"
+  enterGeneratingLayoutOnce();
+
   const styleName = state.styleName || "Classic Portrait";
   const styleCode = STYLE_CODE_MAP[styleName] || "classic";
 
@@ -415,6 +427,7 @@ async function generatePortrait() {
   const finalText = parts.join(", ");
 
   setLoading(true);
+  downloadLink.style.display = "none";
 
   try {
     const photoData = await resizeImage(state.photoFile);
@@ -449,6 +462,10 @@ async function generatePortrait() {
     previewImage.src = data.image;
     previewImage.style.display = "block";
     previewPlaceholder.style.display = "none";
+
+    // Показываем кнопку "Скачать портрет"
+    downloadLink.href = data.image;
+    downloadLink.style.display = "inline-flex";
   } catch (err) {
     console.error(err);
     alert(err.message || "Ошибка генерации портрета.");
