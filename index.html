@@ -2,251 +2,326 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WindowToSoul — AI Portrait</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1"
+  />
+  <title>WindowToSoul — AI портрет по фото</title>
+
+  <!-- при желании можно подключить assets/style.css, но вся ключевая стилистика ниже -->
+  <!-- <link rel="stylesheet" href="assets/style.css"> -->
 
   <style>
-    body {
-      background: #0b0e1a;
-      color: white;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      padding: 20px;
+    * {
+      box-sizing: border-box;
     }
 
-    .container {
-      max-width: 540px;
-      margin: auto;
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: radial-gradient(circle at top, #1b1640 0, #050712 55%, #020309 100%);
+      color: #f5f5ff;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    header {
+      margin-bottom: 22px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 999px;
+      background: rgba(120, 120, 255, 0.12);
+      border: 1px solid rgba(160, 160, 255, 0.35);
+      color: #d6d6ff;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #7cffb1;
+      box-shadow: 0 0 0 4px rgba(124, 255, 177, 0.16);
+    }
+
+    h1 {
+      margin: 14px 0 4px;
+      font-size: 26px;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: #a0a4d8;
+      max-width: 420px;
     }
 
     .block {
-      background: #111427;
-      padding: 22px;
+      background: radial-gradient(circle at top left, #262a55 0, #111427 35%, #080a18 100%);
+      padding: 20px 18px 18px;
       border-radius: 22px;
-      margin-bottom: 25px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      margin-bottom: 18px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(153, 132, 255, 0.16);
     }
 
-    h1, h2 {
-      margin-bottom: 12px;
+    .block h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
     }
 
-    button {
+    .block p.helper {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #a0a4d8;
+    }
+
+    /* загрузка фото */
+    .file-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="file"] {
+      font-size: 13px;
+      max-width: 100%;
+    }
+
+    /* кнопки стилей */
+    .style-btns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .style-btn {
+      border-radius: 14px;
+      border: 1px solid #313553;
+      padding: 13px 10px;
+      background: linear-gradient(135deg, #191b33, #111427);
+      color: #e0e4ff;
+      font-size: 15px;
+      font-weight: 500;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+    }
+
+    .style-btn span {
+      display: block;
+      font-size: 11px;
+      color: #8e93c7;
+      margin-top: 4px;
+    }
+
+    .style-btn.active {
+      border-color: #b892ff;
+      background: linear-gradient(135deg, #7f4dff, #e674ff);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+                  0 14px 32px rgba(57, 22, 150, 0.7);
+      color: #fff;
+    }
+
+    .style-btn.active span {
+      color: #f3e6ff;
+    }
+
+    textarea {
       width: 100%;
-      background: linear-gradient(90deg,#a86bff,#e47cff);
+      margin-top: 12px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid #313553;
+      background: #101222;
+      color: #f5f5ff;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    textarea::placeholder {
+      color: #696f9c;
+    }
+
+    /* основная кнопка */
+    .primary-btn {
+      width: 100%;
+      margin-top: 14px;
       border: none;
       border-radius: 16px;
-      padding: 16px;
-      font-size: 18px;
-      font-weight: bold;
-      margin-top: 12px;
+      padding: 15px 4px;
+      font-size: 17px;
+      font-weight: 600;
       cursor: pointer;
+      background: linear-gradient(90deg, #a86bff, #e47cff);
+      color: #0a0719;
+      box-shadow: 0 18px 30px rgba(114, 51, 255, 0.66);
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+    }
+
+    .primary-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 10px 20px rgba(114, 51, 255, 0.4);
+    }
+
+    .primary-btn[disabled] {
+      opacity: 0.6;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .error {
+      margin-top: 9px;
+      font-size: 13px;
+      color: #ff8080;
+      min-height: 14px;
+    }
+
+    /* результат */
+    #result {
+      margin-top: 8px;
+      border-radius: 18px;
+      border: 1px dashed rgba(129, 134, 185, 0.6);
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      color: #868bc4;
+      background: radial-gradient(circle at top, rgba(132, 99, 255, 0.14), rgba(9, 11, 27, 0.95));
+      overflow: hidden;
     }
 
     #result img {
       width: 100%;
-      border-radius: 16px;
-      margin-top: 10px;
+      max-height: 480px;
+      object-fit: contain;
+      border-radius: 14px;
+      display: block;
     }
 
-    .style-btns {
+    .download-row {
+      margin-top: 12px;
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
+      justify-content: flex-start;
     }
 
-    .style-btns button {
-      flex: 1 1 calc(50% - 10px);
-      background: #1c2036;
-      border: 1px solid #333;
-      padding: 14px;
-      border-radius: 14px;
-      font-size: 16px;
+    .ghost-btn {
+      border-radius: 999px;
+      border: 1px solid rgba(180, 168, 255, 0.7);
+      background: rgba(12, 14, 30, 0.8);
+      color: #e2deff;
+      padding: 8px 14px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
     }
 
-    .style-btns button.active {
-      background: #6b46ff;
-      border-color: #a184ff;
+    .ghost-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .ghost-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    footer {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #6f739f;
+      text-align: center;
+    }
+
+    @media (min-width: 700px) {
+      .page {
+        padding-top: 26px;
+      }
+
+      h1 {
+        font-size: 30px;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="page">
+    <header>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        WindowToSoul • FLUX.1 Kontext Pro
+      </div>
+      <h1>Сделать портрет из фото</h1>
+      <p class="subtitle">
+        Загрузите фото, выберите стиль — и модель FLUX превращает снимок
+        в художественный портрет. Пока всё бесплатно и в тестовом режиме.
+      </p>
+    </header>
 
-<div class="container">
+    <!-- БЛОК 1 — загрузка фото -->
+    <section class="block">
+      <h2>1. Фото</h2>
+      <p class="helper">
+        Выберите портрет, где видно лицо. Мы уменьшим фото до безопасного размера —
+        это помогает избегать ошибок 413.
+      </p>
+      <div class="file-row">
+        <input type="file" id="photo" accept="image/*">
+      </div>
+    </section>
 
-  <h1>🎨 AI → Artwork</h1>
-  <p>Загрузите фото → выберите стиль → получите красивый портрет.</p>
+    <!-- БЛОК 2 — стиль + текст -->
+    <section class="block">
+      <h2>2. Выберите стиль</h2>
 
-  <!-- БЛОК 1 -->
-  <div class="block">
-    <h2>1. Фото</h2>
-    <input type="file" id="photo" accept="image/*">
-    <p style="opacity:.7;font-size:14px;margin-top:6px">
-      Фото будет уменьшено до безопасного размера (фикс для ошибок 413).
-    </p>
-  </div>
+      <div class="style-btns">
+        <button
+          type="button"
+          id="btn-oil"
+          class="style-btn active"
+          onclick="selectStyle('oil')"
+        >
+          Картина маслом
+          <span>Классика, мягкий свет, тёплые тона</span>
+        </button>
 
-  <!-- БЛОК 2 -->
-  <div class="block">
-    <h2>2. Выберите стиль</h2>
+        <button
+          type="button"
+          id="btn-anime"
+          class="style-btn"
+          onclick="selectStyle('anime')"
+        >
+          Аниме-портрет
+          <span>Большие глаза, мягкие оттенки</span>
+        </button>
 
-    <div class="style-btns">
-      <button onclick="selectStyle('oil')" id="btn-oil" class="active">Картина маслом</button>
-      <button onclick="selectStyle('anime')" id="btn-anime">Аниме-портрет</button>
-      <button onclick="selectStyle('poster')" id="btn-poster">Кино-постер</button>
-      <button onclick="selectStyle('classic')" id="btn-classic">Классический художник</button>
-    </div>
-
-    <textarea id="extra" placeholder="Текст (опционально)"
-      style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:#1c2036;color:white;border:1px solid #333;"></textarea>
-
-    <button id="generateBtn" onclick="generate()">Сделать картиной</button>
-    <p id="error" style="color:#ff6b6b;margin-top:10px"></p>
-  </div>
-
-  <!-- БЛОК 3 -->
-  <div class="block">
-    <h2>Ваш результат</h2>
-    <div id="result" style="min-height:150px;opacity:.6">Здесь появится портрет.</div>
-  </div>
-
-</div>
-
-<script>
-let CURRENT_STYLE = "oil";
-
-function selectStyle(s) {
-  CURRENT_STYLE = s;
-  document.querySelectorAll(".style-btns button").forEach(b => b.classList.remove("active"));
-  document.getElementById("btn-" + s).classList.add("active");
-}
-
-// ---------------------------------------------------------
-// 🔥 Фикс HTTP 413 — уменьшаем фото перед отправкой
-// ---------------------------------------------------------
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    const img = new Image();
-
-    reader.onload = (e) => {
-      img.onload = () => {
-        const maxSide = 1024; // Ограничиваем размер
-
-        let w = img.width;
-        let h = img.height;
-
-        if (w > h && w > maxSide) {
-          h = Math.round(h * maxSide / w);
-          w = maxSide;
-        } else if (h >= w && h > maxSide) {
-          w = Math.round(w * maxSide / h);
-          h = maxSide;
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-
-        try {
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-          resolve(dataUrl);
-        } catch (err) {
-          reject(err);
-        }
-      };
-
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-// ---------------------------------------------------------
-// 🔥 Генерация
-// ---------------------------------------------------------
-async function generate() {
-  const errorEl = document.getElementById("error");
-  const resultEl = document.getElementById("result");
-  const btn = document.getElementById("generateBtn");
-
-  errorEl.innerText = "";
-  resultEl.style.opacity = 0.8;
-  resultEl.innerHTML = "Генерация портрета…";
-  btn.disabled = true;
-
-  let imgData = null;
-
-  const file = document.getElementById("photo").files[0];
-  if (file) {
-    try {
-      imgData = await fileToDataUrl(file);
-    } catch (e) {
-      errorEl.innerText = "Ошибка обработки фото: " + e.message;
-      resultEl.innerHTML = "";
-      btn.disabled = false;
-      return;
-    }
-  }
-
-  const body = {
-    style: CURRENT_STYLE,
-    text: document.getElementById("extra").value || "",
-    photo: imgData
-  };
-
-  try {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    let data;
-    try {
-      data = await res.json();
-    } catch {
-      data = {};
-    }
-
-    console.log("API /api/generate response:", data);
-
-    if (res.status === 413) {
-      errorEl.innerText = "Фото слишком большое. Попробуйте другое (меньшего размера).";
-      resultEl.innerHTML = "";
-      btn.disabled = false;
-      return;
-    }
-
-    if (!res.ok) {
-      errorEl.innerText = "Ошибка: " + (data.error || data.message || ("HTTP " + res.status));
-      resultEl.innerHTML = "";
-      btn.disabled = false;
-      return;
-    }
-
-    const imageUrl = data.imageUrl || data.image || null;
-
-    if (imageUrl) {
-      resultEl.style.opacity = 1;
-      resultEl.innerHTML = `<img src="${imageUrl}" alt="AI portrait" />`;
-    } else {
-      resultEl.innerHTML = "Ошибка: сервер не вернул изображение.";
-    }
-
-  } catch (err) {
-    errorEl.innerText = "Ошибка сети: " + err.message;
-    resultEl.innerHTML = "";
-  } finally {
-    btn.disabled = false;
-  }
-}
-</script>
-
-</body>
-</html>
+        <button
+          type="button"
+          id="btn-poster"
+          class="style-btn"
+          onclick="selectStyle('poster')"
+        >
+          Кино-постер
+          <span>Контрастный свет
