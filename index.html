@@ -8,9 +8,6 @@
   />
   <title>WindowToSoul — AI портрет по фото</title>
 
-  <!-- при желании можно подключить assets/style.css, но вся ключевая стилистика ниже -->
-  <!-- <link rel="stylesheet" href="assets/style.css"> -->
-
   <style>
     * {
       box-sizing: border-box;
@@ -88,7 +85,6 @@
       color: #a0a4d8;
     }
 
-    /* загрузка фото */
     .file-row {
       display: flex;
       flex-wrap: wrap;
@@ -96,12 +92,11 @@
       gap: 10px;
     }
 
-    input[type="file"] {
+    input[type='file'] {
       font-size: 13px;
       max-width: 100%;
     }
 
-    /* кнопки стилей */
     .style-btns {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -133,7 +128,7 @@
       border-color: #b892ff;
       background: linear-gradient(135deg, #7f4dff, #e674ff);
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
-                  0 14px 32px rgba(57, 22, 150, 0.7);
+        0 14px 32px rgba(57, 22, 150, 0.7);
       color: #fff;
     }
 
@@ -158,7 +153,6 @@
       color: #696f9c;
     }
 
-    /* основная кнопка */
     .primary-btn {
       width: 100%;
       margin-top: 14px;
@@ -192,7 +186,6 @@
       min-height: 14px;
     }
 
-    /* результат */
     #result {
       margin-top: 8px;
       border-radius: 18px;
@@ -205,7 +198,11 @@
       text-align: center;
       font-size: 14px;
       color: #868bc4;
-      background: radial-gradient(circle at top, rgba(132, 99, 255, 0.14), rgba(9, 11, 27, 0.95));
+      background: radial-gradient(
+        circle at top,
+        rgba(132, 99, 255, 0.14),
+        rgba(9, 11, 27, 0.95)
+      );
       overflow: hidden;
     }
 
@@ -271,7 +268,7 @@
     <header>
       <div class="badge">
         <span class="badge-dot"></span>
-        WindowToSoul • FLUX.1 Kontext Pro
+        WindowToSoul • FLUX Kontext Pro (Replicate)
       </div>
       <h1>Сделать портрет из фото</h1>
       <p class="subtitle">
@@ -280,7 +277,7 @@
       </p>
     </header>
 
-    <!-- БЛОК 1 — загрузка фото -->
+    <!-- Блок 1 — загрузка фото -->
     <section class="block">
       <h2>1. Фото</h2>
       <p class="helper">
@@ -288,11 +285,11 @@
         это помогает избегать ошибок 413.
       </p>
       <div class="file-row">
-        <input type="file" id="photo" accept="image/*">
+        <input type="file" id="photo" accept="image/*" />
       </div>
     </section>
 
-    <!-- БЛОК 2 — стиль + текст -->
+    <!-- Блок 2 — стиль + текст -->
     <section class="block">
       <h2>2. Выберите стиль</h2>
 
@@ -324,4 +321,190 @@
           onclick="selectStyle('poster')"
         >
           Кино-постер
-          <span>Контрастный свет
+          <span>Контрастный свет, как в фильме</span>
+        </button>
+
+        <button
+          type="button"
+          id="btn-classic"
+          class="style-btn"
+          onclick="selectStyle('classic')"
+        >
+          Классический художник
+          <span>Старые мастера, музейный стиль</span>
+        </button>
+      </div>
+
+      <textarea
+        id="extra"
+        placeholder="Текст (опционально): например, «чуть моложе, тёплый свет, мягкие тени»"
+      ></textarea>
+
+      <button id="generate-btn" class="primary-btn" onclick="generate()">
+        Сделать картиной
+      </button>
+      <div id="error" class="error"></div>
+    </section>
+
+    <!-- Блок 3 — результат -->
+    <section class="block">
+      <h2>Ваш результат</h2>
+      <div id="result">Здесь появится портрет после генерации.</div>
+
+      <div class="download-row">
+        <button id="download-btn" class="ghost-btn" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 16.5 6.75 11.25h3V4.5h4.5v6.75h3L12 16.5ZM5.25 19.5v-1.5h13.5v1.5H5.25Z"
+            />
+          </svg>
+          Скачать портрет
+        </button>
+      </div>
+    </section>
+
+    <footer>
+      WindowToSoul · тестовый стенд для 4 стилей (Replicate + FLUX Kontext)
+    </footer>
+  </div>
+
+  <script>
+    let CURRENT_STYLE = "oil";
+
+    function selectStyle(style) {
+      CURRENT_STYLE = style;
+      document
+        .querySelectorAll('.style-btn')
+        .forEach((b) => b.classList.remove('active'));
+      const btn = document.getElementById('btn-' + style);
+      if (btn) btn.classList.add('active');
+    }
+
+    // уменьшение фото до 1024px по большей стороне
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const img = new Image();
+
+        reader.onload = (e) => {
+          img.onload = () => {
+            const maxSide = 1024;
+            let w = img.width;
+            let h = img.height;
+
+            if (w > h && w > maxSide) {
+              h = Math.round((h * maxSide) / w);
+              w = maxSide;
+            } else if (h >= w && h > maxSide) {
+              w = Math.round((w * maxSide) / h);
+              h = maxSide;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+
+            try {
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+              resolve(dataUrl);
+            } catch (err) {
+              reject(err);
+            }
+          };
+
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function generate() {
+      const errorEl = document.getElementById('error');
+      const resultEl = document.getElementById('result');
+      const buttonEl = document.getElementById('generate-btn');
+      const downloadBtn = document.getElementById('download-btn');
+
+      errorEl.textContent = '';
+      resultEl.textContent = 'Генерируем портрет…';
+      resultEl.style.opacity = '0.8';
+      downloadBtn.disabled = true;
+
+      buttonEl.disabled = true;
+
+      let imgData = null;
+      const file = document.getElementById('photo').files[0];
+
+      if (file) {
+        try {
+          imgData = await fileToDataUrl(file);
+        } catch (err) {
+          errorEl.textContent = 'Не удалось обработать фото: ' + err.message;
+          resultEl.textContent = '';
+          buttonEl.disabled = false;
+          return;
+        }
+      }
+
+      const body = {
+        style: CURRENT_STYLE,
+        text: document.getElementById('extra').value || '',
+        photo: imgData,
+      };
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent =
+            'Ошибка: ' + (data.error || data.message || res.status);
+          resultEl.textContent = '';
+          buttonEl.disabled = false;
+          return;
+        }
+
+        if (!data.image) {
+          errorEl.textContent = 'Ошибка: нет изображения от сервера';
+          resultEl.textContent = '';
+          buttonEl.disabled = false;
+          return;
+        }
+
+        const img = document.createElement('img');
+        img.src = data.image;
+        img.alt = 'AI портрет';
+
+        resultEl.style.opacity = '1';
+        resultEl.innerHTML = '';
+        resultEl.appendChild(img);
+
+        downloadBtn.disabled = false;
+        downloadBtn.onclick = () => {
+          const a = document.createElement('a');
+          a.href = data.image;
+          a.download = 'windowtosoul-portrait.jpg';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        };
+      } catch (err) {
+        errorEl.textContent = 'Ошибка: ' + err.message;
+        resultEl.textContent = '';
+      } finally {
+        buttonEl.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
