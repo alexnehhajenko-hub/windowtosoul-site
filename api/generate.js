@@ -1,5 +1,5 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Фото / текст / эффекты кожи / мимика
+// Фото / текст / эффекты кожи / мимика / поздравления
 
 import Replicate from "replicate";
 
@@ -21,12 +21,25 @@ const EFFECT_PROMPTS = {
   // мимика
   "smile-soft": "subtle soft smile, calm and relaxed expression",
   "smile-big": "big warm smile, expressive and friendly face",
-  "smile-hollywood": "wide hollywood smile, visible white teeth, confident look",
+  "smile-hollywood":
+    "wide hollywood smile, visible white teeth, confident look",
   laugh: "laughing with a bright smile, joyful and natural expression",
-  neutral: "neutral face expression, relaxed, no visible strong emotion",
+  neutral: "neutral face expression, relaxed, no strong visible emotion",
   serious: "serious face, no smile, focused expression",
   "eyes-bigger": "slightly bigger eyes, more open and attentive look",
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
+};
+
+// Поздравления
+const GREETING_PROMPTS = {
+  "new-year":
+    "festive New Year greeting card style, warm lights, fireworks, decorative typography in Russian that says 'С Новым годом!'",
+  birthday:
+    "birthday greeting portrait, balloons, confetti, festive composition, decorative typography in Russian that says 'С днём рождения!'",
+  funny:
+    "playful and humorous greeting card style, bright colors, fun composition, decorative lettering in Russian with a funny greeting",
+  scary:
+    "dark horror greeting card style, spooky lighting, eerie atmosphere, creepy decorative lettering in Russian with a scary greeting"
 };
 
 export default async function handler(req, res) {
@@ -45,7 +58,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects } = body || {};
+    const { style, text, photo, effects, greeting } = body || {};
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
@@ -53,7 +66,7 @@ export default async function handler(req, res) {
     // 2. Пользовательский текст
     const userPrompt = (text || "").trim();
 
-    // 3. Эффекты → в prompt
+    // 3. Эффекты
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
@@ -62,14 +75,21 @@ export default async function handler(req, res) {
         .join(", ");
     }
 
-    // 4. Итоговый prompt
+    // 4. Поздравление
+    let greetingPrompt = "";
+    if (greeting && GREETING_PROMPTS[greeting]) {
+      greetingPrompt = GREETING_PROMPTS[greeting];
+    }
+
+    // 5. Итоговый prompt
     const promptParts = [stylePrefix];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
+    if (greetingPrompt) promptParts.push(greetingPrompt);
 
     const prompt = promptParts.join(". ").trim();
 
-    // 5. Вход в модель Replicate
+    // 6. Вход для Replicate
     const input = {
       prompt,
       output_format: "jpg"
