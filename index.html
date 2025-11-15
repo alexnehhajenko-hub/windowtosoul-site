@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta
     name="viewport"
-content="width=device-width, initial-scale=1, maximum-scale=1"
+    content="width=device-width, initial-scale=1, maximum-scale=1"
   />
   <title>WindowToSoul — AI портрет</title>
 
@@ -245,20 +245,20 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
       height: 14px;
     }
 
-    /* Эффекты кожи */
-    .effect-row {
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
+    /* Эффекты */
     .effect-label {
       margin-top: 14px;
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: #8e93c7;
+    }
+
+    .effect-row {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .effect-btn {
@@ -274,6 +274,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     .effect-btn span {
@@ -315,7 +316,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
       </div>
       <h1>AI-портрет из фото или текста</h1>
       <p class="subtitle">
-        Загрузите фото и/или опишите результат текстом. Выберите стиль и эффекты — получаете готовый портрет.
+        Фото и/или текст → выбор стиля и эффектов → готовый портрет.
       </p>
     </header>
 
@@ -323,7 +324,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
     <section class="block">
       <h2>1. Фото</h2>
       <p class="helper">
-        Портрет, где видно лицо. Фото не обязательно — можно сгенерировать по одному тексту.
+        Портрет, где видно лицо. Можно работать только по тексту.
       </p>
       <div class="file-row">
         <input type="file" id="photo" accept="image/*" />
@@ -334,7 +335,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
     <section class="block">
       <h2>2. Стиль и эффекты</h2>
       <p class="helper">
-        Выберите стиль, при необходимости добавьте текст и включите эффекты обработки лица.
+        Выберите художественный стиль, при необходимости добавьте текст и эффекты обработки.
       </p>
 
       <div class="style-btns">
@@ -379,7 +380,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
         </button>
       </div>
 
-      <div class="effect-label">Эффекты обработки лица</div>
+      <div class="effect-label">Эффекты кожи</div>
       <div class="effect-row">
         <button
           type="button"
@@ -412,9 +413,92 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
         </button>
       </div>
 
+      <div class="effect-label">Эмоции и мимика</div>
+      <div class="effect-row">
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="smile-soft"
+          onclick="toggleEffect(this)"
+        >
+          Лёгкая улыбка
+          <span>спокойное настроение</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="smile-big"
+          onclick="toggleEffect(this)"
+        >
+          Улыбка шире
+          <span>больше эмоций</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="smile-hollywood"
+          onclick="toggleEffect(this)"
+        >
+          Голливудская улыбка
+          <span>видны зубы</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="laugh"
+          onclick="toggleEffect(this)"
+        >
+          Смех
+          <span>яркий смех</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="neutral"
+          onclick="toggleEffect(this)"
+        >
+          Нейтральное лицо
+          <span>спокойное</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="serious"
+          onclick="toggleEffect(this)"
+        >
+          Серьёзное лицо
+          <span>без улыбки</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="eyes-bigger"
+          onclick="toggleEffect(this)"
+        >
+          Глаза больше
+          <span>чуть крупнее</span>
+        </button>
+
+        <button
+          type="button"
+          class="effect-btn"
+          data-effect="eyes-brighter"
+          onclick="toggleEffect(this)"
+        >
+          Глаза ярче
+          <span>выразительный взгляд</span>
+        </button>
+      </div>
+
       <textarea
         id="extra"
-        placeholder="Текст по желанию: «тёплый свет, мягкие тени, лёгкая улыбка»"
+        placeholder="Доп. текст по желанию: «тёплый свет, мягкие тени»"
       ></textarea>
 
       <button id="generate-btn" class="primary-btn" onclick="generate()">
@@ -450,7 +534,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
     // Текущий стиль
     let CURRENT_STYLE = "oil";
 
-    // Активные эффекты кожи
+    // Активные эффекты
     const ACTIVE_EFFECTS = new Set();
 
     function selectStyle(style) {
@@ -535,10 +619,7 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
       const extraText = (extraInput.value || "").trim();
       const file = fileInput.files[0];
 
-      // Разрешаем:
-      // - фото + (опциональный) текст/эффекты
-      // - только текст
-      // - только эффекты
+      // Разрешаем: фото / текст / эффекты (хотя бы что-то одно)
       if (!file && !extraText && ACTIVE_EFFECTS.size === 0) {
         errorEl.textContent =
           "Добавьте фото, текст или включите хотя бы один эффект.";
@@ -562,8 +643,8 @@ content="width=device-width, initial-scale=1, maximum-scale=1"
       const body = {
         style: CURRENT_STYLE,
         text: extraText || null,
-        photo: photoData, // может быть null → режим "только текст"
-        effects: Array.from(ACTIVE_EFFECTS) // ["no-wrinkles", "younger", "smooth-skin"]
+        photo: photoData,
+        effects: Array.from(ACTIVE_EFFECTS)
       };
 
       try {
