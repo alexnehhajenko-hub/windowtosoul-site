@@ -1,88 +1,109 @@
 // /api/create-checkout-session.js
-// Создание Stripe Checkout-сессии для пакетов 10/20/30 генераций
+// WindowToSoul — серверный обработчик Stripe Checkout
+// Использует переменные окружения:
+//   STRIPE_SECRET_KEY
+//   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16"
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+if (!stripeSecretKey) {
+  console.error("❌ STRIPE_SECRET_KEY is not set in environment variables.");
+}
+
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: "2024-06-20",
+    })
+  : null;
+
+// Карта пакетов: выбор на сайте → цена
+const PACKS = {
+  pack10: {
+    amount: 499, // €4.99 → 499 центов
+    currency: "eur",
+    description: "Пакет WindowToSoul: 10 генераций портретов",
+  },
+  pack20: {
+    amount: 899, // €8.99
+    currency: "eur",
+    description: "Пакет WindowToSoul: 20 генераций портретов",
+  },
+  pack30: {
+    amount: 1199, // €11.99
+    currency: "eur",
+    description: "Пакет WindowToSoul: 30 генераций портретов",
+  },
+};
 
 export default async function handler(req, res) {
+  // CORS preflight (на всякий случай)
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(200).end();
+  }
+
+  // Разрешаем только POST
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).json({ error: "Method Not Allowed" });
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (!stripe) {
+    return res.status(500).json({ error: "Stripe is not configured" });
   }
 
   try {
-    let body = req.body;
-    if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        body = {};
-      }
+    const { pack } = req.body || {};
+
+    if (!pack || !PACKS[pack]) {
+      return res.status(400).json({ error: "Unknown or missing pack" });
     }
 
-    const { packageId } = body || {};
+    const packInfo = PACKS[pack];
 
-    // Наши пакеты: 10 / 20 / 30 генераций
-    const PACKAGES = {
-      "10": {
-        name: "10 Generations",
-        description: "Package for 10 AI portrait generations",
-        amount: 499 // €4.99 → 499 центов
-      },
-      "20": {
-        name: "20 Generations",
-        description: "Package for 20 AI portrait generations",
-        amount: 899 // €8.99
-      },
-      "30": {
-        name: "30 Generations",
-        description: "Package for 30 AI portrait generations",
-        amount: 1199 // €11.99
-      }
-    };
-
-    const selected =
-      PACKAGES[packageId] || PACKAGES["10"]; // по умолчанию пакет 10
-
+    // Базовый URL сайта
     const origin =
-      req.headers.origin ||
-      `https://${req.headers.host || "windowtosoul-site.vercel.app"}`;
+      (req.headers["origin"] && String(req.headers["origin"])) ||
+      "https://windowtosoul-site.vercel.app";
 
+    // Куда вернуть пользователя после оплаты / отмены
+    const successUrl = `${origin}/?status=success&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${origin}/?status=cancel`;
+
+    // Создаём сессию Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       line_items: [
         {
-          quantity: 1,
           price_data: {
-            currency: "eur",
-            unit_amount: selected.amount,
+            currency: packInfo.currency,
             product_data: {
-              name: selected.name,
-              description: selected.description
-            }
-          }
-        }
+              name: packInfo.description,
+            },
+            unit_amount: packInfo.amount,
+          },
+          quantity: 1,
+        },
       ],
-      success_url: `${origin}/?checkout=success&package=${encodeURIComponent(
-        packageId || "10"
-      )}`,
-      cancel_url: `${origin}/?checkout=cancel`
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
+    // Отдаём только ID сессии и public-key (для фронта)
     return res.status(200).json({
       ok: true,
-      id: session.id,
-      url: session.url
+      sessionId: session.id,
+      publishableKey: stripePublishableKey || null,
     });
-  } catch (err) {
-    console.error("STRIPE CHECKOUT ERROR:", err);
-    return res.status(500).json({
-      error: "Stripe checkout failed",
-      details: err?.message || String(err)
-    });
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to create checkout session" });
   }
 }
