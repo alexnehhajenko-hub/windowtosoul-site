@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <title>WindowToSoul – Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Стили из папки assets -->
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
@@ -32,11 +31,8 @@
       </div>
     </section>
 
-    <!-- Кнопки и выбранные эффекты (будут скрываться при генерации) -->
     <div class="controls" id="controls">
-      <div class="selection-row" id="selectionRow">
-        <!-- сюда JS добавляет чипы с выбранными параметрами -->
-      </div>
+      <div class="selection-row" id="selectionRow"></div>
 
       <section class="button-list">
         <button class="btn-main" id="btnStyle">
@@ -77,7 +73,6 @@
       </section>
     </div>
 
-    <!-- Кнопка скачивания (маленькая, появляется после генерации) -->
     <div class="download-row">
       <a
         id="downloadLink"
@@ -96,10 +91,9 @@
     </footer>
   </div>
 
-  <!-- Скрытый input для загрузки фото -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Центровая панель (sheet) для выбора эффектов -->
+  <!-- Модалка выбора эффекта / мимики / поздравления -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
@@ -108,17 +102,69 @@
       </div>
       <div class="sheet-description" id="sheetDescription"></div>
 
-      <!-- Для категорий (например, поздравления) -->
       <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">Категории</div>
       <div class="chip-row" id="sheetCategoryRow" style="display:none;"></div>
 
-      <!-- Основные варианты -->
       <div class="sheet-section-title" id="sheetOptionsTitle">Варианты</div>
       <div class="chip-row" id="sheetOptionsRow"></div>
     </div>
   </div>
 
-  <!-- Скрипт из assets -->
+  <!-- Модалка оплаты -->
+  <div class="pay-backdrop" id="payBackdrop">
+    <div class="pay-modal">
+      <div class="pay-header">
+        <div class="pay-title">Оплата пакета</div>
+        <button class="pay-close" id="payCloseBtn">✕</button>
+      </div>
+
+      <div class="pay-section-title">Выберите пакет</div>
+      <div class="pay-packages">
+        <button class="pay-package" data-package="p10" id="pkg10">
+          <div class="pay-package-title">10 генераций</div>
+          <div class="pay-package-price">€4.99</div>
+        </button>
+        <button class="pay-package" data-package="p20" id="pkg20">
+          <div class="pay-package-title">20 генераций</div>
+          <div class="pay-package-price">€8.99</div>
+        </button>
+        <button class="pay-package" data-package="p30" id="pkg30">
+          <div class="pay-package-title">30 генераций</div>
+          <div class="pay-package-price">€11.99</div>
+        </button>
+      </div>
+
+      <div class="pay-section-title">Ваш email</div>
+      <input
+        type="email"
+        id="payEmail"
+        class="pay-input"
+        placeholder="you@example.com"
+        autocomplete="email"
+      />
+
+      <label class="pay-checkbox-row">
+        <input type="checkbox" id="payAgree">
+        <span>
+          Мне 16+ и я согласен с
+          <a href="#">Terms</a>,
+          <a href="#">Privacy</a>,
+          <a href="#">Refunds</a>.
+        </span>
+      </label>
+
+      <div class="pay-error" id="payError"></div>
+
+      <button class="pay-submit" id="paySubmitBtn">
+        Перейти к оплате
+      </button>
+
+      <div class="pay-hint">
+        Оплата обрабатывается через Stripe. Мы не видим и не храним данные вашей карты.
+      </div>
+    </div>
+  </div>
+
   <script src="./assets/main.js"></script>
 </body>
 </html>
