@@ -97,13 +97,6 @@ const GREETING_CATEGORY_LABELS = {
   creepy: "Creepy / Scary"
 };
 
-// Пакеты для UI (чисто для фронта)
-const PACKAGE_LABELS = {
-  p10: { title: "10 генераций", price: "€4.99" },
-  p20: { title: "20 генераций", price: "€8.99" },
-  p30: { title: "30 генераций", price: "€11.99" }
-};
-
 // -------------------- СОСТОЯНИЕ --------------------
 
 const state = {
@@ -147,14 +140,20 @@ const sheetOptionsRow = document.getElementById("sheetOptionsRow");
 const generateStatus = document.getElementById("generateStatus");
 const downloadLink = document.getElementById("downloadLink");
 
-// Элементы оплаты
+// Оплата — модалка пакетов
 const payBackdrop = document.getElementById("payBackdrop");
 const payCloseBtn = document.getElementById("payCloseBtn");
-const payEmailInput = document.getElementById("payEmail");
-const payAgreeCheckbox = document.getElementById("payAgree");
 const payError = document.getElementById("payError");
-const paySubmitBtn = document.getElementById("paySubmitBtn");
+const payNextBtn = document.getElementById("payNextBtn");
 const packageButtons = document.querySelectorAll(".pay-package");
+
+// Оплата — модалка соглашения
+const agreementBackdrop = document.getElementById("agreementBackdrop");
+const agreementCloseBtn = document.getElementById("agreementCloseBtn");
+const agreeEmailInput = document.getElementById("agreeEmail");
+const agreeCheckbox = document.getElementById("agreeCheckbox");
+const agreeError = document.getElementById("agreeError");
+const agreePayBtn = document.getElementById("agreePayBtn");
 
 // -------------------- UI --------------------
 
@@ -216,7 +215,7 @@ function clearSheet() {
   sheetOptionsTitle.textContent = "Варианты";
 }
 
-// -------------------- ПАНЕЛИ --------------------
+// -------------------- ПАНЕЛИ ЭФФЕКТОВ --------------------
 
 function openStyleSheet() {
   clearSheet();
@@ -487,11 +486,10 @@ async function generatePortrait() {
   }
 }
 
-// -------------------- ОПЛАТА --------------------
+// -------------------- ОПЛАТА: ПАКЕТЫ --------------------
 
 function openPayModal() {
   payError.textContent = "";
-  if (!selectedPackageId) selectedPackageId = "p10";
   updatePackageSelectionUI();
   payBackdrop.classList.add("visible");
 }
@@ -518,29 +516,50 @@ packageButtons.forEach((btn) => {
   });
 });
 
-async function startCheckout() {
+function goToAgreementModal() {
+  if (!selectedPackageId) {
+    payError.textContent = "Выберите пакет.";
+    return;
+  }
   payError.textContent = "";
+  closePayModal();
+  openAgreementModal();
+}
 
-  const email = (payEmailInput.value || "").trim();
-  const agreed = payAgreeCheckbox.checked;
+// -------------------- ОПЛАТА: СОГЛАШЕНИЕ --------------------
+
+function openAgreementModal() {
+  agreeError.textContent = "";
+  agreementBackdrop.classList.add("visible");
+}
+
+function closeAgreementModal() {
+  agreementBackdrop.classList.remove("visible");
+}
+
+async function startCheckout() {
+  agreeError.textContent = "";
+
+  const email = (agreeEmailInput.value || "").trim();
+  const agreed = agreeCheckbox.checked;
 
   if (!email) {
-    payError.textContent = "Введите email.";
+    agreeError.textContent = "Введите email.";
     return;
   }
 
   if (!agreed) {
-    payError.textContent = "Подтвердите, что вам 16+ и вы согласны с условиями.";
+    agreeError.textContent = "Подтвердите возраст и согласие с условиями.";
     return;
   }
 
   if (!selectedPackageId) {
-    payError.textContent = "Выберите пакет генераций.";
+    agreeError.textContent = "Выберите пакет генераций.";
     return;
   }
 
-  paySubmitBtn.disabled = true;
-  paySubmitBtn.textContent = "Создание оплаты...";
+  agreePayBtn.disabled = true;
+  agreePayBtn.textContent = "Создание оплаты...";
 
   try {
     const res = await fetch("/api/create-checkout-session", {
@@ -570,16 +589,16 @@ async function startCheckout() {
     window.location.href = data.url;
   } catch (err) {
     console.error(err);
-    payError.textContent = err.message || "Ошибка при создании оплаты.";
+    agreeError.textContent = err.message || "Ошибка при создании оплаты.";
   } finally {
-    paySubmitBtn.disabled = false;
-    paySubmitBtn.textContent = "Перейти к оплате";
+    agreePayBtn.disabled = false;
+    agreePayBtn.textContent = "Перейти к оплате";
   }
 }
 
 // -------------------- ПОДПИСКА НА СОБЫТИЯ --------------------
 
-// эффекты
+// Эффекты
 btnStyle.addEventListener("click", openStyleSheet);
 btnSkin.addEventListener("click", openSkinSheet);
 btnMimic.addEventListener("click", openMimicSheet);
@@ -591,15 +610,22 @@ sheetBackdrop.addEventListener("click", (event) => {
   if (event.target === sheetBackdrop) hideSheet();
 });
 
-// оплата
+// Пакеты
 btnPay.addEventListener("click", openPayModal);
 payCloseBtn.addEventListener("click", closePayModal);
 payBackdrop.addEventListener("click", (event) => {
   if (event.target === payBackdrop) closePayModal();
 });
-paySubmitBtn.addEventListener("click", startCheckout);
+payNextBtn.addEventListener("click", goToAgreementModal);
 
-// старт
+// Соглашение
+agreementCloseBtn.addEventListener("click", closeAgreementModal);
+agreementBackdrop.addEventListener("click", (event) => {
+  if (event.target === agreementBackdrop) closeAgreementModal();
+});
+agreePayBtn.addEventListener("click", startCheckout);
+
+// Старт
 updateSelectionPills();
 updateGreetingOverlay();
 updatePackageSelectionUI();
