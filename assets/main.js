@@ -97,6 +97,13 @@ const GREETING_CATEGORY_LABELS = {
   creepy: "Creepy / Scary"
 };
 
+// Пакеты для UI (чисто для фронта)
+const PACKAGE_LABELS = {
+  p10: { title: "10 генераций", price: "€4.99" },
+  p20: { title: "20 генераций", price: "€8.99" },
+  p30: { title: "30 генераций", price: "€11.99" }
+};
+
 // -------------------- СОСТОЯНИЕ --------------------
 
 const state = {
@@ -110,6 +117,7 @@ const state = {
 };
 
 let hasEnteredGeneratingLayout = false;
+let selectedPackageId = "p10"; // пакет по умолчанию
 
 // -------------------- DOM --------------------
 
@@ -138,6 +146,15 @@ const sheetOptionsRow = document.getElementById("sheetOptionsRow");
 
 const generateStatus = document.getElementById("generateStatus");
 const downloadLink = document.getElementById("downloadLink");
+
+// Элементы оплаты
+const payBackdrop = document.getElementById("payBackdrop");
+const payCloseBtn = document.getElementById("payCloseBtn");
+const payEmailInput = document.getElementById("payEmail");
+const payAgreeCheckbox = document.getElementById("payAgree");
+const payError = document.getElementById("payError");
+const paySubmitBtn = document.getElementById("paySubmitBtn");
+const packageButtons = document.querySelectorAll(".pay-package");
 
 // -------------------- UI --------------------
 
@@ -380,7 +397,7 @@ function resizeImage(file) {
   });
 }
 
-// -------------------- ЛОАДЕР И РЕЖИМ ГЕНЕРАЦИИ --------------------
+// -------------------- ГЕНЕРАЦИЯ --------------------
 
 function enterGeneratingLayoutOnce() {
   if (hasEnteredGeneratingLayout) return;
@@ -400,15 +417,12 @@ function setLoading(isLoading) {
   }
 }
 
-// -------------------- ГЕНЕРАЦИЯ --------------------
-
 async function generatePortrait() {
   if (!state.hasPhoto || !state.photoFile) {
     alert("Сначала добавьте фото, затем выберите эффекты и запустите генерацию.");
     return;
   }
 
-  // Переход в режим "только рамка + скачать"
   enterGeneratingLayoutOnce();
 
   const styleName = state.styleName || "Classic Portrait";
@@ -463,7 +477,6 @@ async function generatePortrait() {
     previewImage.style.display = "block";
     previewPlaceholder.style.display = "none";
 
-    // Показываем кнопку "Скачать портрет"
     downloadLink.href = data.image;
     downloadLink.style.display = "inline-flex";
   } catch (err) {
@@ -474,17 +487,99 @@ async function generatePortrait() {
   }
 }
 
-// -------------------- ОПЛАТА (ПОКА ЗАГЛУШКА) --------------------
+// -------------------- ОПЛАТА --------------------
 
-btnPay.addEventListener("click", () => {
-  alert(
-    "Здесь будет окно с согласием (16+, условия, возвраты) и переход к оплате.\n" +
-      "Платёж подключим позже."
-  );
+function openPayModal() {
+  payError.textContent = "";
+  if (!selectedPackageId) selectedPackageId = "p10";
+  updatePackageSelectionUI();
+  payBackdrop.classList.add("visible");
+}
+
+function closePayModal() {
+  payBackdrop.classList.remove("visible");
+}
+
+function updatePackageSelectionUI() {
+  packageButtons.forEach((btn) => {
+    const pkg = btn.dataset.package;
+    if (pkg === selectedPackageId) {
+      btn.classList.add("selected");
+    } else {
+      btn.classList.remove("selected");
+    }
+  });
+}
+
+packageButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    selectedPackageId = btn.dataset.package;
+    updatePackageSelectionUI();
+  });
 });
+
+async function startCheckout() {
+  payError.textContent = "";
+
+  const email = (payEmailInput.value || "").trim();
+  const agreed = payAgreeCheckbox.checked;
+
+  if (!email) {
+    payError.textContent = "Введите email.";
+    return;
+  }
+
+  if (!agreed) {
+    payError.textContent = "Подтвердите, что вам 16+ и вы согласны с условиями.";
+    return;
+  }
+
+  if (!selectedPackageId) {
+    payError.textContent = "Выберите пакет генераций.";
+    return;
+  }
+
+  paySubmitBtn.disabled = true;
+  paySubmitBtn.textContent = "Создание оплаты...";
+
+  try {
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        packageId: selectedPackageId
+      })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error("Некорректный ответ сервера оплаты.");
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || "Не удалось создать сессию оплаты.");
+    }
+
+    if (!data.url) {
+      throw new Error("Сервер не вернул ссылку для оплаты.");
+    }
+
+    window.location.href = data.url;
+  } catch (err) {
+    console.error(err);
+    payError.textContent = err.message || "Ошибка при создании оплаты.";
+  } finally {
+    paySubmitBtn.disabled = false;
+    paySubmitBtn.textContent = "Перейти к оплате";
+  }
+}
 
 // -------------------- ПОДПИСКА НА СОБЫТИЯ --------------------
 
+// эффекты
 btnStyle.addEventListener("click", openStyleSheet);
 btnSkin.addEventListener("click", openSkinSheet);
 btnMimic.addEventListener("click", openMimicSheet);
@@ -496,5 +591,15 @@ sheetBackdrop.addEventListener("click", (event) => {
   if (event.target === sheetBackdrop) hideSheet();
 });
 
+// оплата
+btnPay.addEventListener("click", openPayModal);
+payCloseBtn.addEventListener("click", closePayModal);
+payBackdrop.addEventListener("click", (event) => {
+  if (event.target === payBackdrop) closePayModal();
+});
+paySubmitBtn.addEventListener("click", startCheckout);
+
+// старт
 updateSelectionPills();
 updateGreetingOverlay();
+updatePackageSelectionUI();
