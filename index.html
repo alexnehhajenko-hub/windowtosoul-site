@@ -2,17 +2,20 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>WindowToSoul – Portrait Lab</title>
+  <title>WindowToSoul – AI Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Стили приложения -->
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
   <div class="app">
+    <!-- Шапка -->
     <header class="app-header">
       <div class="app-title">WINDOWTOSOUL</div>
       <div class="app-subtitle">Создайте свой уникальный AI-портрет</div>
     </header>
 
+    <!-- Превью портрета -->
     <section class="preview-box">
       <div class="preview-label">Предпросмотр</div>
 
@@ -23,18 +26,22 @@
         После генерации сюда попадёт ваш портрет.
       </div>
 
+      <!-- Поверх изображения можно выводить текст поздравления -->
       <div class="greeting-overlay" id="greetingOverlay"></div>
 
+      <!-- Оверлей статуса генерации -->
       <div class="generate-status" id="generateStatus">
         <div class="spinner"></div>
         <div class="generate-status-text">Генерация портрета…</div>
       </div>
     </section>
 
-    <!-- Блок с выбором эффектов и кнопками (скрывается в режиме генерации) -->
+    <!-- Нижний блок: выбор эффектов + кнопки -->
     <div class="controls" id="controls">
+      <!-- Чипы с выбранными настройками -->
       <div class="selection-row" id="selectionRow"></div>
 
+      <!-- Главные кнопки -->
       <section class="button-list">
         <button class="btn-main" id="btnStyle">
           <span class="btn-icon">🎨</span>
@@ -87,15 +94,17 @@
       </a>
     </div>
 
+    <!-- Подвал -->
     <footer class="footer">
       © WindowToSoul
     </footer>
   </div>
 
-  <!-- Скрытый input для фото -->
+  <!-- Скрытый input для загрузки фото -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Модалка выбора стилей / кожи / мимики / поздравлений -->
+  <!-- ВЫЕЗЖАЮЩИЙ ЭКРАН / SHEET ДЛЯ ВЫБОРА СТИЛЕЙ, КОЖИ, МИМИКИ, ПОЗДРАВЛЕНИЙ -->
+  <!-- (логика и анимации будут в assets/script.js) -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
@@ -104,7 +113,9 @@
       </div>
       <div class="sheet-description" id="sheetDescription"></div>
 
-      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">Категории</div>
+      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">
+        Категории
+      </div>
       <div class="chip-row" id="sheetCategoryRow" style="display:none;"></div>
 
       <div class="sheet-section-title" id="sheetOptionsTitle">Варианты</div>
@@ -112,7 +123,7 @@
     </div>
   </div>
 
-  <!-- Модалка №1: выбор пакета (без соглашения) -->
+  <!-- МОДАЛКА №1: ВЫБОР ПАКЕТА (10 / 20 / 30) -->
   <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
@@ -121,6 +132,7 @@
       </div>
 
       <div class="pay-section-title">Пакеты генераций</div>
+
       <div class="pay-packages">
         <button class="pay-package" data-package="p10" id="pkg10">
           <div class="pay-package-title">10 генераций</div>
@@ -144,7 +156,7 @@
     </div>
   </div>
 
-  <!-- Модалка №2: соглашение + email -->
+  <!-- МОДАЛКА №2: СОГЛАСИЕ + EMAIL ПЕРЕД ОПЛАТОЙ -->
   <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
@@ -154,7 +166,7 @@
 
       <div class="agreement-text">
         Перед оплатой подтвердите возраст и согласие с условиями.<br><br>
-        <strong>Важно:</strong> наш сервис создаёт AI-портреты по вашему фото. 
+        <strong>Важно:</strong> наш сервис создаёт AI-портреты по вашему фото.
         После завершения сессии готовые изображения будут отправлены на указанный email.
       </div>
 
@@ -189,6 +201,7 @@
     </div>
   </div>
 
-  <script src="./assets/main.js"></script>
+  <!-- Подключаем основной JS (новый файл вместо main.js) -->
+  <script src="./assets/script.js"></script>
 </body>
 </html>
