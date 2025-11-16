@@ -1,27 +1,15 @@
+// /api/create-checkout-session.js
+// Создание Stripe Checkout-сессии для пакетов 10/20/30 генераций
+
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16"
 });
 
-// соответствие пакета → Stripe price ID (берём из переменных окружения)
-const PACKAGE_CONFIG = {
-  p10: {
-    generations: 10,
-    priceId: process.env.STRIPE_PRICE_10
-  },
-  p20: {
-    generations: 20,
-    priceId: process.env.STRIPE_PRICE_20
-  },
-  p30: {
-    generations: 30,
-    priceId: process.env.STRIPE_PRICE_30
-  }
-};
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
@@ -35,48 +23,65 @@ export default async function handler(req, res) {
       }
     }
 
-    const { email, packageId } = body || {};
+    const { packageId } = body || {};
 
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "Email is required" });
-    }
+    // Наши пакеты: 10 / 20 / 30 генераций
+    const PACKAGES = {
+      "10": {
+        name: "10 Generations",
+        description: "Package for 10 AI portrait generations",
+        amount: 499 // €4.99 → 499 центов
+      },
+      "20": {
+        name: "20 Generations",
+        description: "Package for 20 AI portrait generations",
+        amount: 899 // €8.99
+      },
+      "30": {
+        name: "30 Generations",
+        description: "Package for 30 AI portrait generations",
+        amount: 1199 // €11.99
+      }
+    };
 
-    if (!packageId || !PACKAGE_CONFIG[packageId]) {
-      return res.status(400).json({ error: "Invalid package" });
-    }
+    const selected =
+      PACKAGES[packageId] || PACKAGES["10"]; // по умолчанию пакет 10
 
-    const pkg = PACKAGE_CONFIG[packageId];
-
-    if (!pkg.priceId) {
-      return res.status(500).json({ error: "Price ID is not configured" });
-    }
-
-    const origin = req.headers.origin || "https://windowtosoul.com";
+    const origin =
+      req.headers.origin ||
+      `https://${req.headers.host || "windowtosoul-site.vercel.app"}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-      customer_email: email,
       line_items: [
         {
-          price: pkg.priceId,
-          quantity: 1
+          quantity: 1,
+          price_data: {
+            currency: "eur",
+            unit_amount: selected.amount,
+            product_data: {
+              name: selected.name,
+              description: selected.description
+            }
+          }
         }
       ],
-      success_url: `${origin}/?success=1&package=${packageId}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?canceled=1`,
-      metadata: {
-        email,
-        packageId,
-        generations: String(pkg.generations)
-      }
+      success_url: `${origin}/?checkout=success&package=${encodeURIComponent(
+        packageId || "10"
+      )}`,
+      cancel_url: `${origin}/?checkout=cancel`
     });
 
-    return res.status(200).json({ url: session.url });
+    return res.status(200).json({
+      ok: true,
+      id: session.id,
+      url: session.url
+    });
   } catch (err) {
-    console.error("CHECKOUT ERROR:", err);
+    console.error("STRIPE CHECKOUT ERROR:", err);
     return res.status(500).json({
-      error: "Failed to create checkout session",
+      error: "Stripe checkout failed",
       details: err?.message || String(err)
     });
   }
