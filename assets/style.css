@@ -306,20 +306,24 @@ body.app-generating .preview-box {
   text-decoration: underline;
 }
 
-/* Центровая модалка (sheet) */
+/* Центровая модалка (sheet) — мягкое появление/исчезновение */
 
 .sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
-  display: none;
-  align-items: center;          /* центр по вертикали */
+  display: flex;                 /* всегда flex, управляем через opacity */
+  align-items: center;
   justify-content: center;
   z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease-out;
 }
 
 .sheet-backdrop.visible {
-  display: flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .sheet {
@@ -331,18 +335,18 @@ body.app-generating .preview-box {
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.95);
   padding: 12px 16px 18px;
-  animation: sheet-pop 0.18s ease-out;
+  transform: translateY(16px) scale(0.96);
+  opacity: 0;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 0.8, 0.25, 1),
+    opacity 0.22s ease-out;
 }
 
-@keyframes sheet-pop {
-  from {
-    transform: translateY(20px) scale(0.96);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
+/* при открытии: лёгкий “поп-ап” */
+
+.sheet-backdrop.visible .sheet {
+  transform: translateY(0) scale(1);
+  opacity: 1;
 }
 
 .sheet-header {
