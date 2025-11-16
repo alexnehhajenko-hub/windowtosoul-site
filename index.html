@@ -4,118 +4,101 @@
   <meta charset="utf-8">
   <title>WindowToSoul – AI Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Стили приложения -->
+
+  <!-- Stripe -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <!-- Styles -->
   <link rel="stylesheet" href="./assets/style.css">
 </head>
 <body>
   <div class="app">
-    <!-- Шапка -->
+
     <header class="app-header">
       <div class="app-title">WINDOWTOSOUL</div>
       <div class="app-subtitle">Создайте свой уникальный AI-портрет</div>
     </header>
 
-    <!-- Превью портрета -->
     <section class="preview-box">
       <div class="preview-label">Предпросмотр</div>
 
       <img id="previewImage" class="preview-image" alt="Preview">
 
       <div class="preview-placeholder" id="previewPlaceholder">
-        Добавьте фото и выберите эффекты.<br>
+        Добавьте фото, выберите стиль и эффекты.<br>
         После генерации сюда попадёт ваш портрет.
       </div>
 
-      <!-- Поверх изображения можно выводить текст поздравления -->
       <div class="greeting-overlay" id="greetingOverlay"></div>
 
-      <!-- Оверлей статуса генерации -->
       <div class="generate-status" id="generateStatus">
         <div class="spinner"></div>
         <div class="generate-status-text">Генерация портрета…</div>
       </div>
     </section>
 
-    <!-- Нижний блок: выбор эффектов + кнопки -->
     <div class="controls" id="controls">
-      <!-- Чипы с выбранными настройками -->
       <div class="selection-row" id="selectionRow"></div>
 
-      <!-- Главные кнопки -->
       <section class="button-list">
+
         <button class="btn-main" id="btnStyle">
-          <span class="btn-icon">🎨</span>
-          <span>Стиль портрета</span>
+          <span class="btn-icon">🎨</span><span>Стиль портрета</span>
         </button>
 
         <button class="btn-main" id="btnSkin">
-          <span class="btn-icon">✨</span>
-          <span>Эффект кожи</span>
+          <span class="btn-icon">✨</span><span>Эффект кожи</span>
         </button>
 
         <button class="btn-main" id="btnMimic">
-          <span class="btn-icon">🙂</span>
-          <span>Мимика</span>
+          <span class="btn-icon">🙂</span><span>Мимика</span>
         </button>
 
         <button class="btn-main" id="btnGreetings">
-          <span class="btn-icon">💌</span>
-          <span>Поздравления</span>
+          <span class="btn-icon">💌</span><span>Поздравления</span>
         </button>
 
         <button class="btn-main btn-secondary" id="btnGenerate">
-          <span class="btn-icon">⚡️</span>
-          <span>Генерировать</span>
+          <span class="btn-icon">⚡️</span><span>Генерировать</span>
         </button>
 
         <div class="btn-row-split">
           <button class="btn-half" id="btnAddPhoto">
-            <span class="btn-icon">📷</span>
-            <span>Добавить фото</span>
+            <span class="btn-icon">📷</span><span>Добавить фото</span>
           </button>
           <button class="btn-half btn-pay" id="btnPay">
-            <span class="btn-icon">💳</span>
-            <span>Пакеты</span>
+            <span class="btn-icon">💳</span><span>Пакеты</span>
           </button>
         </div>
+
       </section>
     </div>
 
-    <!-- Кнопка скачивания (появляется после генерации) -->
     <div class="download-row">
-      <a
-        id="downloadLink"
-        class="btn-download"
-        href="#"
-        download="windowtosoul-portrait.png"
-        style="display: none;"
-      >
+      <a id="downloadLink" class="btn-download" href="#" download="windowtosoul.png" style="display:none;">
         Скачать портрет
       </a>
     </div>
 
-    <!-- Подвал -->
     <footer class="footer">
       © WindowToSoul
     </footer>
+
   </div>
 
-  <!-- Скрытый input для загрузки фото -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- ВЫЕЗЖАЮЩИЙ ЭКРАН / SHEET ДЛЯ ВЫБОРА СТИЛЕЙ, КОЖИ, МИМИКИ, ПОЗДРАВЛЕНИЙ -->
-  <!-- (логика и анимации будут в assets/script.js) -->
+  <!-- SHEET -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
         <div class="sheet-title" id="sheetTitle">Выбор</div>
         <button class="sheet-close" id="sheetCloseBtn">✕</button>
       </div>
+
       <div class="sheet-description" id="sheetDescription"></div>
 
-      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">
-        Категории
-      </div>
+      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">Категории</div>
       <div class="chip-row" id="sheetCategoryRow" style="display:none;"></div>
 
       <div class="sheet-section-title" id="sheetOptionsTitle">Варианты</div>
@@ -123,40 +106,39 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА №1: ВЫБОР ПАКЕТА (10 / 20 / 30) -->
+  <!-- PAY MODAL -->
   <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
-        <div class="pay-title">Выберите пакет</div>
+        <div class="pay-title">Выбор пакета</div>
         <button class="pay-close" id="payCloseBtn">✕</button>
       </div>
 
-      <div class="pay-section-title">Пакеты генераций</div>
+      <div class="pay-section-title">Пакеты</div>
 
       <div class="pay-packages">
-        <button class="pay-package" data-package="p10" id="pkg10">
+        <button class="pay-package" data-id="pack10">
           <div class="pay-package-title">10 генераций</div>
           <div class="pay-package-price">€4.99</div>
         </button>
-        <button class="pay-package" data-package="p20" id="pkg20">
+
+        <button class="pay-package" data-id="pack20">
           <div class="pay-package-title">20 генераций</div>
           <div class="pay-package-price">€8.99</div>
         </button>
-        <button class="pay-package" data-package="p30" id="pkg30">
+
+        <button class="pay-package" data-id="pack30">
           <div class="pay-package-title">30 генераций</div>
           <div class="pay-package-price">€11.99</div>
         </button>
       </div>
 
-      <div class="pay-error" id="payError"></div>
-
-      <button class="pay-submit" id="payNextBtn">
-        Далее
-      </button>
+      <div id="payError" class="pay-error"></div>
+      <button class="pay-submit" id="payNextBtn">Далее</button>
     </div>
   </div>
 
-  <!-- МОДАЛКА №2: СОГЛАСИЕ + EMAIL ПЕРЕД ОПЛАТОЙ -->
+  <!-- AGREEMENT MODAL -->
   <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
@@ -165,43 +147,31 @@
       </div>
 
       <div class="agreement-text">
-        Перед оплатой подтвердите возраст и согласие с условиями.<br><br>
-        <strong>Важно:</strong> наш сервис создаёт AI-портреты по вашему фото.
-        После завершения сессии готовые изображения будут отправлены на указанный email.
+        Подтвердите, что вам 16+ и вы согласны с политикой сервиса.
       </div>
 
-      <div class="agreement-section-title">Ваш email</div>
-      <input
-        type="email"
-        id="agreeEmail"
-        class="agreement-input"
-        placeholder="you@example.com"
-        autocomplete="email"
-      />
+      <div class="agreement-section-title">Ваш Email</div>
+
+      <input type="email" id="agreeEmail" class="agreement-input" placeholder="you@example.com">
 
       <label class="agreement-checkbox-row">
         <input type="checkbox" id="agreeCheckbox">
-        <span>
-          Мне 16+ и я согласен с
-          <a href="#">Terms</a>,
-          <a href="#">Privacy</a>,
-          <a href="#">Refunds</a>.
-        </span>
+        <span>Мне 16+ и я согласен с <a href="#">Terms</a>, <a href="#">Privacy</a>.</span>
       </label>
 
       <div class="agreement-error" id="agreeError"></div>
 
-      <button class="agreement-submit" id="agreePayBtn">
-        Перейти к оплате
-      </button>
+      <button class="agreement-submit" id="agreePayBtn">Перейти к оплате</button>
 
       <div class="agreement-hint">
-        Оплата обрабатывается через Stripe. Мы не видим и не храним данные вашей карты.
+        Оплата обрабатывается Stripe. Мы не храним данные карт.
       </div>
     </div>
   </div>
 
-  <!-- Подключаем основной JS (новый файл вместо main.js) -->
+  <!-- Notification -->
+  <div id="notification" class="notification"></div>
+
   <script src="./assets/script.js"></script>
 </body>
 </html>
