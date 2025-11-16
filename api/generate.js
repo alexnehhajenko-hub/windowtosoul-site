@@ -1,6 +1,7 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
 // Фото / текст / эффекты кожи / мимика / поздравления
 // Без возврата prompt на фронт
+// + Жёсткое правило: НИКАКИХ надписей, логотипов, интерфейсов на итоговом фото
 
 import Replicate from "replicate";
 
@@ -39,17 +40,25 @@ const EFFECT_PROMPTS = {
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Поздравления — стиль + факт русской надписи (без жёстких фраз)
+// Поздравления — ТОЛЬКО атмосфера, БЕЗ текста на изображении
 const GREETING_PROMPTS = {
   "new-year":
-    "festive New Year greeting portrait, glowing warm lights, snow, elegant russian handwritten greeting text on the image",
+    "festive New Year portrait, glowing warm lights, soft snow, cozy winter atmosphere, no visible text, no logos, clean background",
   birthday:
-    "birthday greeting portrait, balloons, confetti, festive composition, elegant russian handwritten birthday greeting text on the image",
+    "birthday themed portrait, balloons, confetti, festive colorful composition, joyful mood, no visible text, no logos, clean background",
   funny:
-    "playful humorous greeting portrait, bright colors, fun composition, creative russian handwritten funny greeting text on the image",
+    "playful humorous portrait, bright vivid colors, fun dynamic composition, cheerful mood, no visible text, no logos, clean background",
   scary:
-    "dark horror themed greeting portrait, spooky lighting, eerie atmosphere, creepy russian handwritten horror greeting text on the image"
+    "dark horror themed portrait, spooky lighting, eerie atmosphere, mysterious background, no visible text, no logos, clean background"
 };
+
+// БАЗОВЫЙ ПРОМПТ ДЛЯ УДАЛЕНИЯ ЛЮБОГО ТЕКСТА / ЛОГОТИПОВ / ИНТЕРФЕЙСА
+const NO_TEXT_BASE_PROMPT =
+  "clean high-quality portrait of the person, reconstruct face only, remove all text, remove all numbers, remove all watermarks, remove all logos, remove any UI elements, remove phone screen overlays, remove status bar, remove timestamps, remove notifications, no captions, no writing, no symbols on the image, no artifacts, simple clean background";
+
+// NEGATIVE PROMPT — явно запрещаем текст, цифры, интерфейсы и т.п.
+const NEGATIVE_TEXT_PROMPT =
+  "text, numbers, letters, subtitles, captions, watermark, logo, stickers, emojis, UI elements, phone interface, time, battery icon, notification icons, status bar, on-screen controls, overlays";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -84,14 +93,19 @@ export default async function handler(req, res) {
         .join(", ");
     }
 
-    // 4. Поздравление
+    // 4. Поздравление (атмосфера, БЕЗ текста на картинке)
     let greetingPrompt = "";
     if (greeting && GREETING_PROMPTS[greeting]) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
-    // 5. Итоговый prompt (остаётся только на сервере, пользователю не отдаём)
-    const promptParts = [stylePrefix];
+    // 5. Итоговый prompt:
+    //    - стиль
+    //    - базовое правило "без текста"
+    //    - пользовательский текст
+    //    - эффекты
+    //    - атмосфера поздравления
+    const promptParts = [stylePrefix, NO_TEXT_BASE_PROMPT];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
     if (greetingPrompt) promptParts.push(greetingPrompt);
@@ -101,6 +115,7 @@ export default async function handler(req, res) {
     // 6. Вход для Replicate
     const input = {
       prompt,
+      negative_prompt: NEGATIVE_TEXT_PROMPT,
       output_format: "jpg"
     };
 
@@ -113,10 +128,9 @@ export default async function handler(req, res) {
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    const output = await replicate.run(
-      "black-forest-labs/flux-kontext-pro",
-      { input }
-    );
+    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
+      input
+    });
 
     // Поиск URL
     let imageUrl = null;
