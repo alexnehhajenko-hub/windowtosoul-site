@@ -1,688 +1,645 @@
 // WindowToSoul — основной фронтенд-скрипт
-// Полный файл script.js
-// UI: стиль, кожа, мимика, поздравления, загрузка фото, генерация портрета,
-// выбор пакетов (10/20/30), окно соглашения + email, переход на Stripe Checkout.
+// UI: выбор стиля, эффектов кожи, мимики, поздравлений, пакетов и генерации.
+// Оплата: Stripe Checkout через /api/create-checkout-session.
+// Дополнительно: обработка кнопки "Назад" на телефоне — закрывает окна/результат,
+// а не выкидывает с сайта.
 
-// ======================= КОНСТАНТЫ =======================
+// =========================
+// ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+// =========================
 
-// Варианты стилей (как видит пользователь)
-const PORTRAIT_STYLES = [
-  "Classic Portrait",
-  "Oil Painting",
-  "Cute Soft",
-  "Anime",
-  "Scary Dark",
-  "Futuristic / Cyber"
-];
+const appState = {
+  // генерация
+  selectedStyle: null,
+  selectedEffects: [], // массив ключей эффектов
+  selectedGreeting: null,
 
-// Карта «человеческое название» -> код стиля для бэкенда
-const STYLE_CODE_MAP = {
-  "Classic Portrait": "classic",
-  "Oil Painting": "oil",
-  "Cute Soft": "beauty",
-  "Anime": "anime",
-  "Scary Dark": "poster",
-  "Futuristic / Cyber": "poster"
+  // фото
+  originalFile: null,
+  photoBase64: null,
+
+  // пакеты Stripe
+  selectedPack: null, // 'pack10' | 'pack20' | 'pack30'
+
+  // статус
+  isGenerating: false,
+  isPaying: false,
+
+  // UI-слой для кнопки "Назад"
+  layer: "home" // 'home' | 'sheet' | 'result'
 };
 
-// Эффекты кожи
-const SKIN_EFFECTS = [
-  "Smooth Skin",
-  "Remove Wrinkles",
-  "Bright Face",
-  "Extra Glow",
-  "Warm Tone"
-];
+// =========================
+// DOM-ЭЛЕМЕНТЫ
+// =========================
 
-const SKIN_PROMPTS = {
-  "Smooth Skin": "smooth, even, soft skin",
-  "Remove Wrinkles": "less visible wrinkles, subtle anti-age retouch",
-  "Bright Face": "bright, well-lit face, gentle glow",
-  "Extra Glow": "strong glow, beauty lighting, glossy skin look",
-  "Warm Tone": "warm skin tone, golden light"
-};
+const els = {};
 
-// Мимика
-const MIMIC_OPTIONS = [
-  "Soft Smile",
-  "Big Smile",
-  "Neutral",
-  "Serious",
-  "Surprise"
-];
+function bindElements() {
+  els.previewImage = document.getElementById("previewImage");
+  els.previewPlaceholder = document.getElementById("previewPlaceholder");
+  els.greetingOverlay = document.getElementById("greetingOverlay");
+  els.generateStatus = document.getElementById("generateStatus");
+  els.selectionRow = document.getElementById("selectionRow");
 
-const MIMIC_PROMPTS = {
-  "Soft Smile": "soft gentle smile",
-  "Big Smile": "big open smile, joyful expression",
-  "Neutral": "neutral expression, calm face",
-  "Serious": "serious expression, focused look",
-  "Surprise": "slight surprise, open eyes"
-};
+  // Кнопки главного экрана
+  els.btnStyle = document.getElementById("btnStyle");
+  els.btnSkin = document.getElementById("btnSkin");
+  els.btnMimic = document.getElementById("btnMimic");
+  els.btnGreetings = document.getElementById("btnGreetings");
+  els.btnGenerate = document.getElementById("btnGenerate");
+  els.btnAddPhoto = document.getElementById("btnAddPhoto");
+  els.btnPay = document.getElementById("btnPay");
 
-// Поздравления (только как надпись поверх портрета)
-const GREETINGS = {
-  newYear: [
-    "Happy New Year!",
-    "Merry Christmas!",
-    "Happy Holidays!",
-    "New Year, New You",
-    "Shine in the New Year",
-    "Magic New Year Portrait"
-  ],
-  birthday: [
-    "Happy Birthday!",
-    "Birthday Magic",
-    "Birthday Portrait Just for You",
-    "Another Year of You",
-    "Make a Wish"
-  ],
-  love: [
-    "With Love",
-    "You Are My Universe",
-    "Made for You",
-    "From My Heart to Yours",
-    "You Are My Favorite Story"
-  ],
-  funny: [
-    "Too Cute to Be Real",
-    "AI Made Me Like This",
-    "Glow Up Mode: ON",
-    "New Face, Same Soul",
-    "100% Digital Drama"
-  ],
-  creepy: [
-    "Sweet Dreams… or Not",
-    "Welcome to the Other Side",
-    "Beautifully Haunted",
-    "Born in the Shadows",
-    "Do You Dare to Look?"
-  ]
-};
+  // input файла
+  els.fileInput = document.getElementById("fileInput");
 
-const GREETING_CATEGORY_LABELS = {
-  newYear: "New Year / Christmas",
-  birthday: "Birthday",
-  love: "Love / Romantic",
-  funny: "Funny / Cute",
-  creepy: "Creepy / Scary"
-};
+  // Нижний sheet
+  els.sheetBackdrop = document.getElementById("sheetBackdrop");
+  els.sheetTitle = document.getElementById("sheetTitle");
+  els.sheetDescription = document.getElementById("sheetDescription");
+  els.sheetCategoryTitle = document.getElementById("sheetCategoryTitle");
+  els.sheetCategoryRow = document.getElementById("sheetCategoryRow");
+  els.sheetOptionsTitle = document.getElementById("sheetOptionsTitle");
+  els.sheetOptionsRow = document.getElementById("sheetOptionsRow");
+  els.sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-// ======================= СОСТОЯНИЕ =======================
+  // Кнопка скачивания результата (если есть в верстке)
+  els.downloadButton = document.getElementById("btnDownloadPortrait") ||
+    document.querySelector("[data-download-portrait]");
+}
 
-const state = {
-  styleName: null,
-  skinEffect: null,
-  mimic: null,
-  greetingCategory: null,
-  greetingText: null,
-  photoFile: null,
-  hasPhoto: false
-};
+// =========================
+// ИНИЦИАЛИЗАЦИЯ
+// =========================
 
-let selectedPackageId = "p10"; // p10 / p20 / p30
-let hasGeneratingLayout = false;
+document.addEventListener("DOMContentLoaded", () => {
+  bindElements();
+  attachMainHandlers();
+  setupBackButtonLogic();
+  refreshSelectionChips();
+});
 
-// ======================= DOM ЭЛЕМЕНТЫ =======================
+// =========================
+// ЛОГИКА КНОПКИ НАЗАД
+// =========================
 
-// превью
-const previewImage = document.getElementById("previewImage");
-const previewPlaceholder = document.getElementById("previewPlaceholder");
-const greetingOverlay = document.getElementById("greetingOverlay");
-const generateStatus = document.getElementById("generateStatus");
-const downloadLink = document.getElementById("downloadLink");
-
-// выборы
-const selectionRow = document.getElementById("selectionRow");
-
-// главные кнопки
-const btnStyle = document.getElementById("btnStyle");
-const btnSkin = document.getElementById("btnSkin");
-const btnMimic = document.getElementById("btnMimic");
-const btnGreetings = document.getElementById("btnGreetings");
-const btnGenerate = document.getElementById("btnGenerate");
-const btnAddPhoto = document.getElementById("btnAddPhoto");
-const btnPay = document.getElementById("btnPay");
-const fileInput = document.getElementById("fileInput");
-
-// sheet (нижняя панель выбора)
-const sheetBackdrop = document.getElementById("sheetBackdrop");
-const sheet = document.querySelector(".sheet");
-const sheetTitle = document.getElementById("sheetTitle");
-const sheetDescription = document.getElementById("sheetDescription");
-const sheetOptionsRow = document.getElementById("sheetOptionsRow");
-const sheetCategoryRow = document.getElementById("sheetCategoryRow");
-const sheetCategoryTitle = document.getElementById("sheetCategoryTitle");
-const sheetOptionsTitle = document.getElementById("sheetOptionsTitle");
-const sheetCloseBtn = document.getElementById("sheetCloseBtn");
-
-// модалка пакетов
-const payBackdrop = document.getElementById("payBackdrop");
-const payCloseBtn = document.getElementById("payCloseBtn");
-const payError = document.getElementById("payError");
-const payNextBtn = document.getElementById("payNextBtn");
-const packageButtons = document.querySelectorAll(".pay-package");
-
-// модалка соглашения + email
-const agreementBackdrop = document.getElementById("agreementBackdrop");
-const agreementCloseBtn = document.getElementById("agreementCloseBtn");
-const agreeEmailInput = document.getElementById("agreeEmail");
-const agreeCheckbox = document.getElementById("agreeCheckbox");
-const agreeError = document.getElementById("agreeError");
-const agreePayBtn = document.getElementById("agreePayBtn");
-
-// ======================= ВСПОМОГАТЕЛЬНЫЕ UI =======================
-
-function updateSelectionPills() {
-  if (!selectionRow) return;
-  selectionRow.innerHTML = "";
-
-  if (state.styleName) {
-    const pill = document.createElement("div");
-    pill.className = "selection-pill";
-    pill.textContent = `Стиль: ${state.styleName}`;
-    selectionRow.appendChild(pill);
-  }
-
-  if (state.skinEffect) {
-    const pill = document.createElement("div");
-    pill.className = "selection-pill";
-    pill.textContent = `Кожа: ${state.skinEffect}`;
-    selectionRow.appendChild(pill);
-  }
-
-  if (state.mimic) {
-    const pill = document.createElement("div");
-    pill.className = "selection-pill";
-    pill.textContent = `Мимика: ${state.mimic}`;
-    selectionRow.appendChild(pill);
-  }
-
-  if (state.greetingText) {
-    const pill = document.createElement("div");
-    pill.className = "selection-pill";
-    pill.textContent = `Текст: "${state.greetingText}"`;
-    selectionRow.appendChild(pill);
+function setLayer(newLayer, pushToHistory = true) {
+  appState.layer = newLayer;
+  if (pushToHistory && window.history && window.history.pushState) {
+    window.history.pushState({ layer: newLayer }, "", window.location.href);
   }
 }
 
-function updateGreetingOverlay() {
-  if (!greetingOverlay) return;
-  if (state.greetingText) {
-    greetingOverlay.textContent = state.greetingText;
-    greetingOverlay.classList.add("visible");
+function setupBackButtonLogic() {
+  // Начальное состояние
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState({ layer: "home" }, "", window.location.href);
+  }
+
+  window.addEventListener("popstate", (event) => {
+    const layer = event.state && event.state.layer ? event.state.layer : "home";
+
+    // Если открыт sheet — просто закрываем его и остаёмся на сайте
+    if (appState.layer === "sheet") {
+      closeSheet(false); // false — не пушим ещё одно состояние
+      setLayer("home", false);
+      return;
+    }
+
+    // Если открыт полноэкранный результат — возвращаемся к основному экрану
+    if (appState.layer === "result") {
+      exitResultView(false);
+      setLayer("home", false);
+      return;
+    }
+
+    // Если уже на home — позволяем браузеру идти дальше назад (нормальное поведение)
+    appState.layer = layer;
+  });
+}
+
+// =========================
+// ОБРАБОТЧИКИ ОСНОВНЫХ КНОПОК
+// =========================
+
+function attachMainHandlers() {
+  if (els.btnStyle) {
+    els.btnStyle.addEventListener("click", () => openStyleSheet());
+  }
+  if (els.btnSkin) {
+    els.btnSkin.addEventListener("click", () => openSkinSheet());
+  }
+  if (els.btnMimic) {
+    els.btnMimic.addEventListener("click", () => openMimicSheet());
+  }
+  if (els.btnGreetings) {
+    els.btnGreetings.addEventListener("click", () => openGreetingSheet());
+  }
+  if (els.btnGenerate) {
+    els.btnGenerate.addEventListener("click", () => handleGenerateClick());
+  }
+  if (els.btnAddPhoto) {
+    els.btnAddPhoto.addEventListener("click", () => {
+      if (els.fileInput) els.fileInput.click();
+    });
+  }
+  if (els.fileInput) {
+    els.fileInput.addEventListener("change", handleFileSelected);
+  }
+  if (els.btnPay) {
+    els.btnPay.addEventListener("click", () => openPackagesSheet());
+  }
+  if (els.sheetCloseBtn) {
+    els.sheetCloseBtn.addEventListener("click", () => {
+      closeSheet();
+    });
+  }
+  if (els.downloadButton) {
+    els.downloadButton.addEventListener("click", () => downloadCurrentPortrait());
+  }
+}
+
+// =========================
+// РАБОТА С ФАЙЛОМ
+// =========================
+
+function handleFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  appState.originalFile = file;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const resizedDataUrl = resizeImageToMax(img, 1024);
+      appState.photoBase64 = resizedDataUrl;
+
+      if (els.previewImage) {
+        els.previewImage.src = resizedDataUrl;
+        els.previewImage.style.display = "block";
+      }
+      if (els.previewPlaceholder) {
+        els.previewPlaceholder.style.display = "none";
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeImageToMax(img, maxSize) {
+  const canvas = document.createElement("canvas");
+  let { width, height } = img;
+
+  if (width > height && width > maxSize) {
+    height = Math.round((height * maxSize) / width);
+    width = maxSize;
+  } else if (height >= width && height > maxSize) {
+    width = Math.round((width * maxSize) / height);
+    height = maxSize;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", 0.9);
+}
+
+// =========================
+// НИЖНИЙ SHEET (СПИСКИ ОПЦИЙ)
+// =========================
+
+function openSheet({ title, description, categories, options }) {
+  if (!els.sheetBackdrop) return;
+
+  els.sheetTitle.textContent = title || "";
+  els.sheetDescription.textContent = description || "";
+
+  // Категории (если есть)
+  if (categories && categories.length > 0) {
+    els.sheetCategoryTitle.style.display = "block";
+    els.sheetCategoryRow.style.display = "flex";
+    els.sheetCategoryRow.innerHTML = "";
+
+    categories.forEach((cat) => {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.textContent = cat.label;
+      chip.dataset.value = cat.value;
+      chip.addEventListener("click", () => {
+        if (typeof cat.onClick === "function") cat.onClick(cat.value);
+      });
+      els.sheetCategoryRow.appendChild(chip);
+    });
   } else {
-    greetingOverlay.textContent = "";
-    greetingOverlay.classList.remove("visible");
+    els.sheetCategoryTitle.style.display = "none";
+    els.sheetCategoryRow.style.display = "none";
+    els.sheetCategoryRow.innerHTML = "";
   }
+
+  // Основные варианты
+  els.sheetOptionsRow.innerHTML = "";
+  (options || []).forEach((opt) => {
+    const chip = document.createElement("button");
+    chip.className = "chip";
+    chip.textContent = opt.label;
+    chip.dataset.value = opt.value;
+
+    if (opt.selected) {
+      chip.classList.add("chip-selected");
+    }
+
+    chip.addEventListener("click", () => {
+      if (typeof opt.onClick === "function") {
+        opt.onClick(opt.value);
+      }
+    });
+
+    els.sheetOptionsRow.appendChild(chip);
+  });
+
+  els.sheetBackdrop.classList.add("sheet-visible");
+  setLayer("sheet", true);
 }
 
-// ======================= SHEET (общий) =======================
-
-function clearSheet() {
-  if (sheetOptionsRow) sheetOptionsRow.innerHTML = "";
-  if (sheetCategoryRow) sheetCategoryRow.innerHTML = "";
-  if (sheetCategoryTitle) sheetCategoryTitle.style.display = "none";
-  if (sheetCategoryRow) sheetCategoryRow.style.display = "none";
-  if (sheetOptionsTitle) sheetOptionsTitle.textContent = "Варианты";
+function closeSheet(pushHistory = true) {
+  if (!els.sheetBackdrop) return;
+  els.sheetBackdrop.classList.remove("sheet-visible");
+  if (pushHistory) setLayer("home", true);
 }
 
-function showSheet() {
-  if (!sheetBackdrop || !sheet) return;
-  sheetBackdrop.classList.add("visible");
-}
-
-function hideSheet() {
-  if (!sheetBackdrop || !sheet) return;
-  sheetBackdrop.classList.remove("visible");
-}
-
-// ======================= SHEET: стиль =======================
+// =========================
+// ЛИСТЫ: СТИЛЬ, КОЖА, МИМИКА, ПОЗДРАВЛЕНИЯ
+// =========================
 
 function openStyleSheet() {
-  clearSheet();
-  if (sheetTitle) sheetTitle.textContent = "Стиль портрета";
-  if (sheetDescription) {
-    sheetDescription.textContent =
-      "Выберите, как будет выглядеть общий художественный стиль портрета.";
-  }
+  const options = [
+    { value: "beauty", label: "Светлый бьюти-портрет" },
+    { value: "oil", label: "Картина маслом" },
+    { value: "anime", label: "Аниме" },
+    { value: "poster", label: "Постер" },
+    { value: "classic", label: "Классический портрет" }
+  ];
 
-  PORTRAIT_STYLES.forEach((name) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = name;
-    if (state.styleName === name) chip.classList.add("selected");
-    chip.addEventListener("click", () => {
-      state.styleName = name;
-      updateSelectionPills();
-      hideSheet();
-    });
-    sheetOptionsRow.appendChild(chip);
+  openSheet({
+    title: "Стиль портрета",
+    description: "Выберите основной художественный стиль.",
+    options: options.map((opt) => ({
+      ...opt,
+      selected: appState.selectedStyle === opt.value,
+      onClick: (value) => {
+        appState.selectedStyle = value;
+        refreshSelectionChips();
+        closeSheet();
+      }
+    }))
   });
-
-  showSheet();
 }
-
-// ======================= SHEET: кожа =======================
 
 function openSkinSheet() {
-  clearSheet();
-  if (sheetTitle) sheetTitle.textContent = "Эффект кожи";
-  if (sheetDescription) {
-    sheetDescription.textContent =
-      "Выберите улучшение кожи. Это добавится в запрос к ИИ.";
-  }
+  const options = [
+    { value: "no-wrinkles", label: "Без морщин" },
+    { value: "younger", label: "Моложе" },
+    { value: "smooth-skin", label: "Гладкая кожа" }
+  ];
 
-  SKIN_EFFECTS.forEach((name) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = name;
-    if (state.skinEffect === name) chip.classList.add("selected");
-    chip.addEventListener("click", () => {
-      state.skinEffect = name;
-      updateSelectionPills();
-      hideSheet();
-    });
-    sheetOptionsRow.appendChild(chip);
+  openSheet({
+    title: "Эффект кожи",
+    description: "Выберите один или несколько эффектов.",
+    options: options.map((opt) => ({
+      ...opt,
+      selected: appState.selectedEffects.includes(opt.value),
+      onClick: (value) => {
+        toggleEffect(value);
+        refreshSelectionChips();
+        // не закрываем сразу, чтобы можно было выбрать несколько
+      }
+    }))
   });
-
-  showSheet();
 }
-
-// ======================= SHEET: мимика =======================
 
 function openMimicSheet() {
-  clearSheet();
-  if (sheetTitle) sheetTitle.textContent = "Мимика";
-  if (sheetDescription) {
-    sheetDescription.textContent = "Выберите выражение лица.";
+  const options = [
+    { value: "smile-soft", label: "Лёгкая улыбка" },
+    { value: "smile-big", label: "Большая улыбка" },
+    { value: "smile-hollywood", label: "Голливудская улыбка" },
+    { value: "laugh", label: "Смех" },
+    { value: "neutral", label: "Нейтральное лицо" },
+    { value: "serious", label: "Серьёзный взгляд" },
+    { value: "eyes-bigger", label: "Чуть больше глаза" },
+    { value: "eyes-brighter", label: "Ярче глаза" }
+  ];
+
+  openSheet({
+    title: "Мимика",
+    description: "Выберите выражение лица.",
+    options: options.map((opt) => ({
+      ...opt,
+      selected: appState.selectedEffects.includes(opt.value),
+      onClick: (value) => {
+        // логика: одна мимика за раз
+        removeAllMimicEffects();
+        toggleEffect(value);
+        refreshSelectionChips();
+        closeSheet();
+      }
+    }))
+  });
+}
+
+function openGreetingSheet() {
+  const options = [
+    { value: "new-year", label: "Новый год" },
+    { value: "birthday", label: "День рождения" },
+    { value: "funny", label: "Смешное" },
+    { value: "scary", label: "Страшное" }
+  ];
+
+  openSheet({
+    title: "Поздравления",
+    description:
+      "Выберите тип поздравления. Текст будет аккуратным и без грубых фраз.",
+    options: options.map((opt) => ({
+      ...opt,
+      selected: appState.selectedGreeting === opt.value,
+      onClick: (value) => {
+        appState.selectedGreeting =
+          appState.selectedGreeting === value ? null : value;
+        refreshSelectionChips();
+        closeSheet();
+      }
+    }))
+  });
+}
+
+// =========================
+// ПАКЕТЫ И ОПЛАТА STRIPE
+// =========================
+
+function openPackagesSheet() {
+  const options = [
+    { value: "pack10", label: "10 генераций • €4.99" },
+    { value: "pack20", label: "20 генераций • €8.99" },
+    { value: "pack30", label: "30 генераций • €11.99" }
+  ];
+
+  openSheet({
+    title: "Выберите пакет",
+    description: "Оплата через Stripe. После каждой генерации портрет сохраняется.",
+    options: options.map((opt) => ({
+      ...opt,
+      selected: appState.selectedPack === opt.value,
+      onClick: async (value) => {
+        appState.selectedPack = value;
+        refreshSelectionChips();
+        // сразу запускаем оплату
+        await startStripeCheckout();
+      }
+    }))
+  });
+}
+
+async function startStripeCheckout() {
+  if (!appState.selectedPack) {
+    alert("Сначала выберите пакет.");
+    return;
   }
 
-  MIMIC_OPTIONS.forEach((name) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = name;
-    if (state.mimic === name) chip.classList.add("selected");
-    chip.addEventListener("click", () => {
-      state.mimic = name;
-      updateSelectionPills();
-      hideSheet();
+  if (appState.isPaying) return;
+  appState.isPaying = true;
+
+  try {
+    const resp = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        pack: appState.selectedPack
+      })
     });
-    sheetOptionsRow.appendChild(chip);
-  });
 
-  showSheet();
-}
+    if (!resp.ok) {
+      throw new Error("Сервер оплаты вернул ошибку.");
+    }
 
-// ======================= SHEET: поздравления =======================
+    const data = await resp.json();
+    if (!data || !data.sessionId || !data.publishableKey) {
+      throw new Error("Неверный ответ от сервера оплаты.");
+    }
 
-function renderGreetingOptions(categoryKey) {
-  if (!sheetOptionsRow) return;
-  sheetOptionsRow.innerHTML = "";
-  const list = GREETINGS[categoryKey] || [];
+    closeSheet();
 
-  list.forEach((text) => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    chip.textContent = text;
-    if (state.greetingText === text) chip.classList.add("selected");
-    chip.addEventListener("click", () => {
-      state.greetingCategory = categoryKey;
-      state.greetingText = text;
-      updateSelectionPills();
-      updateGreetingOverlay();
-      hideSheet();
+    const stripe = window.Stripe
+      ? window.Stripe(data.publishableKey)
+      : null;
+
+    if (!stripe) {
+      alert(
+        "Stripe.js не найден. Убедитесь, что в index.html подключен <script src=\"https://js.stripe.com/v3/\"></script>."
+      );
+      return;
+    }
+
+    const { error } = await stripe.redirectToCheckout({
+      sessionId: data.sessionId
     });
-    sheetOptionsRow.appendChild(chip);
-  });
-}
 
-function openGreetingsSheet() {
-  clearSheet();
-  if (sheetTitle) sheetTitle.textContent = "Поздравления";
-  if (sheetDescription) {
-    sheetDescription.textContent =
-      "Сначала выберите категорию, затем английскую фразу. Текст появится поверх портрета.";
+    if (error) {
+      console.error("Stripe redirect error:", error);
+      alert("Не удалось открыть страницу оплаты: " + error.message);
+    }
+  } catch (err) {
+    console.error("PAY ERROR:", err);
+    alert("Ошибка при создании оплаты. Попробуйте ещё раз.");
+  } finally {
+    appState.isPaying = false;
   }
-
-  if (sheetCategoryTitle) sheetCategoryTitle.style.display = "block";
-  if (sheetCategoryRow) {
-    sheetCategoryRow.style.display = "flex";
-
-    Object.keys(GREETINGS).forEach((key) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "chip chip-category";
-      chip.textContent = GREETING_CATEGORY_LABELS[key] || key;
-      if (state.greetingCategory === key) chip.classList.add("selected");
-      chip.addEventListener("click", () => {
-        state.greetingCategory = key;
-        Array.from(sheetCategoryRow.children).forEach((el) =>
-          el.classList.remove("selected")
-        );
-        chip.classList.add("selected");
-        renderGreetingOptions(key);
-      });
-      sheetCategoryRow.appendChild(chip);
-    });
-  }
-
-  if (sheetOptionsTitle) sheetOptionsTitle.textContent = "Тексты";
-
-  if (state.greetingCategory) {
-    renderGreetingOptions(state.greetingCategory);
-  }
-
-  showSheet();
 }
 
-// ======================= РАБОТА С ФОТО =======================
+// =========================
+// ВСПОМОГАТЕЛЬНОЕ ДЛЯ ЭФФЕКТОВ
+// =========================
 
-if (btnAddPhoto && fileInput) {
-  btnAddPhoto.addEventListener("click", () => fileInput.click());
-
-  fileInput.addEventListener("change", (e) => {
-    const file =
-      e.target.files && e.target.files.length > 0 ? e.target.files[0] : null;
-    if (!file) return;
-    state.photoFile = file;
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (!previewImage || !previewPlaceholder) return;
-      previewImage.src = ev.target.result;
-      previewImage.style.display = "block";
-      previewPlaceholder.style.display = "none";
-      state.hasPhoto = true;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// уменьшение фото перед отправкой (fix 413)
-function resizeImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const maxSide = 900;
-        let w = img.width;
-        let h = img.height;
-        if (w > h && w > maxSide) {
-          h = (h * maxSide) / w;
-          w = maxSide;
-        } else if (h > maxSide) {
-          w = (w * maxSide) / h;
-          h = maxSide;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", 0.9));
-      };
-      img.onerror = () => reject(new Error("Не удалось загрузить изображение"));
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// ======================= ГЕНЕРАЦИЯ ПОРТРЕТА =======================
-
-function enterGeneratingLayout() {
-  if (hasGeneratingLayout) return;
-  document.body.classList.add("app-generating");
-  hasGeneratingLayout = true;
-}
-
-function setLoading(isLoading) {
-  if (!generateStatus || !btnGenerate) return;
-  if (isLoading) {
-    generateStatus.classList.add("visible");
-    btnGenerate.disabled = true;
-    btnGenerate.innerText = "Генерация...";
+function toggleEffect(value) {
+  const idx = appState.selectedEffects.indexOf(value);
+  if (idx >= 0) {
+    appState.selectedEffects.splice(idx, 1);
   } else {
-    generateStatus.classList.remove("visible");
-    btnGenerate.disabled = false;
-    btnGenerate.innerText = "Генерировать";
+    appState.selectedEffects.push(value);
   }
 }
 
-async function generatePortrait() {
-  if (!state.photoFile) {
+function removeAllMimicEffects() {
+  const mimicKeys = [
+    "smile-soft",
+    "smile-big",
+    "smile-hollywood",
+    "laugh",
+    "neutral",
+    "serious",
+    "eyes-bigger",
+    "eyes-brighter"
+  ];
+  appState.selectedEffects = appState.selectedEffects.filter(
+    (e) => !mimicKeys.includes(e)
+  );
+}
+
+// =========================
+// ЧИПЫ ВЫБРАННЫХ ОПЦИЙ ПОД ПРЕВЬЮ
+// =========================
+
+function refreshSelectionChips() {
+  if (!els.selectionRow) return;
+
+  els.selectionRow.innerHTML = "";
+
+  function addChip(label) {
+    const chip = document.createElement("div");
+    chip.className = "selection-chip";
+    chip.textContent = label;
+    els.selectionRow.appendChild(chip);
+  }
+
+  if (appState.selectedStyle) {
+    const map = {
+      beauty: "Стиль: Бьюти",
+      oil: "Стиль: Масло",
+      anime: "Стиль: Аниме",
+      poster: "Стиль: Постер",
+      classic: "Стиль: Классика"
+    };
+    addChip(map[appState.selectedStyle] || "Стиль: выбран");
+  }
+
+  appState.selectedEffects.forEach((e) => {
+    const map = {
+      "no-wrinkles": "Без морщин",
+      younger: "Моложе",
+      "smooth-skin": "Гладкая кожа",
+      "smile-soft": "Лёгкая улыбка",
+      "smile-big": "Большая улыбка",
+      "smile-hollywood": "Голливудская улыбка",
+      laugh: "Смех",
+      neutral: "Нейтрально",
+      serious: "Серьёзно",
+      "eyes-bigger": "Больше глаза",
+      "eyes-brighter": "Ярче глаза"
+    };
+    addChip(map[e] || e);
+  });
+
+  if (appState.selectedGreeting) {
+    const map = {
+      "new-year": "Поздравление: Новый год",
+      birthday: "Поздравление: День рождения",
+      funny: "Поздравление: Смешное",
+      scary: "Поздравление: Страшное"
+    };
+    addChip(map[appState.selectedGreeting] || "Поздравление выбрано");
+  }
+
+  if (appState.selectedPack) {
+    const map = {
+      pack10: "Пакет: 10 генераций",
+      pack20: "Пакет: 20 генераций",
+      pack30: "Пакет: 30 генераций"
+    };
+    addChip(map[appState.selectedPack] || "Пакет выбран");
+  }
+}
+
+// =========================
+// ГЕНЕРАЦИЯ ПОРТРЕТА (REPLICATE /api/generate)
+// =========================
+
+async function handleGenerateClick() {
+  if (appState.isGenerating) return;
+
+  if (!appState.photoBase64) {
     alert("Сначала добавьте фото.");
     return;
   }
 
-  enterGeneratingLayout();
-
-  const styleName = state.styleName || "Classic Portrait";
-  const styleCode = STYLE_CODE_MAP[styleName] || "classic";
-
-  const parts = [];
-  if (state.skinEffect && SKIN_PROMPTS[state.skinEffect]) {
-    parts.push(SKIN_PROMPTS[state.skinEffect]);
-  }
-  if (state.mimic && MIMIC_PROMPTS[state.mimic]) {
-    parts.push(MIMIC_PROMPTS[state.mimic]);
-  }
-  if (!parts.length) {
-    parts.push("high quality portrait, detailed face");
-  }
-
-  const finalText = parts.join(", ");
-
-  setLoading(true);
-  if (downloadLink) downloadLink.style.display = "none";
+  appState.isGenerating = true;
+  showGenerating(true);
 
   try {
-    const photoData = await resizeImage(state.photoFile);
-
     const payload = {
-      style: styleCode,
-      text: finalText || null,
-      photo: photoData
+      style: appState.selectedStyle || "beauty",
+      text: "", // текст не используем пока
+      photo: appState.photoBase64,
+      effects: appState.selectedEffects,
+      greeting: appState.selectedGreeting || null
     };
 
-    const res = await fetch("/api/generate", {
+    const resp = await fetch("/api/generate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(payload)
     });
 
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      throw new Error("Сервер вернул некорректный ответ.");
+    if (!resp.ok) {
+      throw new Error("Сервер генерации вернул ошибку.");
     }
 
-    if (!res.ok) {
-      throw new Error(data.error || "Ошибка генерации.");
+    const data = await resp.json();
+    if (!data || !data.image) {
+      throw new Error("Сервер не вернул ссылку на изображение.");
     }
 
-    if (!data.image) {
-      throw new Error("Ответ без изображения.");
-    }
-
-    if (previewImage && previewPlaceholder) {
-      previewImage.src = data.image;
-      previewImage.style.display = "block";
-      previewPlaceholder.style.display = "none";
-    }
-
-    if (downloadLink) {
-      downloadLink.href = data.image;
-      downloadLink.download = "windows-to-soul.png";
-      downloadLink.style.display = "inline-flex";
-    }
+    showResultPortrait(data.image);
   } catch (err) {
-    console.error(err);
-    alert(err.message || "Ошибка генерации портрета.");
+    console.error("GENERATION ERROR:", err);
+    alert("Не удалось сгенерировать портрет. Попробуйте ещё раз.");
   } finally {
-    setLoading(false);
+    showGenerating(false);
+    appState.isGenerating = false;
   }
 }
 
-// ======================= ПАКЕТЫ ОПЛАТЫ =======================
-
-function updatePackageSelectionUI() {
-  if (!packageButtons) return;
-  packageButtons.forEach((btn) => {
-    const pkg = btn.dataset.package;
-    if (pkg === selectedPackageId) btn.classList.add("selected");
-    else btn.classList.remove("selected");
-  });
+function showGenerating(isOn) {
+  if (!els.generateStatus) return;
+  els.generateStatus.style.display = isOn ? "flex" : "none";
 }
 
-function openPayModal() {
-  if (!payBackdrop) return;
-  if (payError) payError.textContent = "";
-  updatePackageSelectionUI();
-  payBackdrop.classList.add("visible");
-}
+// =========================
+// ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА / СКАЧИВАНИЕ
+// =========================
 
-function closePayModal() {
-  if (!payBackdrop) return;
-  payBackdrop.classList.remove("visible");
-}
-
-packageButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    selectedPackageId = btn.dataset.package;
-    updatePackageSelectionUI();
-  });
-});
-
-function goToAgreementModal() {
-  if (!selectedPackageId) {
-    if (payError) payError.textContent = "Выберите пакет.";
-    return;
+function showResultPortrait(url) {
+  if (els.previewImage) {
+    els.previewImage.src = url;
+    els.previewImage.style.display = "block";
   }
-  if (payError) payError.textContent = "";
-  closePayModal();
-  openAgreementModal();
-}
-
-// ======================= СОГЛАСИЕ + EMAIL =======================
-
-function openAgreementModal() {
-  if (!agreementBackdrop) return;
-  if (agreeError) agreeError.textContent = "";
-  agreementBackdrop.classList.add("visible");
-}
-
-function closeAgreementModal() {
-  if (!agreementBackdrop) return;
-  agreementBackdrop.classList.remove("visible");
-}
-
-async function startCheckout() {
-  if (!agreeEmailInput || !agreeCheckbox || !agreeError || !agreePayBtn) return;
-
-  agreeError.textContent = "";
-
-  const email = (agreeEmailInput.value || "").trim();
-  const agreed = agreeCheckbox.checked;
-
-  if (!email) {
-    agreeError.textContent = "Введите email.";
-    return;
-  }
-  if (!agreed) {
-    agreeError.textContent = "Подтвердите возраст и согласие с условиями.";
-    return;
-  }
-  if (!selectedPackageId) {
-    agreeError.textContent = "Выберите пакет генераций.";
-    return;
+  if (els.previewPlaceholder) {
+    els.previewPlaceholder.style.display = "none";
   }
 
-  agreePayBtn.disabled = true;
-  agreePayBtn.textContent = "Создание оплаты...";
-
-  try {
-    const res = await fetch("/api/create-checkout-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        packageId: selectedPackageId
-      })
-    });
-
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      throw new Error("Некорректный ответ сервера оплаты.");
-    }
-
-    if (!res.ok) {
-      throw new Error(data.error || "Не удалось создать сессию оплаты.");
-    }
-
-    if (!data.url) {
-      throw new Error("Сервер не вернул ссылку оплаты.");
-    }
-
-    window.location.href = data.url;
-  } catch (err) {
-    console.error(err);
-    agreeError.textContent = err.message || "Ошибка при создании оплаты.";
-  } finally {
-    agreePayBtn.disabled = false;
-    agreePayBtn.textContent = "Перейти к оплате";
-  }
+  // Входим в полноэкранный "режим результата" (как на твоём скрине)
+  document.body.classList.add("result-mode");
+  setLayer("result", true);
 }
 
-// ======================= ОБРАБОТЧИКИ СОБЫТИЙ =======================
-
-// главные кнопки
-if (btnStyle) btnStyle.addEventListener("click", openStyleSheet);
-if (btnSkin) btnSkin.addEventListener("click", openSkinSheet);
-if (btnMimic) btnMimic.addEventListener("click", openMimicSheet);
-if (btnGreetings) btnGreetings.addEventListener("click", openGreetingsSheet);
-if (btnGenerate) btnGenerate.addEventListener("click", generatePortrait);
-
-// sheet
-if (sheetCloseBtn) sheetCloseBtn.addEventListener("click", hideSheet);
-if (sheetBackdrop) {
-  sheetBackdrop.addEventListener("click", (e) => {
-    if (e.target === sheetBackdrop) hideSheet();
-  });
+function exitResultView(pushHistory = true) {
+  document.body.classList.remove("result-mode");
+  if (pushHistory) setLayer("home", true);
 }
 
-// пакеты
-if (btnPay) btnPay.addEventListener("click", openPayModal);
-if (payCloseBtn) payCloseBtn.addEventListener("click", closePayModal);
-if (payBackdrop) {
-  payBackdrop.addEventListener("click", (e) => {
-    if (e.target === payBackdrop) closePayModal();
-  });
+function downloadCurrentPortrait() {
+  if (!els.previewImage || !els.previewImage.src) return;
+
+  const a = document.createElement("a");
+  a.href = els.previewImage.src;
+  a.download = "windowtosoul-portrait.jpg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
-if (payNextBtn) payNextBtn.addEventListener("click", goToAgreementModal);
-
-// соглашение
-if (agreementCloseBtn)
-  agreementCloseBtn.addEventListener("click", closeAgreementModal);
-if (agreementBackdrop) {
-  agreementBackdrop.addEventListener("click", (e) => {
-    if (e.target === agreementBackdrop) closeAgreementModal();
-  });
-}
-if (agreePayBtn) agreePayBtn.addEventListener("click", startCheckout);
-
-// старт
-updateSelectionPills();
-updateGreetingOverlay();
-updatePackageSelectionUI();
-
-console.log("WindowToSoul script.js loaded (full, with payments).");
