@@ -10,7 +10,7 @@
   <div class="app">
     <header class="app-header">
       <div class="app-title">WINDOWTOSOUL</div>
-      <div class="app-subtitle">Выберите эффекты для портрета</div>
+      <div class="app-subtitle">Создайте свой уникальный AI-портрет</div>
     </header>
 
     <section class="preview-box">
@@ -20,7 +20,7 @@
 
       <div class="preview-placeholder" id="previewPlaceholder">
         Добавьте фото и выберите эффекты.<br>
-        После подключения ИИ здесь будет ваш портрет.
+        После генерации сюда попадёт ваш портрет.
       </div>
 
       <div class="greeting-overlay" id="greetingOverlay"></div>
@@ -31,6 +31,7 @@
       </div>
     </section>
 
+    <!-- Блок с выбором эффектов и кнопками (скрывается в режиме генерации) -->
     <div class="controls" id="controls">
       <div class="selection-row" id="selectionRow"></div>
 
@@ -67,12 +68,13 @@
           </button>
           <button class="btn-half btn-pay" id="btnPay">
             <span class="btn-icon">💳</span>
-            <span>Оплатить</span>
+            <span>Пакеты</span>
           </button>
         </div>
       </section>
     </div>
 
+    <!-- Кнопка скачивания (появляется после генерации) -->
     <div class="download-row">
       <a
         id="downloadLink"
@@ -86,14 +88,14 @@
     </div>
 
     <footer class="footer">
-      Тестовый интерфейс. В финальной версии здесь будут ссылки:<br>
-      <a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Refunds</a>.
+      © WindowToSoul
     </footer>
   </div>
 
+  <!-- Скрытый input для фото -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Модалка выбора эффекта / мимики / поздравления -->
+  <!-- Модалка выбора стилей / кожи / мимики / поздравлений -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
@@ -110,15 +112,15 @@
     </div>
   </div>
 
-  <!-- Модалка оплаты -->
+  <!-- Модалка №1: выбор пакета (без соглашения) -->
   <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
-        <div class="pay-title">Оплата пакета</div>
+        <div class="pay-title">Выберите пакет</div>
         <button class="pay-close" id="payCloseBtn">✕</button>
       </div>
 
-      <div class="pay-section-title">Выберите пакет</div>
+      <div class="pay-section-title">Пакеты генераций</div>
       <div class="pay-packages">
         <button class="pay-package" data-package="p10" id="pkg10">
           <div class="pay-package-title">10 генераций</div>
@@ -134,17 +136,39 @@
         </button>
       </div>
 
-      <div class="pay-section-title">Ваш email</div>
+      <div class="pay-error" id="payError"></div>
+
+      <button class="pay-submit" id="payNextBtn">
+        Далее
+      </button>
+    </div>
+  </div>
+
+  <!-- Модалка №2: соглашение + email -->
+  <div class="agreement-backdrop" id="agreementBackdrop">
+    <div class="agreement-modal">
+      <div class="agreement-header">
+        <div class="agreement-title">Подтверждение</div>
+        <button class="agreement-close" id="agreementCloseBtn">✕</button>
+      </div>
+
+      <div class="agreement-text">
+        Перед оплатой подтвердите возраст и согласие с условиями.<br><br>
+        <strong>Важно:</strong> наш сервис создаёт AI-портреты по вашему фото. 
+        После завершения сессии готовые изображения будут отправлены на указанный email.
+      </div>
+
+      <div class="agreement-section-title">Ваш email</div>
       <input
         type="email"
-        id="payEmail"
-        class="pay-input"
+        id="agreeEmail"
+        class="agreement-input"
         placeholder="you@example.com"
         autocomplete="email"
       />
 
-      <label class="pay-checkbox-row">
-        <input type="checkbox" id="payAgree">
+      <label class="agreement-checkbox-row">
+        <input type="checkbox" id="agreeCheckbox">
         <span>
           Мне 16+ и я согласен с
           <a href="#">Terms</a>,
@@ -153,13 +177,13 @@
         </span>
       </label>
 
-      <div class="pay-error" id="payError"></div>
+      <div class="agreement-error" id="agreeError"></div>
 
-      <button class="pay-submit" id="paySubmitBtn">
+      <button class="agreement-submit" id="agreePayBtn">
         Перейти к оплате
       </button>
 
-      <div class="pay-hint">
+      <div class="agreement-hint">
         Оплата обрабатывается через Stripe. Мы не видим и не храним данные вашей карты.
       </div>
     </div>
