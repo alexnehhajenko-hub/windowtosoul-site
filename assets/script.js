@@ -1,10 +1,11 @@
 // WindowToSoul — основной фронтенд-скрипт
-// UI: стиль, кожа, мимика, поздравления, пакеты, согласие, генерация
-// + мягкая обработка кнопки «Назад»
+// Полный файл script.js
+// UI: стиль, кожа, мимика, поздравления, загрузка фото, генерация портрета,
+// выбор пакетов (10/20/30), окно соглашения + email, переход на Stripe Checkout.
 
 // ======================= КОНСТАНТЫ =======================
 
-// Стиль портрета
+// Варианты стилей (как видит пользователь)
 const PORTRAIT_STYLES = [
   "Classic Portrait",
   "Oil Painting",
@@ -14,6 +15,7 @@ const PORTRAIT_STYLES = [
   "Futuristic / Cyber"
 ];
 
+// Карта «человеческое название» -> код стиля для бэкенда
 const STYLE_CODE_MAP = {
   "Classic Portrait": "classic",
   "Oil Painting": "oil",
@@ -57,7 +59,7 @@ const MIMIC_PROMPTS = {
   "Surprise": "slight surprise, open eyes"
 };
 
-// Поздравления (английский текст — только как оверлей)
+// Поздравления (только как надпись поверх портрета)
 const GREETINGS = {
   newYear: [
     "Happy New Year!",
@@ -117,15 +119,17 @@ const state = {
   hasPhoto: false
 };
 
-let selectedPackageId = "p10";
+let selectedPackageId = "p10"; // p10 / p20 / p30
 let hasGeneratingLayout = false;
 
 // ======================= DOM ЭЛЕМЕНТЫ =======================
 
-// preview
+// превью
 const previewImage = document.getElementById("previewImage");
 const previewPlaceholder = document.getElementById("previewPlaceholder");
 const greetingOverlay = document.getElementById("greetingOverlay");
+const generateStatus = document.getElementById("generateStatus");
+const downloadLink = document.getElementById("downloadLink");
 
 // выборы
 const selectionRow = document.getElementById("selectionRow");
@@ -140,7 +144,7 @@ const btnAddPhoto = document.getElementById("btnAddPhoto");
 const btnPay = document.getElementById("btnPay");
 const fileInput = document.getElementById("fileInput");
 
-// sheet
+// sheet (нижняя панель выбора)
 const sheetBackdrop = document.getElementById("sheetBackdrop");
 const sheet = document.querySelector(".sheet");
 const sheetTitle = document.getElementById("sheetTitle");
@@ -151,18 +155,14 @@ const sheetCategoryTitle = document.getElementById("sheetCategoryTitle");
 const sheetOptionsTitle = document.getElementById("sheetOptionsTitle");
 const sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-// генерация
-const generateStatus = document.getElementById("generateStatus");
-const downloadLink = document.getElementById("downloadLink");
-
-// pay modal
+// модалка пакетов
 const payBackdrop = document.getElementById("payBackdrop");
 const payCloseBtn = document.getElementById("payCloseBtn");
 const payError = document.getElementById("payError");
 const payNextBtn = document.getElementById("payNextBtn");
 const packageButtons = document.querySelectorAll(".pay-package");
 
-// agreement modal
+// модалка соглашения + email
 const agreementBackdrop = document.getElementById("agreementBackdrop");
 const agreementCloseBtn = document.getElementById("agreementCloseBtn");
 const agreeEmailInput = document.getElementById("agreeEmail");
@@ -216,7 +216,7 @@ function updateGreetingOverlay() {
   }
 }
 
-// ----------------- SHEET (общий) -----------------
+// ======================= SHEET (общий) =======================
 
 function clearSheet() {
   if (sheetOptionsRow) sheetOptionsRow.innerHTML = "";
@@ -229,27 +229,21 @@ function clearSheet() {
 function showSheet() {
   if (!sheetBackdrop || !sheet) return;
   sheetBackdrop.classList.add("visible");
-  history.pushState({ wtsOverlay: "sheet" }, "");
 }
 
-function hideSheet(fromHistory = false) {
+function hideSheet() {
   if (!sheetBackdrop || !sheet) return;
   sheetBackdrop.classList.remove("visible");
-  if (!fromHistory) history.back();
 }
 
-function isSheetOpen() {
-  return sheetBackdrop && sheetBackdrop.classList.contains("visible");
-}
-
-// ----------------- SHEET: стиль -----------------
+// ======================= SHEET: стиль =======================
 
 function openStyleSheet() {
   clearSheet();
   if (sheetTitle) sheetTitle.textContent = "Стиль портрета";
   if (sheetDescription) {
     sheetDescription.textContent =
-      "Выберите, как будет выглядеть общий художественный стиль.";
+      "Выберите, как будет выглядеть общий художественный стиль портрета.";
   }
 
   PORTRAIT_STYLES.forEach((name) => {
@@ -269,14 +263,14 @@ function openStyleSheet() {
   showSheet();
 }
 
-// ----------------- SHEET: кожа -----------------
+// ======================= SHEET: кожа =======================
 
 function openSkinSheet() {
   clearSheet();
   if (sheetTitle) sheetTitle.textContent = "Эффект кожи";
   if (sheetDescription) {
     sheetDescription.textContent =
-      "Выберите улучшение кожи. Оно добавится в запрос к ИИ.";
+      "Выберите улучшение кожи. Это добавится в запрос к ИИ.";
   }
 
   SKIN_EFFECTS.forEach((name) => {
@@ -296,7 +290,7 @@ function openSkinSheet() {
   showSheet();
 }
 
-// ----------------- SHEET: мимика -----------------
+// ======================= SHEET: мимика =======================
 
 function openMimicSheet() {
   clearSheet();
@@ -322,7 +316,7 @@ function openMimicSheet() {
   showSheet();
 }
 
-// ----------------- SHEET: поздравления -----------------
+// ======================= SHEET: поздравления =======================
 
 function renderGreetingOptions(categoryKey) {
   if (!sheetOptionsRow) return;
@@ -385,7 +379,7 @@ function openGreetingsSheet() {
   showSheet();
 }
 
-// ======================= ФОТО =======================
+// ======================= РАБОТА С ФОТО =======================
 
 if (btnAddPhoto && fileInput) {
   btnAddPhoto.addEventListener("click", () => fileInput.click());
@@ -408,7 +402,7 @@ if (btnAddPhoto && fileInput) {
   });
 }
 
-// уменьшение фото (fix 413)
+// уменьшение фото перед отправкой (fix 413)
 function resizeImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -440,7 +434,7 @@ function resizeImage(file) {
   });
 }
 
-// ======================= ГЕНЕРАЦИЯ =======================
+// ======================= ГЕНЕРАЦИЯ ПОРТРЕТА =======================
 
 function enterGeneratingLayout() {
   if (hasGeneratingLayout) return;
@@ -526,6 +520,7 @@ async function generatePortrait() {
 
     if (downloadLink) {
       downloadLink.href = data.image;
+      downloadLink.download = "windows-to-soul.png";
       downloadLink.style.display = "inline-flex";
     }
   } catch (err) {
@@ -536,9 +531,10 @@ async function generatePortrait() {
   }
 }
 
-// ======================= ПАКЕТЫ =======================
+// ======================= ПАКЕТЫ ОПЛАТЫ =======================
 
 function updatePackageSelectionUI() {
+  if (!packageButtons) return;
   packageButtons.forEach((btn) => {
     const pkg = btn.dataset.package;
     if (pkg === selectedPackageId) btn.classList.add("selected");
@@ -551,17 +547,11 @@ function openPayModal() {
   if (payError) payError.textContent = "";
   updatePackageSelectionUI();
   payBackdrop.classList.add("visible");
-  history.pushState({ wtsOverlay: "pay" }, "");
 }
 
-function closePayModal(fromHistory = false) {
+function closePayModal() {
   if (!payBackdrop) return;
   payBackdrop.classList.remove("visible");
-  if (!fromHistory) history.back();
-}
-
-function isPayOpen() {
-  return payBackdrop && payBackdrop.classList.contains("visible");
 }
 
 packageButtons.forEach((btn) => {
@@ -587,19 +577,11 @@ function openAgreementModal() {
   if (!agreementBackdrop) return;
   if (agreeError) agreeError.textContent = "";
   agreementBackdrop.classList.add("visible");
-  history.pushState({ wtsOverlay: "agreement" }, "");
 }
 
-function closeAgreementModal(fromHistory = false) {
+function closeAgreementModal() {
   if (!agreementBackdrop) return;
   agreementBackdrop.classList.remove("visible");
-  if (!fromHistory) history.back();
-}
-
-function isAgreementOpen() {
-  return (
-    agreementBackdrop && agreementBackdrop.classList.contains("visible")
-  );
 }
 
 async function startCheckout() {
@@ -646,6 +628,7 @@ async function startCheckout() {
     if (!res.ok) {
       throw new Error(data.error || "Не удалось создать сессию оплаты.");
     }
+
     if (!data.url) {
       throw new Error("Сервер не вернул ссылку оплаты.");
     }
@@ -660,44 +643,26 @@ async function startCheckout() {
   }
 }
 
-// ======================= BACK BUTTON =======================
+// ======================= ОБРАБОТЧИКИ СОБЫТИЙ =======================
 
-(function initHistoryBase() {
-  if (!window.history || !window.history.replaceState) return;
-  try {
-    window.history.replaceState({ wtsBase: true }, "", window.location.href);
-  } catch {}
-})();
-
-window.addEventListener("popstate", () => {
-  const anyOverlayOpen = isSheetOpen() || isPayOpen() || isAgreementOpen();
-  if (anyOverlayOpen) {
-    if (isSheetOpen()) hideSheet(true);
-    if (isPayOpen()) closePayModal(true);
-    if (isAgreementOpen()) closeAgreementModal(true);
-    try {
-      window.history.replaceState({ wtsBase: true }, "", window.location.href);
-    } catch {}
-  }
-});
-
-// ======================= LISTENERS =======================
-
+// главные кнопки
 if (btnStyle) btnStyle.addEventListener("click", openStyleSheet);
 if (btnSkin) btnSkin.addEventListener("click", openSkinSheet);
 if (btnMimic) btnMimic.addEventListener("click", openMimicSheet);
 if (btnGreetings) btnGreetings.addEventListener("click", openGreetingsSheet);
 if (btnGenerate) btnGenerate.addEventListener("click", generatePortrait);
 
-if (sheetCloseBtn) sheetCloseBtn.addEventListener("click", () => hideSheet());
+// sheet
+if (sheetCloseBtn) sheetCloseBtn.addEventListener("click", hideSheet);
 if (sheetBackdrop) {
   sheetBackdrop.addEventListener("click", (e) => {
     if (e.target === sheetBackdrop) hideSheet();
   });
 }
 
+// пакеты
 if (btnPay) btnPay.addEventListener("click", openPayModal);
-if (payCloseBtn) payCloseBtn.addEventListener("click", () => closePayModal());
+if (payCloseBtn) payCloseBtn.addEventListener("click", closePayModal);
 if (payBackdrop) {
   payBackdrop.addEventListener("click", (e) => {
     if (e.target === payBackdrop) closePayModal();
@@ -705,10 +670,9 @@ if (payBackdrop) {
 }
 if (payNextBtn) payNextBtn.addEventListener("click", goToAgreementModal);
 
+// соглашение
 if (agreementCloseBtn)
-  agreementCloseBtn.addEventListener("click", () =>
-    closeAgreementModal()
-  );
+  agreementCloseBtn.addEventListener("click", closeAgreementModal);
 if (agreementBackdrop) {
   agreementBackdrop.addEventListener("click", (e) => {
     if (e.target === agreementBackdrop) closeAgreementModal();
@@ -720,4 +684,5 @@ if (agreePayBtn) agreePayBtn.addEventListener("click", startCheckout);
 updateSelectionPills();
 updateGreetingOverlay();
 updatePackageSelectionUI();
-console.log("WindowToSoul script.js loaded");
+
+console.log("WindowToSoul script.js loaded (full, with payments).");
