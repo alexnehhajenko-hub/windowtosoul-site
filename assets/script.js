@@ -1,744 +1,697 @@
-/* WindowToSoul — Full Soft Dark Premium UI */
-
-/* ----- RESET ----- */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top, #181928 0%, #050712 55%, #020109 100%);
-  color: #f3edf9;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-}
-
-/* Режим генерации — прячем всё, кроме превью и кнопки скачать */
-body.app-generating .app-header,
-body.app-generating .controls,
-body.app-generating .footer {
-  display: none;
-}
-
-body.app-generating .app {
-  padding-top: 16px;
-  padding-bottom: 16px;
-}
-
-body.app-generating .preview-box {
-  flex: 1;
-  min-height: auto;
-  height: calc(100vh - 70px);
-}
-
-/* ----- APP LAYOUT ----- */
-
-.app {
-  width: 100%;
-  max-width: 420px;
-  padding: 16px 16px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.app-header {
-  text-align: center;
-  margin-bottom: 4px;
-}
-
-.app-title {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #f5f0ff;
-}
-
-.app-subtitle {
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-/* ----- PREVIEW ----- */
-
-.preview-box {
-  position: relative;
-  border-radius: 24px;
-  background: radial-gradient(circle at top, #26263b 0%, #151525 55%, #080711 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow:
-    0 16px 38px rgba(0, 0, 0, 0.85),
-    0 0 0 1px rgba(255, 255, 255, 0.03);
-  padding: 12px;
-  overflow: hidden;
-  min-height: 230px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.preview-label {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  opacity: 0.65;
-}
-
-.preview-placeholder {
-  text-align: center;
-  opacity: 0.6;
-  font-size: 14px;
-  line-height: 1.4;
-  padding: 0 12px;
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 18px;
-  display: none;
-}
-
-/* Надпись-поздравление поверх портрета */
-
-.greeting-overlay {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #ffffff;
-  text-shadow: 0 0 8px rgba(0,0,0,0.9);
-  border-radius: 999px;
-  background: rgba(5, 7, 20, 0.7);
-  max-width: 90%;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease-out;
-}
-
-.greeting-overlay.visible {
-  opacity: 1;
-}
-
-/* ----- CONTROLS ----- */
-
-.controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-/* Выбранные опции (чипы) */
-
-.selection-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 22px;
-}
-
-.selection-pill {
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  opacity: 0.9;
-  white-space: nowrap;
-}
-
-/* ----- BUTTONS ----- */
-
-.button-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.btn-row-split {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-main,
-.btn-half {
-  position: relative;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 14px 18px;
-  color: #fbf8ff;
-  background: linear-gradient(135deg, #7159ff, #9a7bff 45%, #c292ff 100%);
-  box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 3px 0 rgba(255, 255, 255, 0.22) inset,
-    0 -4px 12px rgba(0, 0, 0, 0.7) inset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition:
-    transform 0.09s ease-out,
-    box-shadow 0.09s ease-out,
-    filter 0.12s ease-out;
-}
-
-.btn-main {
-  width: 100%;
-}
-
-.btn-half {
-  flex: 1;
-  font-size: 13px;
-  padding-inline: 8px;
-}
-
-.btn-main span,
-.btn-half span {
-  white-space: nowrap;
-}
-
-.btn-main::after,
-.btn-half::after {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background: radial-gradient(circle at top left,
-    rgba(255, 255, 255, 0.16) 0,
-    transparent 55%);
-  opacity: 0.9;
-  pointer-events: none;
-}
-
-.btn-main:active,
-.btn-half:active {
-  transform: translateY(1px) scale(0.985);
-  box-shadow:
-    0 5px 14px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 2px 0 rgba(255, 255, 255, 0.12) inset,
-    0 -3px 8px rgba(0, 0, 0, 0.75) inset;
-  filter: brightness(0.96);
-}
-
-.btn-secondary {
-  background: linear-gradient(135deg, #414362, #555a80);
-}
-
-.btn-pay {
-  background: linear-gradient(135deg, #e2b86f, #d48a59 40%, #bf624c 100%);
-  box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.92),
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 3px 0 rgba(255, 245, 220, 0.4) inset,
-    0 -4px 12px rgba(0, 0, 0, 0.75) inset;
-  color: #25130a;
-}
-
-.btn-icon {
-  font-size: 16px;
-}
-
-/* Кнопка "Скачать" */
-
-.download-row {
-  margin-top: 10px;
-  display: flex;
-  justify-content: center;
-}
-
-.btn-download {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 18px;
-  font-size: 13px;
-  border-radius: 999px;
-  border: none;
-  text-decoration: none;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: linear-gradient(135deg, #5f65dd, #8b7fe7);
-  color: #fbf9ff;
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.8),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-/* ----- FOOTER ----- */
-
-.footer {
-  margin-top: auto;
-  font-size: 10px;
-  opacity: 0.55;
-  text-align: center;
-  line-height: 1.4;
-}
-
-/* ----- SHEET (выбор стилей/эффектов/мимики/поздравлений) ----- */
-
-.sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(16px);
-  z-index: 2000;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.22s ease-out;
-}
-
-.sheet-backdrop.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.sheet {
-  width: 100%;
-  max-width: 380px;
-  max-height: 78vh;
-  background: rgba(22, 22, 40, 0.94);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.95);
-  padding: 14px 16px 18px;
-  transform: translateY(18px) scale(0.96);
-  opacity: 0;
-  transition:
-    transform 0.22s cubic-bezier(0.16, 0.8, 0.25, 1),
-    opacity 0.22s ease-out;
-  display: flex;
-  flex-direction: column;
-}
-
-.sheet-backdrop.visible .sheet {
-  transform: translateY(0) scale(1);
-  opacity: 1;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.sheet-title {
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.95;
-}
-
-.sheet-close {
-  border: none;
-  background: transparent;
-  color: #ffffffb8;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.sheet-description {
-  font-size: 11px;
-  opacity: 0.72;
-  margin-bottom: 6px;
-}
-
-.sheet-section-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  opacity: 0.68;
-  margin-top: 6px;
-  margin-bottom: 2px;
-  letter-spacing: 0.08em;
-}
-
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-  overflow-y: auto;
-}
-
-.chip {
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.12s ease-out,
-    border-color 0.12s ease-out,
-    transform 0.08s ease-out;
-}
-
-.chip:hover {
-  background: rgba(255, 255, 255, 0.09);
-  transform: translateY(-1px);
-}
-
-.chip.selected {
-  background: linear-gradient(135deg, #5560d8, #8b7fe7);
-  border-color: rgba(255, 255, 255, 0.8);
-}
-
-.chip-category {
-  font-size: 11px;
-  opacity: 0.9;
-  padding: 5px 11px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-/* ----- ОВЕРЛЕЙ "ГЕНЕРАЦИЯ" ----- */
-
-.generate-status {
-  position: absolute;
-  inset: 10px;
-  border-radius: 18px;
-  background: radial-gradient(circle at top, rgba(255,255,255,0.05), rgba(0,0,0,0.9));
-  display: none;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 5;
-}
-
-.generate-status.visible {
-  display: flex;
-}
-
-.spinner {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.16);
-  border-top-color: #b3a3ff;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.generate-status-text {
-  font-size: 12px;
-  opacity: 0.9;
-}
-
-/* ----- PAY MODAL (ПАКЕТЫ) ----- */
-
-.pay-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  backdrop-filter: blur(16px);
-  z-index: 2100;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.22s ease-out;
-}
-
-.pay-backdrop.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.pay-modal {
-  width: 100%;
-  max-width: 420px;
-  background: rgba(24, 24, 40, 0.96);
-  border-radius: 24px;
-  padding: 20px 18px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.95);
-  color: #ffffff; /* ВЕСЬ ТЕКСТ БЕЛЫЙ */
-}
-
-.pay-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.pay-title {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.pay-close {
-  border: none;
-  background: transparent;
-  color: #ffffffcc;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.pay-section-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  opacity: 0.8;
-  margin-top: 6px;
-  margin-bottom: 6px;
-  letter-spacing: 0.12em;
-}
-
-/* Список пакетов */
-
-.pay-packages {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pay-package {
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-  padding: 12px 14px;
-  cursor: pointer;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #ffffff; /* ТЕКСТ ПАКЕТА БЕЛЫЙ */
-  transition:
-    background 0.14s ease-out,
-    border-color 0.14s ease-out,
-    transform 0.08s ease-out,
-    box-shadow 0.14s ease-out;
-}
-
-.pay-package:hover {
-  background: rgba(255, 255, 255, 0.12);
-  transform: translateY(-1px);
-}
-
-.pay-package.selected {
-  background: linear-gradient(135deg, #6d63ff, #9a81ff);
-  border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 16px rgba(143, 120, 255, 0.8);
-}
-
-.pay-package-title {
-  font-size: 14px;
-  color: inherit;
-}
-
-.pay-package-price {
-  font-size: 14px;
-  font-weight: 600;
-  color: inherit;
-}
-
-/* Ошибка + кнопка "далее" */
-
-.pay-error {
-  margin-top: 8px;
-  font-size: 11px;
-  color: #ffb3c0;
-  min-height: 14px;
-}
-
-.pay-submit {
-  margin-top: 12px;
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 12px 16px;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  background: linear-gradient(135deg, #7b65ff, #aa88ff);
-  color: #ffffff;
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.95),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-/* ----- AGREEMENT MODAL (СОГЛАСИЕ + EMAIL) ----- */
-
-.agreement-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.68);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(16px);
-  z-index: 2200;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.22s ease-out;
-}
-
-.agreement-backdrop.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.agreement-modal {
-  width: 100%;
-  max-width: 420px;
-  background: rgba(24, 24, 40, 0.96);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.95);
-  padding: 20px 18px 18px;
-  color: #ffffff;
-}
-
-.agreement-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.agreement-title {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.agreement-close {
-  border: none;
-  background: transparent;
-  color: #ffffffcc;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.agreement-text {
-  font-size: 11px;
-  opacity: 0.9;
-  line-height: 1.4;
-  margin-bottom: 10px;
-}
-
-.agreement-section-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  opacity: 0.8;
-  margin-bottom: 4px;
-  letter-spacing: 0.12em;
-}
-
-.agreement-input {
-  width: 100%;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(5, 5, 18, 0.9);
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #ffffff;
-  margin-bottom: 8px;
-}
-
-.agreement-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.agreement-checkbox-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 11px;
-  line-height: 1.4;
-  margin-bottom: 6px;
-}
-
-.agreement-checkbox-row input[type="checkbox"] {
-  margin-top: 2px;
-}
-
-.agreement-checkbox-row a {
-  color: #d4c7ff;
-  text-decoration: none;
-}
-
-.agreement-checkbox-row a:hover {
-  text-decoration: underline;
-}
-
-.agreement-error {
-  font-size: 11px;
-  color: #ffb3c0;
-  min-height: 14px;
-  margin-bottom: 6px;
-}
-
-.agreement-submit {
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 12px 16px;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  background: linear-gradient(135deg, #7b65ff, #aa88ff);
-  color: #ffffff;
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.95),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.agreement-hint {
-  margin-top: 8px;
-  font-size: 10px;
-  opacity: 0.78;
-  line-height: 1.4;
-}
-
-/* ----- RESPONSIVE ----- */
-
-@media (min-height: 780px) {
-  .preview-box {
-    min-height: 260px;
+// WindowToSoul — основной фронтенд-скрипт
+// UI: выбор стиля, эффекта кожи, мимики, поздравлений, пакетов и соглашения
+
+// -------------------- КОНСТАНТЫ --------------------
+
+// Варианты стилей портрета (названия, которые видит пользователь)
+const PORTRAIT_STYLES = [
+  "Classic Portrait",
+  "Oil Painting",
+  "Cute Soft",
+  "Anime",
+  "Scary Dark",
+  "Futuristic / Cyber"
+];
+
+// Карта «человеческое название» -> код стиля для бэкенда
+const STYLE_CODE_MAP = {
+  "Classic Portrait": "classic",
+  "Oil Painting": "oil",
+  "Cute Soft": "beauty",
+  "Anime": "anime",
+  "Scary Dark": "poster",
+  "Futuristic / Cyber": "poster"
+};
+
+// Эффекты кожи (один на выбор)
+const SKIN_EFFECTS = [
+  "Smooth Skin",
+  "Remove Wrinkles",
+  "Bright Face",
+  "Extra Glow",
+  "Warm Tone"
+];
+
+// Мимика (одна на выбор)
+const MIMIC_OPTIONS = [
+  "Soft Smile",
+  "Big Smile",
+  "Neutral",
+  "Serious",
+  "Surprise"
+];
+
+// Как каждый эффект влияет на текст-подсказку для ИИ
+const SKIN_PROMPTS = {
+  "Smooth Skin": "smooth, even, soft skin",
+  "Remove Wrinkles": "less visible wrinkles, subtle anti-age retouch",
+  "Bright Face": "bright, well-lit face, gentle glow",
+  "Extra Glow": "strong glow, beauty lighting, glossy skin look",
+  "Warm Tone": "warm skin tone, golden light"
+};
+
+const MIMIC_PROMPTS = {
+  "Soft Smile": "soft gentle smile",
+  "Big Smile": "big open smile, joyful expression",
+  "Neutral": "neutral expression, calm face",
+  "Serious": "serious expression, focused look",
+  "Surprise": "slight surprise, open eyes"
+};
+
+// Английские поздравительные надписи (только как оверлей поверх)
+const GREETINGS = {
+  newYear: [
+    "Happy New Year!",
+    "Merry Christmas!",
+    "Happy Holidays!",
+    "New Year, New You",
+    "Shine in the New Year",
+    "Magic New Year Portrait"
+  ],
+  birthday: [
+    "Happy Birthday!",
+    "Birthday Magic",
+    "Birthday Portrait Just for You",
+    "Another Year of You",
+    "Make a Wish"
+  ],
+  love: [
+    "With Love",
+    "You Are My Universe",
+    "Made for You",
+    "From My Heart to Yours",
+    "You Are My Favorite Story"
+  ],
+  funny: [
+    "Too Cute to Be Real",
+    "AI Made Me Like This",
+    "Glow Up Mode: ON",
+    "New Face, Same Soul",
+    "100% Digital Drama"
+  ],
+  creepy: [
+    "Sweet Dreams… or Not",
+    "Welcome to the Other Side",
+    "Beautifully Haunted",
+    "Born in the Shadows",
+    "Do You Dare to Look?"
+  ]
+};
+
+const GREETING_CATEGORY_LABELS = {
+  newYear: "New Year / Christmas",
+  birthday: "Birthday",
+  love: "Love / Romantic",
+  funny: "Funny / Cute",
+  creepy: "Creepy / Scary"
+};
+
+// -------------------- СОСТОЯНИЕ --------------------
+
+const state = {
+  styleName: null,          // "Classic Portrait"
+  skinEffect: null,         // "Smooth Skin"
+  mimic: null,              // "Soft Smile"
+  greetingCategory: null,   // "newYear"
+  greetingText: null,       // "Happy New Year!"
+  hasPhoto: false,
+  photoFile: null
+};
+
+let hasEnteredGeneratingLayout = false;
+let selectedPackageId = "p10"; // по умолчанию 10 генераций
+
+// -------------------- DOM ЭЛЕМЕНТЫ --------------------
+
+const previewImage = document.getElementById("previewImage");
+const previewPlaceholder = document.getElementById("previewPlaceholder");
+const greetingOverlay = document.getElementById("greetingOverlay");
+const selectionRow = document.getElementById("selectionRow");
+
+// Кнопки главного экрана
+const btnStyle = document.getElementById("btnStyle");
+const btnSkin = document.getElementById("btnSkin");
+const btnMimic = document.getElementById("btnMimic");
+const btnGreetings = document.getElementById("btnGreetings");
+const btnGenerate = document.getElementById("btnGenerate");
+const btnAddPhoto = document.getElementById("btnAddPhoto");
+const btnPay = document.getElementById("btnPay");
+const fileInput = document.getElementById("fileInput");
+
+// Окно выбора опций (стиль / кожа / мимика / поздравления)
+const sheetBackdrop = document.getElementById("sheetBackdrop");
+const sheetTitle = document.getElementById("sheetTitle");
+const sheetDescription = document.getElementById("sheetDescription");
+const sheetCloseBtn = document.getElementById("sheetCloseBtn");
+const sheetCategoryTitle = document.getElementById("sheetCategoryTitle");
+const sheetCategoryRow = document.getElementById("sheetCategoryRow");
+const sheetOptionsTitle = document.getElementById("sheetOptionsTitle");
+const sheetOptionsRow = document.getElementById("sheetOptionsRow");
+
+// Оверлей генерации
+const generateStatus = document.getElementById("generateStatus");
+const downloadLink = document.getElementById("downloadLink");
+
+// Модалка выбора пакетов
+const payBackdrop = document.getElementById("payBackdrop");
+const payCloseBtn = document.getElementById("payCloseBtn");
+const payError = document.getElementById("payError");
+const payNextBtn = document.getElementById("payNextBtn");
+const packageButtons = document.querySelectorAll(".pay-package");
+
+// Модалка соглашения + email
+const agreementBackdrop = document.getElementById("agreementBackdrop");
+const agreementCloseBtn = document.getElementById("agreementCloseBtn");
+const agreeEmailInput = document.getElementById("agreeEmail");
+const agreeCheckbox = document.getElementById("agreeCheckbox");
+const agreeError = document.getElementById("agreeError");
+const agreePayBtn = document.getElementById("agreePayBtn");
+
+// -------------------- UI ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ --------------------
+
+function updateSelectionPills() {
+  if (!selectionRow) return;
+  selectionRow.innerHTML = "";
+
+  if (state.styleName) {
+    const pill = document.createElement("div");
+    pill.className = "selection-pill";
+    pill.textContent = `Стиль: ${state.styleName}`;
+    selectionRow.appendChild(pill);
+  }
+
+  if (state.skinEffect) {
+    const pill = document.createElement("div");
+    pill.className = "selection-pill";
+    pill.textContent = `Кожа: ${state.skinEffect}`;
+    selectionRow.appendChild(pill);
+  }
+
+  if (state.mimic) {
+    const pill = document.createElement("div");
+    pill.className = "selection-pill";
+    pill.textContent = `Мимика: ${state.mimic}`;
+    selectionRow.appendChild(pill);
+  }
+
+  if (state.greetingText) {
+    const pill = document.createElement("div");
+    pill.className = "selection-pill";
+    pill.textContent = `Текст: "${state.greetingText}"`;
+    selectionRow.appendChild(pill);
   }
 }
+
+function updateGreetingOverlay() {
+  if (!greetingOverlay) return;
+  if (state.greetingText) {
+    greetingOverlay.textContent = state.greetingText;
+    greetingOverlay.classList.add("visible");
+  } else {
+    greetingOverlay.textContent = "";
+    greetingOverlay.classList.remove("visible");
+  }
+}
+
+// ---- стеклянный выезжающий экран (sheet) ----
+
+function showSheet() {
+  if (!sheetBackdrop) return;
+  sheetBackdrop.classList.add("visible");
+}
+
+function hideSheet() {
+  if (!sheetBackdrop) return;
+  sheetBackdrop.classList.remove("visible");
+}
+
+function clearSheet() {
+  if (!sheetOptionsRow || !sheetCategoryRow) return;
+  sheetCategoryRow.innerHTML = "";
+  sheetOptionsRow.innerHTML = "";
+  if (sheetCategoryTitle) sheetCategoryTitle.style.display = "none";
+  sheetCategoryRow.style.display = "none";
+  if (sheetOptionsTitle) sheetOptionsTitle.textContent = "Варианты";
+}
+
+// -------------------- ОКНО: СТИЛЬ ПОРТРЕТА --------------------
+
+function openStyleSheet() {
+  clearSheet();
+  if (sheetTitle) sheetTitle.textContent = "Стиль портрета";
+  if (sheetDescription) sheetDescription.textContent =
+    "Выберите, как будет выглядеть общий стиль портрета.";
+
+  PORTRAIT_STYLES.forEach((name) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = name;
+    if (state.styleName === name) chip.classList.add("selected");
+    chip.addEventListener("click", () => {
+      state.styleName = name;
+      hideSheet();
+      updateSelectionPills();
+    });
+    sheetOptionsRow.appendChild(chip);
+  });
+
+  showSheet();
+}
+
+// -------------------- ОКНО: ЭФФЕКТ КОЖИ --------------------
+
+function openSkinSheet() {
+  clearSheet();
+  if (sheetTitle) sheetTitle.textContent = "Эффект кожи";
+  if (sheetDescription) sheetDescription.textContent =
+    "Выберите улучшение кожи (это добавится в промпт для ИИ).";
+
+  SKIN_EFFECTS.forEach((name) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = name;
+    if (state.skinEffect === name) chip.classList.add("selected");
+    chip.addEventListener("click", () => {
+      state.skinEffect = name;
+      hideSheet();
+      updateSelectionPills();
+    });
+    sheetOptionsRow.appendChild(chip);
+  });
+
+  showSheet();
+}
+
+// -------------------- ОКНО: МИМИКА --------------------
+
+function openMimicSheet() {
+  clearSheet();
+  if (sheetTitle) sheetTitle.textContent = "Мимика";
+  if (sheetDescription) sheetDescription.textContent =
+    "Выберите выражение лица.";
+
+  MIMIC_OPTIONS.forEach((name) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = name;
+    if (state.mimic === name) chip.classList.add("selected");
+    chip.addEventListener("click", () => {
+      state.mimic = name;
+      hideSheet();
+      updateSelectionPills();
+    });
+    sheetOptionsRow.appendChild(chip);
+  });
+
+  showSheet();
+}
+
+// -------------------- ОКНО: ПОЗДРАВЛЕНИЯ --------------------
+
+function renderGreetingOptions(categoryKey) {
+  if (!sheetOptionsRow) return;
+  sheetOptionsRow.innerHTML = "";
+  const list = GREETINGS[categoryKey] || [];
+
+  list.forEach((text) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = text;
+    if (state.greetingText === text) chip.classList.add("selected");
+    chip.addEventListener("click", () => {
+      state.greetingCategory = categoryKey;
+      state.greetingText = text;
+      hideSheet();
+      updateSelectionPills();
+      updateGreetingOverlay();
+    });
+    sheetOptionsRow.appendChild(chip);
+  });
+}
+
+function openGreetingsSheet() {
+  clearSheet();
+  if (sheetTitle) sheetTitle.textContent = "Поздравления";
+  if (sheetDescription) sheetDescription.textContent =
+    "Сначала выберите категорию, затем конкретный текст. Надпись будет только поверх портрета.";
+
+  if (sheetCategoryTitle) {
+    sheetCategoryTitle.style.display = "block";
+  }
+  if (sheetCategoryRow) {
+    sheetCategoryRow.style.display = "flex";
+    sheetCategoryRow.innerHTML = "";
+
+    Object.keys(GREETINGS).forEach((key) => {
+      const catChip = document.createElement("button");
+      catChip.type = "button";
+      catChip.className = "chip chip-category";
+      catChip.textContent = GREETING_CATEGORY_LABELS[key] || key;
+      if (state.greetingCategory === key) catChip.classList.add("selected");
+      catChip.addEventListener("click", () => {
+        state.greetingCategory = key;
+        Array.from(sheetCategoryRow.children).forEach((el) =>
+          el.classList.remove("selected")
+        );
+        catChip.classList.add("selected");
+        renderGreetingOptions(key);
+      });
+      sheetCategoryRow.appendChild(catChip);
+    });
+  }
+
+  if (sheetOptionsTitle) sheetOptionsTitle.textContent = "Тексты";
+
+  if (state.greetingCategory && GREETINGS[state.greetingCategory]) {
+    renderGreetingOptions(state.greetingCategory);
+  }
+
+  showSheet();
+}
+
+// -------------------- РАБОТА С ФОТО --------------------
+
+if (btnAddPhoto && fileInput) {
+  btnAddPhoto.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", (event) => {
+    const file =
+      event.target.files && event.target.files.length > 0
+        ? event.target.files[0]
+        : null;
+    if (!file) return;
+
+    state.photoFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (!previewImage || !previewPlaceholder) return;
+      previewImage.src = e.target.result;
+      previewImage.style.display = "block";
+      previewPlaceholder.style.display = "none";
+      state.hasPhoto = true;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Уменьшаем фото перед отправкой
+function resizeImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSide = 900;
+        let w = img.width;
+        let h = img.height;
+
+        if (w > h && w > maxSide) {
+          h = h * (maxSide / w);
+          w = maxSide;
+        } else if (h > maxSide) {
+          w = w * (maxSide / h);
+          h = maxSide;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+
+        resolve(canvas.toDataURL("image/jpeg", 0.9));
+      };
+      img.onerror = () =>
+        reject(new Error("Не удалось загрузить изображение"));
+      img.src = e.target.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+// -------------------- ГЕНЕРАЦИЯ ПОРТРЕТА --------------------
+
+function enterGeneratingLayoutOnce() {
+  if (hasEnteredGeneratingLayout) return;
+  document.body.classList.add("app-generating");
+  hasEnteredGeneratingLayout = true;
+}
+
+function setLoading(isLoading) {
+  if (!generateStatus || !btnGenerate) return;
+  if (isLoading) {
+    generateStatus.classList.add("visible");
+    btnGenerate.disabled = true;
+    btnGenerate.innerText = "Генерация...";
+  } else {
+    generateStatus.classList.remove("visible");
+    btnGenerate.disabled = false;
+    btnGenerate.innerText = "Генерировать";
+  }
+}
+
+async function generatePortrait() {
+  if (!state.hasPhoto || !state.photoFile) {
+    alert("Сначала добавьте фото, затем выберите эффекты и запустите генерацию.");
+    return;
+  }
+
+  enterGeneratingLayoutOnce();
+
+  const styleName = state.styleName || "Classic Portrait";
+  const styleCode = STYLE_CODE_MAP[styleName] || "classic";
+
+  const parts = [];
+  if (state.skinEffect && SKIN_PROMPTS[state.skinEffect]) {
+    parts.push(SKIN_PROMPTS[state.skinEffect]);
+  }
+  if (state.mimic && MIMIC_PROMPTS[state.mimic]) {
+    parts.push(MIMIC_PROMPTS[state.mimic]);
+  }
+  if (!parts.length) {
+    parts.push("high quality portrait, detailed face");
+  }
+  const finalText = parts.join(", ");
+
+  setLoading(true);
+  if (downloadLink) downloadLink.style.display = "none";
+
+  try {
+    const photoData = await resizeImage(state.photoFile);
+
+    const payload = {
+      style: styleCode,
+      text: finalText || null,
+      photo: photoData
+    };
+
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error("Сервер вернул некорректный ответ.");
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || "Ошибка генерации.");
+    }
+
+    if (!data.image) {
+      throw new Error("Ответ без изображения.");
+    }
+
+    if (previewImage && previewPlaceholder) {
+      previewImage.src = data.image;
+      previewImage.style.display = "block";
+      previewPlaceholder.style.display = "none";
+    }
+
+    if (downloadLink) {
+      downloadLink.href = data.image;
+      downloadLink.style.display = "inline-flex";
+    }
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Ошибка генерации портрета.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+// -------------------- ПАКЕТЫ ОПЛАТЫ --------------------
+
+function openPayModal() {
+  if (!payBackdrop || !payError) return;
+  payError.textContent = "";
+  updatePackageSelectionUI();
+  payBackdrop.classList.add("visible");
+}
+
+function closePayModal() {
+  if (!payBackdrop) return;
+  payBackdrop.classList.remove("visible");
+}
+
+function updatePackageSelectionUI() {
+  if (!packageButtons) return;
+  packageButtons.forEach((btn) => {
+    const pkg = btn.dataset.package;
+    if (pkg === selectedPackageId) {
+      btn.classList.add("selected");
+    } else {
+      btn.classList.remove("selected");
+    }
+  });
+}
+
+if (packageButtons) {
+  packageButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedPackageId = btn.dataset.package;
+      updatePackageSelectionUI();
+    });
+  });
+}
+
+function goToAgreementModal() {
+  if (!selectedPackageId) {
+    if (payError) payError.textContent = "Выберите пакет.";
+    return;
+  }
+  if (payError) payError.textContent = "";
+  closePayModal();
+  openAgreementModal();
+}
+
+// -------------------- СОГЛАШЕНИЕ + EMAIL --------------------
+
+function openAgreementModal() {
+  if (!agreementBackdrop || !agreeError) return;
+  agreeError.textContent = "";
+  agreementBackdrop.classList.add("visible");
+}
+
+function closeAgreementModal() {
+  if (!agreementBackdrop) return;
+  agreementBackdrop.classList.remove("visible");
+}
+
+async function startCheckout() {
+  if (!agreeEmailInput || !agreeCheckbox || !agreeError || !agreePayBtn) return;
+
+  agreeError.textContent = "";
+
+  const email = (agreeEmailInput.value || "").trim();
+  const agreed = agreeCheckbox.checked;
+
+  if (!email) {
+    agreeError.textContent = "Введите email.";
+    return;
+  }
+
+  if (!agreed) {
+    agreeError.textContent = "Подтвердите возраст и согласие с условиями.";
+    return;
+  }
+
+  if (!selectedPackageId) {
+    agreeError.textContent = "Выберите пакет генераций.";
+    return;
+  }
+
+  agreePayBtn.disabled = true;
+  agreePayBtn.textContent = "Создание оплаты...";
+
+  try {
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        packageId: selectedPackageId
+      })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error("Некорректный ответ сервера оплаты.");
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || "Не удалось создать сессию оплаты.");
+    }
+
+    if (!data.url) {
+      throw new Error("Сервер не вернул ссылку для оплаты.");
+    }
+
+    window.location.href = data.url;
+  } catch (err) {
+    console.error(err);
+    agreeError.textContent = err.message || "Ошибка при создании оплаты.";
+  } finally {
+    agreePayBtn.disabled = false;
+    agreePayBtn.textContent = "Перейти к оплате";
+  }
+}
+
+// -------------------- ОБРАБОТЧИКИ СОБЫТИЙ --------------------
+
+// главные кнопки
+if (btnStyle) btnStyle.addEventListener("click", openStyleSheet);
+if (btnSkin) btnSkin.addEventListener("click", openSkinSheet);
+if (btnMimic) btnMimic.addEventListener("click", openMimicSheet);
+if (btnGreetings) btnGreetings.addEventListener("click", openGreetingsSheet);
+if (btnGenerate) btnGenerate.addEventListener("click", generatePortrait);
+
+// закрытие sheet
+if (sheetCloseBtn) sheetCloseBtn.addEventListener("click", hideSheet);
+if (sheetBackdrop) {
+  sheetBackdrop.addEventListener("click", (event) => {
+    if (event.target === sheetBackdrop) hideSheet();
+  });
+}
+
+// пакеты
+if (btnPay) btnPay.addEventListener("click", openPayModal);
+if (payCloseBtn) payCloseBtn.addEventListener("click", closePayModal);
+if (payBackdrop) {
+  payBackdrop.addEventListener("click", (event) => {
+    if (event.target === payBackdrop) closePayModal();
+  });
+}
+if (payNextBtn) payNextBtn.addEventListener("click", goToAgreementModal);
+
+// соглашение
+if (agreementCloseBtn)
+  agreementCloseBtn.addEventListener("click", closeAgreementModal);
+if (agreementBackdrop) {
+  agreementBackdrop.addEventListener("click", (event) => {
+    if (event.target === agreementBackdrop) closeAgreementModal();
+  });
+}
+if (agreePayBtn) agreePayBtn.addEventListener("click", startCheckout);
+
+// стартовое состояние
+updateSelectionPills();
+updateGreetingOverlay();
+updatePackageSelectionUI();
+
+console.log("WindowToSoul script.js loaded.");
