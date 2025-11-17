@@ -4,3 +4,4 @@ export default function handler(req, res) {
     ALL_KEYS: Object.keys(process.env),
   });
 }
+
