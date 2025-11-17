@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Стили приложения -->
-  <link rel="stylesheet" href="./assets/style.css">
+  <link rel="stylesheet" href="/assets/style.css">
 
   <!-- Stripe.js для оплаты -->
   <script src="https://js.stripe.com/v3/"></script>
@@ -15,13 +15,13 @@
   <div class="app">
     <!-- Шапка -->
     <header class="app-header">
-      <div class="app-title">YourPhotoAI</div>
+      <div class="app-title">YOURPHOTOAI</div>
       <div class="app-subtitle">Создайте свой уникальный AI-портрет</div>
     </header>
 
     <!-- Превью портрета -->
     <section class="preview-box">
-      <div class="preview-label">Предпросмотр</div>
+      <div class="preview-label">ПРЕДПРОСМОТР</div>
 
       <img id="previewImage" class="preview-image" alt="Preview">
 
@@ -49,37 +49,37 @@
       <section class="button-list">
         <button class="btn-main" id="btnStyle">
           <span class="btn-icon">🎨</span>
-          <span>Стиль портрета</span>
+          <span>СТИЛЬ ПОРТРЕТА</span>
         </button>
 
         <button class="btn-main" id="btnSkin">
           <span class="btn-icon">✨</span>
-          <span>Эффект кожи</span>
+          <span>ЭФФЕКТ КОЖИ</span>
         </button>
 
         <button class="btn-main" id="btnMimic">
           <span class="btn-icon">🙂</span>
-          <span>Мимика</span>
+          <span>МИМИКА</span>
         </button>
 
         <button class="btn-main" id="btnGreetings">
           <span class="btn-icon">💌</span>
-          <span>Поздравления</span>
+          <span>ПОЗДРАВЛЕНИЯ</span>
         </button>
 
         <button class="btn-main btn-secondary" id="btnGenerate">
           <span class="btn-icon">⚡️</span>
-          <span>Генерировать</span>
+          <span>ГЕНЕРИРОВАТЬ</span>
         </button>
 
         <div class="btn-row-split">
           <button class="btn-half" id="btnAddPhoto">
             <span class="btn-icon">📷</span>
-            <span>Добавить фото</span>
+            <span>ДОБАВИТЬ ФОТО</span>
           </button>
           <button class="btn-half btn-pay" id="btnPay">
             <span class="btn-icon">💳</span>
-            <span>Пакеты</span>
+            <span>ПАКЕТЫ</span>
           </button>
         </div>
       </section>
@@ -127,7 +127,7 @@
   </div>
 
   <!-- МОДАЛКА №1: ВЫБОР ПАКЕТА (10 / 20 / 30) -->
-  <div class="pay-backdrop" id="payBackdrop" style="display:none;">
+  <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
         <div class="pay-title">Выберите пакет</div>
@@ -160,7 +160,7 @@
   </div>
 
   <!-- МОДАЛКА №2: СОГЛАСИЕ + EMAIL ПЕРЕД ОПЛАТОЙ -->
-  <div class="agreement-backdrop" id="agreementBackdrop" style="display:none;">
+  <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
         <div class="agreement-title">Подтверждение</div>
@@ -204,7 +204,7 @@
     </div>
   </div>
 
-  <!-- Подключаем основной JS -->
-  <script src="./assets/script.js"></script>
+  <!-- Основной JS -->
+  <script src="/assets/script.js"></script>
 </body>
 </html>
