@@ -1,4 +1,4 @@
-// WindowToSoul — основной фронтенд-скрипт
+// YourPhotoAI — основной фронтенд-скрипт
 // UI: выбор стиля, эффектов кожи, мимики, поздравлений, пакетов и генерации.
 // Оплата: Stripe Checkout через /api/create-checkout-session.
 // Дополнительно: обработка кнопки "Назад" на телефоне — закрывает окна/результат,
@@ -26,7 +26,7 @@ const appState = {
   isPaying: false,
 
   // UI-слой для кнопки "Назад"
-  layer: "home" // 'home' | 'sheet' | 'result'
+  layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
 };
 
 // =========================
@@ -64,9 +64,25 @@ function bindElements() {
   els.sheetOptionsRow = document.getElementById("sheetOptionsRow");
   els.sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-  // Кнопка скачивания результата (если есть в верстке)
-  els.downloadButton = document.getElementById("btnDownloadPortrait") ||
-    document.querySelector("[data-download-portrait]");
+  // Модалка оплаты
+  els.payBackdrop = document.getElementById("payBackdrop");
+  els.payCloseBtn = document.getElementById("payCloseBtn");
+  els.pkg10 = document.getElementById("pkg10");
+  els.pkg20 = document.getElementById("pkg20");
+  els.pkg30 = document.getElementById("pkg30");
+  els.payError = document.getElementById("payError");
+  els.payNextBtn = document.getElementById("payNextBtn");
+
+  // Модалка согласия
+  els.agreementBackdrop = document.getElementById("agreementBackdrop");
+  els.agreementCloseBtn = document.getElementById("agreementCloseBtn");
+  els.agreeEmail = document.getElementById("agreeEmail");
+  els.agreeCheckbox = document.getElementById("agreeCheckbox");
+  els.agreeError = document.getElementById("agreeError");
+  els.agreePayBtn = document.getElementById("agreePayBtn");
+
+  // Кнопка скачивания результата
+  els.downloadLink = document.getElementById("downloadLink");
 }
 
 // =========================
@@ -78,7 +94,15 @@ document.addEventListener("DOMContentLoaded", () => {
   attachMainHandlers();
   setupBackButtonLogic();
   refreshSelectionChips();
+  hideOverlaysOnStart();
+  handleStripeStatusFromUrl();
 });
+
+function hideOverlaysOnStart() {
+  if (els.sheetBackdrop) els.sheetBackdrop.style.display = "none";
+  if (els.payBackdrop) els.payBackdrop.style.display = "none";
+  if (els.agreementBackdrop) els.agreementBackdrop.style.display = "none";
+}
 
 // =========================
 // ЛОГИКА КНОПКИ НАЗАД
@@ -97,25 +121,25 @@ function setupBackButtonLogic() {
     window.history.replaceState({ layer: "home" }, "", window.location.href);
   }
 
-  window.addEventListener("popstate", (event) => {
-    const layer = event.state && event.state.layer ? event.state.layer : "home";
-
-    // Если открыт sheet — просто закрываем его и остаёмся на сайте
-    if (appState.layer === "sheet") {
-      closeSheet(false); // false — не пушим ещё одно состояние
-      setLayer("home", false);
-      return;
+  window.addEventListener("popstate", () => {
+    switch (appState.layer) {
+      case "sheet":
+        closeSheet(false);
+        break;
+      case "pay":
+        closePayModal(false);
+        break;
+      case "agree":
+        closeAgreementModal(false);
+        break;
+      case "result":
+        exitResultView(false);
+        break;
+      default:
+        // уже на home — позволяем браузеру уходить назад
+        return;
     }
-
-    // Если открыт полноэкранный результат — возвращаемся к основному экрану
-    if (appState.layer === "result") {
-      exitResultView(false);
-      setLayer("home", false);
-      return;
-    }
-
-    // Если уже на home — позволяем браузеру идти дальше назад (нормальное поведение)
-    appState.layer = layer;
+    appState.layer = "home";
   });
 }
 
@@ -147,16 +171,47 @@ function attachMainHandlers() {
   if (els.fileInput) {
     els.fileInput.addEventListener("change", handleFileSelected);
   }
+
+  // Оплата
   if (els.btnPay) {
-    els.btnPay.addEventListener("click", () => openPackagesSheet());
+    els.btnPay.addEventListener("click", () => openPayModal());
   }
+  if (els.payCloseBtn) {
+    els.payCloseBtn.addEventListener("click", () => closePayModal());
+  }
+  if (els.pkg10) {
+    els.pkg10.addEventListener("click", () => selectPack("pack10"));
+  }
+  if (els.pkg20) {
+    els.pkg20.addEventListener("click", () => selectPack("pack20"));
+  }
+  if (els.pkg30) {
+    els.pkg30.addEventListener("click", () => selectPack("pack30"));
+  }
+  if (els.payNextBtn) {
+    els.payNextBtn.addEventListener("click", () => handlePayNext());
+  }
+
+  if (els.agreementCloseBtn) {
+    els.agreementCloseBtn.addEventListener("click", () =>
+      closeAgreementModal()
+    );
+  }
+  if (els.agreePayBtn) {
+    els.agreePayBtn.addEventListener("click", () => handleAgreePay());
+  }
+
   if (els.sheetCloseBtn) {
-    els.sheetCloseBtn.addEventListener("click", () => {
-      closeSheet();
-    });
+    els.sheetCloseBtn.addEventListener("click", () => closeSheet());
   }
-  if (els.downloadButton) {
-    els.downloadButton.addEventListener("click", () => downloadCurrentPortrait());
+
+  if (els.downloadLink) {
+    els.downloadLink.addEventListener("click", (e) => {
+      // если нет src — ничего не делаем
+      if (!els.previewImage || !els.previewImage.src) {
+        e.preventDefault();
+      }
+    });
   }
 }
 
@@ -183,6 +238,9 @@ function handleFileSelected(event) {
       }
       if (els.previewPlaceholder) {
         els.previewPlaceholder.style.display = "none";
+      }
+      if (els.downloadLink) {
+        els.downloadLink.style.display = "none";
       }
     };
     img.src = e.target.result;
@@ -262,13 +320,13 @@ function openSheet({ title, description, categories, options }) {
     els.sheetOptionsRow.appendChild(chip);
   });
 
-  els.sheetBackdrop.classList.add("sheet-visible");
+  els.sheetBackdrop.style.display = "flex";
   setLayer("sheet", true);
 }
 
 function closeSheet(pushHistory = true) {
   if (!els.sheetBackdrop) return;
-  els.sheetBackdrop.classList.remove("sheet-visible");
+  els.sheetBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
 }
 
@@ -341,7 +399,7 @@ function openMimicSheet() {
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
-        // логика: одна мимика за раз
+        // одна мимика за раз
         removeAllMimicEffects();
         toggleEffect(value);
         refreshSelectionChips();
@@ -377,33 +435,83 @@ function openGreetingSheet() {
 }
 
 // =========================
-// ПАКЕТЫ И ОПЛАТА STRIPE
+// ПАКЕТЫ И ОПЛАТА STRIPE (МОДАЛКИ)
 // =========================
 
-function openPackagesSheet() {
-  const options = [
-    { value: "pack10", label: "10 генераций • €4.99" },
-    { value: "pack20", label: "20 генераций • €8.99" },
-    { value: "pack30", label: "30 генераций • €11.99" }
-  ];
-
-  openSheet({
-    title: "Выберите пакет",
-    description: "Оплата через Stripe. После каждой генерации портрет сохраняется.",
-    options: options.map((opt) => ({
-      ...opt,
-      selected: appState.selectedPack === opt.value,
-      onClick: async (value) => {
-        appState.selectedPack = value;
-        refreshSelectionChips();
-        // сразу запускаем оплату
-        await startStripeCheckout();
-      }
-    }))
-  });
+function openPayModal() {
+  if (!els.payBackdrop) return;
+  els.payBackdrop.style.display = "flex";
+  if (els.payError) els.payError.textContent = "";
+  setLayer("pay", true);
 }
 
-async function startStripeCheckout() {
+function closePayModal(pushHistory = true) {
+  if (!els.payBackdrop) return;
+  els.payBackdrop.style.display = "none";
+  if (pushHistory) setLayer("home", true);
+}
+
+function selectPack(packKey) {
+  appState.selectedPack = packKey;
+  if (els.payError) els.payError.textContent = "";
+
+  const all = [els.pkg10, els.pkg20, els.pkg30];
+  all.forEach((btn) => {
+    if (!btn) return;
+    if (btn.dataset.package === packKey) {
+      btn.classList.add("pay-package--selected");
+    } else {
+      btn.classList.remove("pay-package--selected");
+    }
+  });
+
+  refreshSelectionChips();
+}
+
+function handlePayNext() {
+  if (!appState.selectedPack) {
+    if (els.payError) {
+      els.payError.textContent = "Пожалуйста, выберите пакет.";
+    }
+    return;
+  }
+  closePayModal(false);
+  openAgreementModal();
+}
+
+function openAgreementModal() {
+  if (!els.agreementBackdrop) return;
+  els.agreementBackdrop.style.display = "flex";
+  if (els.agreeError) els.agreeError.textContent = "";
+  if (els.agreeCheckbox) els.agreeCheckbox.checked = false;
+  setLayer("agree", true);
+}
+
+function closeAgreementModal(pushHistory = true) {
+  if (!els.agreementBackdrop) return;
+  els.agreementBackdrop.style.display = "none";
+  if (pushHistory) setLayer("home", true);
+}
+
+function handleAgreePay() {
+  const email = (els.agreeEmail && els.agreeEmail.value.trim()) || "";
+  const checked = els.agreeCheckbox && els.agreeCheckbox.checked;
+
+  if (!email) {
+    if (els.agreeError) els.agreeError.textContent = "Введите email.";
+    return;
+  }
+  if (!checked) {
+    if (els.agreeError)
+      els.agreeError.textContent = "Нужно подтвердить возраст и согласие.";
+    return;
+  }
+
+  if (els.agreeError) els.agreeError.textContent = "";
+  startStripeCheckout(email);
+}
+
+async function startStripeCheckout(email) {
   if (!appState.selectedPack) {
     alert("Сначала выберите пакет.");
     return;
@@ -419,7 +527,8 @@ async function startStripeCheckout() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        pack: appState.selectedPack
+        pack: appState.selectedPack,
+        email
       })
     });
 
@@ -432,7 +541,7 @@ async function startStripeCheckout() {
       throw new Error("Неверный ответ от сервера оплаты.");
     }
 
-    closeSheet();
+    closeAgreementModal(false);
 
     const stripe = window.Stripe
       ? window.Stripe(data.publishableKey)
@@ -440,7 +549,7 @@ async function startStripeCheckout() {
 
     if (!stripe) {
       alert(
-        "Stripe.js не найден. Убедитесь, что в index.html подключен <script src=\"https://js.stripe.com/v3/\"></script>."
+        'Stripe.js не найден. Убедитесь, что в index.html есть <script src="https://js.stripe.com/v3/"></script>.'
       );
       return;
     }
@@ -458,6 +567,28 @@ async function startStripeCheckout() {
     alert("Ошибка при создании оплаты. Попробуйте ещё раз.");
   } finally {
     appState.isPaying = false;
+  }
+}
+
+function handleStripeStatusFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    const status = url.searchParams.get("status");
+    if (!status) return;
+
+    if (status === "success") {
+      alert("Оплата успешно завершена! 🎉 Теперь вы можете продолжить генерации.");
+    } else if (status === "cancel") {
+      console.log("Stripe checkout cancelled");
+    }
+
+    url.searchParams.delete("status");
+    url.searchParams.delete("session_id");
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, "", url.toString());
+    }
+  } catch (e) {
+    console.warn("Cannot parse URL for Stripe status", e);
   }
 }
 
@@ -572,7 +703,7 @@ async function handleGenerateClick() {
   try {
     const payload = {
       style: appState.selectedStyle || "beauty",
-      text: "", // текст не используем пока
+      text: "",
       photo: appState.photoBase64,
       effects: appState.selectedEffects,
       greeting: appState.selectedGreeting || null
@@ -623,7 +754,11 @@ function showResultPortrait(url) {
     els.previewPlaceholder.style.display = "none";
   }
 
-  // Входим в полноэкранный "режим результата" (как на твоём скрине)
+  if (els.downloadLink) {
+    els.downloadLink.href = url;
+    els.downloadLink.style.display = "inline-flex";
+  }
+
   document.body.classList.add("result-mode");
   setLayer("result", true);
 }
@@ -631,15 +766,4 @@ function showResultPortrait(url) {
 function exitResultView(pushHistory = true) {
   document.body.classList.remove("result-mode");
   if (pushHistory) setLayer("home", true);
-}
-
-function downloadCurrentPortrait() {
-  if (!els.previewImage || !els.previewImage.src) return;
-
-  const a = document.createElement("a");
-  a.href = els.previewImage.src;
-  a.download = "windowtosoul-portrait.jpg";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
 }
