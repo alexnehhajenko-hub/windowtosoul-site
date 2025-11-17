@@ -136,7 +136,6 @@ function setupBackButtonLogic() {
         exitResultView(false);
         break;
       default:
-        // уже на home — позволяем браузеру уходить назад
         return;
     }
     appState.layer = "home";
@@ -207,7 +206,6 @@ function attachMainHandlers() {
 
   if (els.downloadLink) {
     els.downloadLink.addEventListener("click", (e) => {
-      // если нет src — ничего не делаем
       if (!els.previewImage || !els.previewImage.src) {
         e.preventDefault();
       }
@@ -268,7 +266,7 @@ function resizeImageToMax(img, maxSize) {
 }
 
 // =========================
-// НИЖНИЙ SHEET (СПИСКИ ОПЦИЙ)
+// НИЖНИЙ SHEET
 // =========================
 
 function openSheet({ title, description, categories, options }) {
@@ -328,9 +326,7 @@ function closeSheet(pushHistory = true) {
   if (!els.sheetBackdrop) return;
   els.sheetBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
-}
-
-// =========================
+}// =========================
 // ЛИСТЫ: СТИЛЬ, КОЖА, МИМИКА, ПОЗДРАВЛЕНИЯ
 // =========================
 
@@ -374,7 +370,6 @@ function openSkinSheet() {
       onClick: (value) => {
         toggleEffect(value);
         refreshSelectionChips();
-        // не закрываем сразу, чтобы можно было выбрать несколько
       }
     }))
   });
@@ -399,7 +394,6 @@ function openMimicSheet() {
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
-        // одна мимика за раз
         removeAllMimicEffects();
         toggleEffect(value);
         refreshSelectionChips();
@@ -435,25 +429,22 @@ function openGreetingSheet() {
 }
 
 // =========================
-// ПАКЕТЫ И ОПЛАТА STRIPE (МОДАЛКИ)
+// ПАКЕТЫ И ОПЛАТА STRIPE
 // =========================
 
 function openPayModal() {
-  if (!els.payBackdrop) return;
   els.payBackdrop.style.display = "flex";
-  if (els.payError) els.payError.textContent = "";
+  els.payError.textContent = "";
   setLayer("pay", true);
 }
 
 function closePayModal(pushHistory = true) {
-  if (!els.payBackdrop) return;
   els.payBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
 }
 
 function selectPack(packKey) {
   appState.selectedPack = packKey;
-  if (els.payError) els.payError.textContent = "";
 
   const all = [els.pkg10, els.pkg20, els.pkg30];
   all.forEach((btn) => {
@@ -470,9 +461,7 @@ function selectPack(packKey) {
 
 function handlePayNext() {
   if (!appState.selectedPack) {
-    if (els.payError) {
-      els.payError.textContent = "Пожалуйста, выберите пакет.";
-    }
+    els.payError.textContent = "Пожалуйста, выберите пакет.";
     return;
   }
   closePayModal(false);
@@ -480,91 +469,62 @@ function handlePayNext() {
 }
 
 function openAgreementModal() {
-  if (!els.agreementBackdrop) return;
   els.agreementBackdrop.style.display = "flex";
-  if (els.agreeError) els.agreeError.textContent = "";
-  if (els.agreeCheckbox) els.agreeCheckbox.checked = false;
+  els.agreeError.textContent = "";
+  els.agreeCheckbox.checked = false;
   setLayer("agree", true);
 }
 
 function closeAgreementModal(pushHistory = true) {
-  if (!els.agreementBackdrop) return;
   els.agreementBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
 }
 
 function handleAgreePay() {
-  const email = (els.agreeEmail && els.agreeEmail.value.trim()) || "";
-  const checked = els.agreeCheckbox && els.agreeCheckbox.checked;
+  const email = els.agreeEmail.value.trim();
+  const checked = els.agreeCheckbox.checked;
 
   if (!email) {
-    if (els.agreeError) els.agreeError.textContent = "Введите email.";
+    els.agreeError.textContent = "Введите email.";
     return;
   }
   if (!checked) {
-    if (els.agreeError)
-      els.agreeError.textContent = "Нужно подтвердить возраст и согласие.";
+    els.agreeError.textContent = "Нужно подтвердить возраст и согласие.";
     return;
   }
 
-  if (els.agreeError) els.agreeError.textContent = "";
+  els.agreeError.textContent = "";
   startStripeCheckout(email);
 }
 
 async function startStripeCheckout(email) {
-  if (!appState.selectedPack) {
-    alert("Сначала выберите пакет.");
-    return;
-  }
-
   if (appState.isPaying) return;
   appState.isPaying = true;
 
   try {
     const resp = await fetch("/api/create-checkout-session", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         pack: appState.selectedPack,
         email
       })
     });
 
-    if (!resp.ok) {
-      throw new Error("Сервер оплаты вернул ошибку.");
-    }
-
     const data = await resp.json();
-    if (!data || !data.sessionId || !data.publishableKey) {
-      throw new Error("Неверный ответ от сервера оплаты.");
+
+    if (!data.sessionId || !data.publishableKey) {
+      throw new Error("Неверный ответ сервера.");
     }
 
-    closeAgreementModal(false);
-
-    const stripe = window.Stripe
-      ? window.Stripe(data.publishableKey)
-      : null;
-
-    if (!stripe) {
-      alert(
-        'Stripe.js не найден. Убедитесь, что в index.html есть <script src="https://js.stripe.com/v3/"></script>.'
-      );
-      return;
-    }
-
+    const stripe = window.Stripe(data.publishableKey);
     const { error } = await stripe.redirectToCheckout({
       sessionId: data.sessionId
     });
 
-    if (error) {
-      console.error("Stripe redirect error:", error);
-      alert("Не удалось открыть страницу оплаты: " + error.message);
-    }
+    if (error) alert("Ошибка оплаты: " + error.message);
   } catch (err) {
-    console.error("PAY ERROR:", err);
-    alert("Ошибка при создании оплаты. Попробуйте ещё раз.");
+    alert("Ошибка при создании оплаты. Попробуйте снова.");
   } finally {
     appState.isPaying = false;
   }
@@ -574,26 +534,21 @@ function handleStripeStatusFromUrl() {
   try {
     const url = new URL(window.location.href);
     const status = url.searchParams.get("status");
-    if (!status) return;
 
     if (status === "success") {
-      alert("Оплата успешно завершена! 🎉 Теперь вы можете продолжить генерации.");
-    } else if (status === "cancel") {
-      console.log("Stripe checkout cancelled");
+      alert("Оплата успешна! 🎉");
     }
 
-    url.searchParams.delete("status");
-    url.searchParams.delete("session_id");
-    if (window.history && window.history.replaceState) {
+    if (status) {
+      url.searchParams.delete("status");
+      url.searchParams.delete("session_id");
       window.history.replaceState({}, "", url.toString());
     }
-  } catch (e) {
-    console.warn("Cannot parse URL for Stripe status", e);
-  }
+  } catch (e) {}
 }
 
 // =========================
-// ВСПОМОГАТЕЛЬНОЕ ДЛЯ ЭФФЕКТОВ
+// ЭФФЕКТЫ
 // =========================
 
 function toggleEffect(value) {
@@ -622,22 +577,21 @@ function removeAllMimicEffects() {
 }
 
 // =========================
-// ЧИПЫ ВЫБРАННЫХ ОПЦИЙ ПОД ПРЕВЬЮ
+// ЧИПЫ ВЫБРАННЫХ ОПЦИЙ
 // =========================
 
 function refreshSelectionChips() {
-  if (!els.selectionRow) return;
-
   els.selectionRow.innerHTML = "";
 
-  function addChip(label) {
+  const addChip = (label) => {
     const chip = document.createElement("div");
     chip.className = "selection-chip";
     chip.textContent = label;
     els.selectionRow.appendChild(chip);
-  }
+  };
 
-  if (appState.selectedStyle) {
+  const s = appState.selectedStyle;
+  if (s) {
     const map = {
       beauty: "Стиль: Бьюти",
       oil: "Стиль: Масло",
@@ -645,7 +599,7 @@ function refreshSelectionChips() {
       poster: "Стиль: Постер",
       classic: "Стиль: Классика"
     };
-    addChip(map[appState.selectedStyle] || "Стиль: выбран");
+    addChip(map[s] || "Стиль выбран");
   }
 
   appState.selectedEffects.forEach((e) => {
@@ -667,31 +621,29 @@ function refreshSelectionChips() {
 
   if (appState.selectedGreeting) {
     const map = {
-      "new-year": "Поздравление: Новый год",
-      birthday: "Поздравление: День рождения",
-      funny: "Поздравление: Смешное",
-      scary: "Поздравление: Страшное"
+      "new-year": "Новый год",
+      birthday: "День рождения",
+      funny: "Смешное",
+      scary: "Страшное"
     };
-    addChip(map[appState.selectedGreeting] || "Поздравление выбрано");
+    addChip(map[appState.selectedGreeting]);
   }
 
   if (appState.selectedPack) {
     const map = {
-      pack10: "Пакет: 10 генераций",
-      pack20: "Пакет: 20 генераций",
-      pack30: "Пакет: 30 генераций"
+      pack10: "Пакет: 10",
+      pack20: "Пакет: 20",
+      pack30: "Пакет: 30"
     };
-    addChip(map[appState.selectedPack] || "Пакет выбран");
+    addChip(map[appState.selectedPack]);
   }
 }
 
 // =========================
-// ГЕНЕРАЦИЯ ПОРТРЕТА (REPLICATE /api/generate)
+// ГЕНЕРАЦИЯ ПОРТРЕТА
 // =========================
 
 async function handleGenerateClick() {
-  if (appState.isGenerating) return;
-
   if (!appState.photoBase64) {
     alert("Сначала добавьте фото.");
     return;
@@ -706,58 +658,41 @@ async function handleGenerateClick() {
       text: "",
       photo: appState.photoBase64,
       effects: appState.selectedEffects,
-      greeting: appState.selectedGreeting || null
+      greeting: appState.selectedGreeting
     };
 
     const resp = await fetch("/api/generate", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
-    if (!resp.ok) {
-      throw new Error("Сервер генерации вернул ошибку.");
-    }
-
     const data = await resp.json();
-    if (!data || !data.image) {
-      throw new Error("Сервер не вернул ссылку на изображение.");
+
+    if (!data.image) {
+      throw new Error("Нет ссылки на фото.");
     }
 
     showResultPortrait(data.image);
-  } catch (err) {
-    console.error("GENERATION ERROR:", err);
-    alert("Не удалось сгенерировать портрет. Попробуйте ещё раз.");
-  } finally {
-    showGenerating(false);
-    appState.isGenerating = false;
+  } catch (e) {
+    alert("Ошибка генерации. Попробуйте ещё раз.");
   }
+
+  showGenerating(false);
+  appState.isGenerating = false;
 }
 
-function showGenerating(isOn) {
-  if (!els.generateStatus) return;
-  els.generateStatus.style.display = isOn ? "flex" : "none";
+function showGenerating(v) {
+  els.generateStatus.style.display = v ? "flex" : "none";
 }
-
-// =========================
-// ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА / СКАЧИВАНИЕ
-// =========================
 
 function showResultPortrait(url) {
-  if (els.previewImage) {
-    els.previewImage.src = url;
-    els.previewImage.style.display = "block";
-  }
-  if (els.previewPlaceholder) {
-    els.previewPlaceholder.style.display = "none";
-  }
+  els.previewImage.src = url;
+  els.previewImage.style.display = "block";
+  els.previewPlaceholder.style.display = "none";
 
-  if (els.downloadLink) {
-    els.downloadLink.href = url;
-    els.downloadLink.style.display = "inline-flex";
-  }
+  els.downloadLink.href = url;
+  els.downloadLink.style.display = "inline-flex";
 
   document.body.classList.add("result-mode");
   setLayer("result", true);
