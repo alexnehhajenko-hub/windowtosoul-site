@@ -1,40 +1,62 @@
-// api/generate.js — FLUX-Kontext-Pro (Replicate)
+// api/generate.js — YourPhotoAI
+// Генерация портрета через Replicate (FLUX-Kontext-Pro)
+// Фото / эффекты кожи / мимика / поздравления
+// Жёстко запрещаем любой текст/логотипы/интерфейс на итоговом фото
+
 import Replicate from "replicate";
 
+// Стили (в том числе новый "beauty")
 const STYLE_PREFIX = {
-  beauty: "soft beauty portrait, studio lighting, bright airy tones, smooth flawless skin, no wrinkles, gentle high-end retouch",
-  oil: "dramatic oil painting portrait, impasto style",
-  anime: "anime style portrait, clean lines",
-  poster: "cinematic movie poster portrait",
-  classic: "classical old master portrait",
-  default: "realistic portrait, soft studio lighting"
+  beauty:
+    "soft beauty portrait, studio lighting, bright airy tones, smooth flawless skin, no wrinkles, gentle high-end retouch, subtle glow, k-beauty style, pastel background, flattering look",
+
+  oil:
+    "dramatic oil painting portrait, impasto style, very visible thick brush strokes, rich oil paint texture, canvas texture, painterly background, face slightly stylized, not photorealistic, strong painterly look, soft edges",
+
+  anime: "anime style portrait, clean lines, soft pastel shading",
+  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
+  classic: "classical old master portrait, realism, warm tones, detailed skin",
+  default: "realistic portrait, detailed face, soft studio lighting"
 };
 
+// Эффекты: кожа + мимика
 const EFFECT_PROMPTS = {
-  "no-wrinkles": "no wrinkles",
-  younger: "younger skin",
-  "smooth-skin": "smooth skin",
-  "smile-soft": "soft smile",
-  "smile-big": "big smile",
-  "smile-hollywood": "hollywood smile",
-  laugh: "laughing",
-  neutral: "neutral expression",
-  serious: "serious expression",
-  "eyes-bigger": "bigger eyes",
-  "eyes-brighter": "brighter eyes"
+  // кожа
+  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
+  younger: "looks 20 years younger, fresh and healthy skin, lively eyes",
+  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting",
+
+  // мимика
+  "smile-soft": "subtle soft smile, calm and relaxed expression",
+  "smile-big": "big warm smile, expressive and friendly face",
+  "smile-hollywood":
+    "wide hollywood smile, visible white teeth, confident look",
+  laugh: "laughing with a bright smile, joyful and natural expression",
+  neutral: "neutral face expression, relaxed, no strong visible emotion",
+  serious: "serious face, no smile, focused expression",
+  "eyes-bigger": "slightly bigger eyes, more open and attentive look",
+  "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
+// Поздравления — только атмосфера, БЕЗ текста на картинке
 const GREETING_PROMPTS = {
-  "new-year": "festive winter atmosphere",
-  birthday: "birthday mood",
-  funny: "fun colorful atmosphere",
-  scary: "dark horror atmosphere"
+  "new-year":
+    "festive New Year portrait, glowing warm lights, soft snow, cozy winter atmosphere, no visible text, no logos, clean background",
+  birthday:
+    "birthday themed portrait, balloons, confetti, festive colorful composition, joyful mood, no visible text, no logos, clean background",
+  funny:
+    "playful humorous portrait, bright vivid colors, fun dynamic composition, cheerful mood, no visible text, no logos, clean background",
+  scary:
+    "dark horror themed portrait, spooky lighting, eerie atmosphere, mysterious background, no visible text, no logos, clean background"
 };
 
+// Базовое правило: удалить весь текст/логотипы/интерфейс
 const NO_TEXT_BASE_PROMPT =
-  "clean portrait, remove text, remove watermarks, no logos, no overlays";
+  "clean high-quality portrait of the person, reconstruct face only, remove all text, remove all numbers, remove all watermarks, remove all logos, remove any UI elements, remove phone screen overlays, remove status bar, remove timestamps, remove notifications, no captions, no writing, no symbols on the image, no artifacts, simple clean background";
+
+// Negative prompt — явно запрещаем текст и интерфейсы
 const NEGATIVE_TEXT_PROMPT =
-  "text, watermark, logo, subtitles, captions, ui elements";
+  "text, numbers, letters, subtitles, captions, watermark, logo, stickers, emojis, UI elements, phone interface, time, battery icon, notification icons, status bar, on-screen controls, overlays";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -43,6 +65,8 @@ export default async function handler(req, res) {
 
   try {
     let body = req.body;
+
+    // На всякий случай, если Vercel отдаст строку
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
@@ -52,9 +76,14 @@ export default async function handler(req, res) {
     }
 
     const { style, text, photo, effects, greeting } = body || {};
+
+    // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
+
+    // 2. Пользовательский текст (пока не используем, но оставим)
     const userPrompt = (text || "").trim();
 
+    // 3. Эффекты (кожа + мимика)
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
@@ -63,11 +92,13 @@ export default async function handler(req, res) {
         .join(", ");
     }
 
+    // 4. Атмосфера поздравления (без текста на изображении)
     let greetingPrompt = "";
     if (greeting && GREETING_PROMPTS[greeting]) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
+    // 5. Финальный prompt
     const promptParts = [stylePrefix, NO_TEXT_BASE_PROMPT];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
@@ -75,6 +106,7 @@ export default async function handler(req, res) {
 
     const prompt = promptParts.join(". ").trim();
 
+    // 6. Вход в Replicate
     const input = {
       prompt,
       negative_prompt: NEGATIVE_TEXT_PROMPT,
@@ -93,6 +125,7 @@ export default async function handler(req, res) {
       input
     });
 
+    // 7. Достаём URL картинки
     let imageUrl = null;
 
     if (Array.isArray(output)) {
@@ -102,10 +135,18 @@ export default async function handler(req, res) {
       else if (typeof output.output === "string") imageUrl = output.output;
     } else if (typeof output === "string") {
       imageUrl = output;
+    } else if (output?.url) {
+      try {
+        imageUrl = output.url();
+      } catch {
+        // ignore
+      }
     }
 
     if (!imageUrl) {
-      return res.status(500).json({ error: "No image URL returned" });
+      return res.status(500).json({
+        error: "No image URL returned"
+      });
     }
 
     return res.status(200).json({
@@ -120,4 +161,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
