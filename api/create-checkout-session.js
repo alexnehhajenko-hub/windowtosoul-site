@@ -19,27 +19,13 @@ const stripe = stripeSecretKey
     })
   : null;
 
-// Карта пакетов: выбор на сайте → цена
 const PACKS = {
-  pack10: {
-    amount: 499, // €4.99 → 499 центов
-    currency: "eur",
-    description: "Пакет YourPhotoAI: 10 генераций портретов"
-  },
-  pack20: {
-    amount: 899, // €8.99
-    currency: "eur",
-    description: "Пакет YourPhotoAI: 20 генераций портретов"
-  },
-  pack30: {
-    amount: 1199, // €11.99
-    currency: "eur",
-    description: "Пакет YourPhotoAI: 30 генераций портретов"
-  }
+  pack10: { amount: 499, currency: "eur", description: "Пакет YourPhotoAI: 10 генераций портретов" },
+  pack20: { amount: 899, currency: "eur", description: "Пакет YourPhotoAI: 20 генераций портретов" },
+  pack30: { amount: 1199, currency: "eur", description: "Пакет YourPhotoAI: 30 генераций портретов" }
 };
 
 export default async function handler(req, res) {
-  // CORS preflight (на всякий случай)
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -47,7 +33,6 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // Разрешаем только POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -65,16 +50,10 @@ export default async function handler(req, res) {
 
     const packInfo = PACKS[pack];
 
-    // Базовый URL сайта
-    const origin =
-      (req.headers["origin"] && String(req.headers["origin"])) ||
-      "https://yourphotoai.vip";
-
-    // Куда вернуть пользователя после оплаты / отмены
+    const origin = (req.headers["origin"] && String(req.headers["origin"])) || "https://yourphotoai.vip";
     const successUrl = `${origin}/?status=success&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/?status=cancel`;
 
-    // Создаём сессию Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -82,9 +61,7 @@ export default async function handler(req, res) {
         {
           price_data: {
             currency: packInfo.currency,
-            product_data: {
-              name: packInfo.description
-            },
+            product_data: { name: packInfo.description },
             unit_amount: packInfo.amount
           },
           quantity: 1
@@ -93,13 +70,9 @@ export default async function handler(req, res) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: email || undefined,
-      metadata: {
-        pack,
-        email: email || ""
-      }
+      metadata: { pack, email: email || "" }
     });
 
-    // Отдаём только ID сессии и public-key (для фронта)
     return res.status(200).json({
       ok: true,
       sessionId: session.id,
@@ -107,8 +80,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Stripe checkout error:", error);
-    return res
-      .status(500)
-      .json({ error: "Failed to create checkout session" });
+    return res.status(500).json({ error: "Failed to create checkout session" });
   }
 }
