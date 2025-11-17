@@ -1,126 +1,122 @@
+// api/generate.js — FLUX-Kontext-Pro (Replicate)
 import Replicate from "replicate";
 
-// Стили
 const STYLE_PREFIX = {
-  beauty:
-    "soft beauty portrait, studio lighting, bright airy tones, smooth flawless skin, no wrinkles, gentle high-end retouch, subtle glow, k-beauty style, pastel background, flattering look",
-  oil:
-    "dramatic oil painting portrait, impasto style, very visible thick brush strokes, rich oil paint texture, canvas texture, painterly background, face slightly stylized, not photorealistic, strong painterly look, soft edges",
-  anime: "anime style portrait, clean lines, soft pastel shading",
-  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
-  classic: "classical old master portrait, warm tones, detailed skin",
-  default: "realistic portrait, detailed face, soft studio lighting"
+  beauty: "soft beauty portrait, studio lighting, bright airy tones, smooth flawless skin, no wrinkles, gentle high-end retouch",
+  oil: "dramatic oil painting portrait, impasto style",
+  anime: "anime style portrait, clean lines",
+  poster: "cinematic movie poster portrait",
+  classic: "classical old master portrait",
+  default: "realistic portrait, soft studio lighting"
 };
 
-// Эффекты
 const EFFECT_PROMPTS = {
-  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
-  younger: "looks younger, fresh and healthy skin",
-  "smooth-skin": "smooth flawless skin, even skin tone",
-
+  "no-wrinkles": "no wrinkles",
+  younger: "younger skin",
+  "smooth-skin": "smooth skin",
   "smile-soft": "soft smile",
-  "smile-big": "big warm smile",
-  "smile-hollywood": "hollywood smile, bright teeth",
-  laugh: "laughing expression",
-  neutral: "neutral relaxed expression",
-  serious: "serious focused expression",
-  "eyes-bigger": "slightly bigger eyes",
-  "eyes-brighter": "brighter vivid eyes"
+  "smile-big": "big smile",
+  "smile-hollywood": "hollywood smile",
+  laugh: "laughing",
+  neutral: "neutral expression",
+  serious: "serious expression",
+  "eyes-bigger": "bigger eyes",
+  "eyes-brighter": "brighter eyes"
 };
 
-// Поздравления (атмосфера)
 const GREETING_PROMPTS = {
-  "new-year":
-    "festive warm New Year atmosphere, glowing lights, soft snow, cozy tone, no text",
-  birthday:
-    "birthday theme, balloons, confetti, bright colors, celebration mood, no text",
-  funny: "fun playful humorous atmosphere, vivid colors, no text",
-  scary: "dark spooky cinematic horror atmosphere, eerie lighting, no text"
+  "new-year": "festive winter atmosphere",
+  birthday: "birthday mood",
+  funny: "fun colorful atmosphere",
+  scary: "dark horror atmosphere"
 };
 
-const NO_TEXT_PROMPT =
-  "remove all text, remove logos, no numbers, no phone UI, no watermarks, no captions, no stickers, clean background";
+const NO_TEXT_BASE_PROMPT =
+  "clean portrait, remove text, remove watermarks, no logos, no overlays";
+const NEGATIVE_TEXT_PROMPT =
+  "text, watermark, logo, subtitles, captions, ui elements";
 
-const NEGATIVE_PROMPT =
-  "text, watermark, subtitles, numbers, phone UI, stickers, emojis, logo, interface";
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
-export async function POST(req) {
   try {
-    const body = await req.json();
-    const { style, photo, text, effects, greeting } = body;
-
-    if (!photo) {
-      return Response.json(
-        { error: "photo missing" },
-        { status: 400 }
-      );
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
     }
 
-    // Стиль
-    const stylePart = STYLE_PREFIX[style] || STYLE_PREFIX.default;
+    const { style, text, photo, effects, greeting } = body || {};
+    const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
+    const userPrompt = (text || "").trim();
 
-    // Эффекты
-    let effectPart = "";
-    if (Array.isArray(effects)) {
-      effectPart = effects
+    let effectsPrompt = "";
+    if (Array.isArray(effects) && effects.length > 0) {
+      effectsPrompt = effects
         .map((k) => EFFECT_PROMPTS[k])
         .filter(Boolean)
         .join(", ");
     }
 
-    // Поздравление
-    const greetingPart = greeting ? GREETING_PROMPTS[greeting] || "" : "";
+    let greetingPrompt = "";
+    if (greeting && GREETING_PROMPTS[greeting]) {
+      greetingPrompt = GREETING_PROMPTS[greeting];
+    }
 
-    // Итоговый prompt
-    const prompt = [
-      stylePart,
-      NO_TEXT_PROMPT,
-      text || "",
-      effectPart,
-      greetingPart
-    ]
-      .filter(Boolean)
-      .join(". ");
+    const promptParts = [stylePrefix, NO_TEXT_BASE_PROMPT];
+    if (userPrompt) promptParts.push(userPrompt);
+    if (effectsPrompt) promptParts.push(effectsPrompt);
+    if (greetingPrompt) promptParts.push(greetingPrompt);
 
-    // Base64 → файл (buffer)
-    const base64 = photo.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(base64, "base64");
+    const prompt = promptParts.join(". ").trim();
 
-    // Replicate
+    const input = {
+      prompt,
+      negative_prompt: NEGATIVE_TEXT_PROMPT,
+      output_format: "jpg"
+    };
+
+    if (photo) {
+      input.input_image = photo;
+    }
+
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    const output = await replicate.run(
-      "black-forest-labs/flux-kontext-pro",
-      {
-        input: {
-          prompt,
-          negative_prompt: NEGATIVE_PROMPT,
-          image: buffer,           // ← ВАЖНО: правильный ключ
-          output_format: "jpg"
-        }
-      }
-    );
+    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
+      input
+    });
 
-    let imageUrl =
-      Array.isArray(output)
-        ? output[0]
-        : output?.output?.[0] || output?.output || null;
+    let imageUrl = null;
 
-    if (!imageUrl) {
-      return Response.json(
-        { error: "model returned no image" },
-        { status: 500 }
-      );
+    if (Array.isArray(output)) {
+      imageUrl = output[0];
+    } else if (output?.output) {
+      if (Array.isArray(output.output)) imageUrl = output.output[0];
+      else if (typeof output.output === "string") imageUrl = output.output;
+    } else if (typeof output === "string") {
+      imageUrl = output;
     }
 
-    return Response.json({ ok: true, image: imageUrl });
+    if (!imageUrl) {
+      return res.status(500).json({ error: "No image URL returned" });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      image: imageUrl
+    });
   } catch (err) {
-    console.error("GEN ERROR:", err);
-    return Response.json(
-      { error: "generation failed", details: err?.message },
-      { status: 500 }
-    );
+    console.error("GENERATION ERROR:", err);
+    return res.status(500).json({
+      error: "Generation failed",
+      details: err?.message || String(err)
+    });
   }
 }
