@@ -1,67 +1,47 @@
 // api/create-checkout-session.js
-import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-06-20',
-});
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-export default async function handler(req, res) {
-  // Разрешаем только POST-запрос
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // Ждём из фронта: { packageId: '10' } или '20' / '30'
-    const { packageId } = req.body || {};
+    const { email } = req.body || {};
 
-    // Связываем пакет с переменными окружения
-    const priceIdMap = {
-      '10': process.env.STRIPE_PRICE_ID_10,
-      '20': process.env.STRIPE_PRICE_ID_20,
-      '30': process.env.STRIPE_PRICE_ID_30,
-    };
-
-    const priceId = priceIdMap[String(packageId)];
-
-    // Если для такого packageId нет priceId — логируем ошибку и даём 500
-    if (!priceId) {
-      console.error('STRIPE CONFIG ERROR: no priceId for packageId', packageId, priceIdMap);
-      return res.status(500).json({ error: 'Stripe price not configured for this package' });
-    }
-
-    // Базовый origin — берём из заголовка или жёстко yourphotoai.vip
-    const origin = req.headers.origin || 'https://yourphotoai.vip';
-
-    // Создаём Stripe Checkout Session
+    // Один платёж = пакет из 10 генераций за 1 EUR
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      payment_method_types: ['card'],
+      customer_email: email || undefined,
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: 'YourPhotoAI — 10 portrait generations',
+            },
+            // 1 EUR = 100 центов
+            unit_amount: 100,
+          },
           quantity: 1,
         },
       ],
-      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/`,
+      success_url: `${req.headers.origin}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin}/?canceled=true`,
     });
 
-    // Отдаём и id, и url на фронт
     return res.status(200).json({
       id: session.id,
       url: session.url,
     });
   } catch (err) {
-    // Подробный лог в Vercel → Logs
-    console.error('STRIPE CHECKOUT ERROR', {
-      type: err.type,
-      message: err.message,
-      code: err?.raw?.code,
-      param: err?.raw?.param,
-    });
-
+    console.error('Stripe checkout error:', err);
     return res.status(500).json({
-      error: err.message || 'Stripe checkout error',
+      error: 'Stripe error',
+      message: err.message,
     });
   }
-}
+};
