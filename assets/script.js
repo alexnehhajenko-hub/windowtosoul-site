@@ -1,7 +1,16 @@
 // YourPhotoAI — основной фронтенд-скрипт
 // UI: выбор стиля, эффектов кожи, мимики, поздравлений, пакетов и генерации.
 // Оплата: Stripe Checkout через /api/create-checkout-session.
-// Кнопка "Назад" на телефоне закрывает окна/результат, а не выкидывает с сайта.
+// Дополнительно: обработка кнопки "Назад" на телефоне — закрывает окна/результат,
+// а не выкидывает с сайта.
+
+// =========================
+// КОНСТАНТЫ ДЛЯ ХРАНЕНИЯ СОСТОЯНИЯ
+// =========================
+
+const STORAGE_KEYS = {
+  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack"
+};
 
 // =========================
 // ГЛОБАЛЬНОЕ СОСТОЯНИЕ
@@ -23,6 +32,9 @@ const appState = {
   // статус
   isGenerating: false,
   isPaying: false,
+
+  // оплата
+  hasActivePack: false, // <<< ВАЖНО: генерация только если true
 
   // UI-слой для кнопки "Назад"
   layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
@@ -53,7 +65,7 @@ function bindElements() {
   // input файла
   els.fileInput = document.getElementById("fileInput");
 
-  // Нижний sheet (стили/кожа/мимика/поздравления)
+  // Нижний sheet
   els.sheetBackdrop = document.getElementById("sheetBackdrop");
   els.sheetTitle = document.getElementById("sheetTitle");
   els.sheetDescription = document.getElementById("sheetDescription");
@@ -63,7 +75,7 @@ function bindElements() {
   els.sheetOptionsRow = document.getElementById("sheetOptionsRow");
   els.sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-  // Модалка оплаты (пакеты)
+  // Модалка оплаты
   els.payBackdrop = document.getElementById("payBackdrop");
   els.payCloseBtn = document.getElementById("payCloseBtn");
   els.pkg10 = document.getElementById("pkg10");
@@ -72,7 +84,7 @@ function bindElements() {
   els.payError = document.getElementById("payError");
   els.payNextBtn = document.getElementById("payNextBtn");
 
-  // Модалка согласия (email + чекбокс)
+  // Модалка согласия
   els.agreementBackdrop = document.getElementById("agreementBackdrop");
   els.agreementCloseBtn = document.getElementById("agreementCloseBtn");
   els.agreeEmail = document.getElementById("agreeEmail");
@@ -90,18 +102,28 @@ function bindElements() {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindElements();
+
+  // подхватываем состояние оплаты из localStorage
+  try {
+    const storedPaid = window.localStorage.getItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
+    if (storedPaid === "1") {
+      appState.hasActivePack = true;
+    }
+  } catch (e) {
+    console.warn("Cannot read localStorage", e);
+  }
+
   attachMainHandlers();
   setupBackButtonLogic();
   refreshSelectionChips();
-  initOverlaysHidden();
+  hideOverlaysOnStart();
   handleStripeStatusFromUrl();
 });
 
-function initOverlaysHidden() {
-  // Все оверлеи стартуют без класса visible
-  if (els.sheetBackdrop) els.sheetBackdrop.classList.remove("visible");
-  if (els.payBackdrop) els.payBackdrop.classList.remove("visible");
-  if (els.agreementBackdrop) els.agreementBackdrop.classList.remove("visible");
+function hideOverlaysOnStart() {
+  if (els.sheetBackdrop) els.sheetBackdrop.style.display = "none";
+  if (els.payBackdrop) els.payBackdrop.style.display = "none";
+  if (els.agreementBackdrop) els.agreementBackdrop.style.display = "none";
 }
 
 // =========================
@@ -136,7 +158,7 @@ function setupBackButtonLogic() {
         exitResultView(false);
         break;
       default:
-        // уже на home — даём браузеру идти дальше назад
+        // уже на home — позволяем браузеру уходить назад
         return;
     }
     appState.layer = "home";
@@ -285,7 +307,7 @@ function openSheet({ title, description, categories, options }) {
 
     categories.forEach((cat) => {
       const chip = document.createElement("button");
-      chip.className = "chip chip-category";
+      chip.className = "chip";
       chip.textContent = cat.label;
       chip.dataset.value = cat.value;
       chip.addEventListener("click", () => {
@@ -320,20 +342,13 @@ function openSheet({ title, description, categories, options }) {
     els.sheetOptionsRow.appendChild(chip);
   });
 
-  // Показываем модалку красиво
   els.sheetBackdrop.style.display = "flex";
-  requestAnimationFrame(() => {
-    els.sheetBackdrop.classList.add("visible");
-  });
   setLayer("sheet", true);
 }
 
 function closeSheet(pushHistory = true) {
   if (!els.sheetBackdrop) return;
-  els.sheetBackdrop.classList.remove("visible");
-  setTimeout(() => {
-    els.sheetBackdrop.style.display = "none";
-  }, 220);
+  els.sheetBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
 }
 
@@ -427,7 +442,7 @@ function openGreetingSheet() {
   openSheet({
     title: "Поздравления",
     description:
-      "Выберите тип поздравления. На фото не будет никаких надписей — только атмосфера.",
+      "Выберите тип поздравления. Текст будет аккуратным и без грубых фраз.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedGreeting === opt.value,
@@ -448,19 +463,13 @@ function openGreetingSheet() {
 function openPayModal() {
   if (!els.payBackdrop) return;
   els.payBackdrop.style.display = "flex";
-  requestAnimationFrame(() => {
-    els.payBackdrop.classList.add("visible");
-  });
   if (els.payError) els.payError.textContent = "";
   setLayer("pay", true);
 }
 
 function closePayModal(pushHistory = true) {
   if (!els.payBackdrop) return;
-  els.payBackdrop.classList.remove("visible");
-  setTimeout(() => {
-    els.payBackdrop.style.display = "none";
-  }, 220);
+  els.payBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
 }
 
@@ -495,9 +504,6 @@ function handlePayNext() {
 function openAgreementModal() {
   if (!els.agreementBackdrop) return;
   els.agreementBackdrop.style.display = "flex";
-  requestAnimationFrame(() => {
-    els.agreementBackdrop.classList.add("visible");
-  });
   if (els.agreeError) els.agreeError.textContent = "";
   if (els.agreeCheckbox) els.agreeCheckbox.checked = false;
   setLayer("agree", true);
@@ -505,10 +511,7 @@ function openAgreementModal() {
 
 function closeAgreementModal(pushHistory = true) {
   if (!els.agreementBackdrop) return;
-  els.agreementBackdrop.classList.remove("visible");
-  setTimeout(() => {
-    els.agreementBackdrop.style.display = "none";
-  }, 220);
+  els.agreementBackdrop.style.display = "none";
   if (pushHistory) setLayer("home", true);
 }
 
@@ -596,7 +599,14 @@ function handleStripeStatusFromUrl() {
     if (!status) return;
 
     if (status === "success") {
-      alert("Оплата успешно завершена! 🎉 Теперь вы можете продолжить генерации.");
+      // помечаем, что оплата прошла, и разрешаем генерации
+      appState.hasActivePack = true;
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.HAS_ACTIVE_PACK, "1");
+      } catch (e) {
+        console.warn("Cannot write localStorage", e);
+      }
+      alert("Оплата успешно завершена! 🎉 Теперь вы можете генерировать портреты.");
     } else if (status === "cancel") {
       console.log("Stripe checkout cancelled");
     }
@@ -702,6 +712,13 @@ function refreshSelectionChips() {
     };
     addChip(map[appState.selectedPack] || "Пакет выбран");
   }
+
+  // Показываем статус: оплачен / не оплачен
+  if (appState.hasActivePack) {
+    addChip("Оплачено: генерации доступны");
+  } else {
+    addChip("Demo: оплата не выполнена");
+  }
 }
 
 // =========================
@@ -710,6 +727,13 @@ function refreshSelectionChips() {
 
 async function handleGenerateClick() {
   if (appState.isGenerating) return;
+
+  // ГЛАВНОЕ: запрет генерации без оплаты
+  if (!appState.hasActivePack) {
+    alert("Сначала оплатите пакет генераций.");
+    openPayModal();
+    return;
+  }
 
   if (!appState.photoBase64) {
     alert("Сначала добавьте фото.");
