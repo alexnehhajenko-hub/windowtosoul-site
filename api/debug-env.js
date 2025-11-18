@@ -1,32 +1,35 @@
 // api/debug-env.js
 
-function mask(value) {
-  if (!value) return null;
-  const s = String(value);
-  if (s.length <= 10) return s;
-  return s.slice(0, 8) + "..." + s.slice(-4);
-}
+module.exports = async (req, res) => {
+  const stripePublishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  const resendKey = process.env.RESEND_API_KEY;
 
-export default function handler(req, res) {
-  const allEnvKeys = Object.keys(process.env);
+  res.setHeader('Content-Type', 'application/json');
 
-  const stripeKeys = allEnvKeys.filter((k) =>
-    k.startsWith("STRIPE") || k.startsWith("NEXT_PUBLIC_STRIPE")
+  res.status(200).send(
+    JSON.stringify(
+      {
+        ok: true,
+        stripeKeys: [
+          'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+          'STRIPE_SECRET_KEY',
+        ],
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_raw_defined:
+          !!stripePublishable,
+        STRIPE_SECRET_KEY_raw_defined: !!stripeSecret,
+        RESEND_API_KEY_raw_defined: !!resendKey,
+        STRIPE_SECRET_KEY_masked: stripeSecret
+          ? stripeSecret.slice(0, 7) + '...' + stripeSecret.slice(-3)
+          : null,
+        RESEND_API_KEY_masked: resendKey
+          ? resendKey.slice(0, 7) + '...' + resendKey.slice(-3)
+          : null,
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV,
+      },
+      null,
+      2
+    )
   );
-
-  res.status(200).json({
-    ok: true,
-    stripeKeys,
-    STRIPE_SECRET_KEY_raw_defined: process.env.STRIPE_SECRET_KEY !== undefined,
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_raw_defined:
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY !== undefined,
-
-    STRIPE_SECRET_KEY_masked: mask(process.env.STRIPE_SECRET_KEY),
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_masked: mask(
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    ),
-
-    NODE_ENV: process.env.NODE_ENV || null,
-    VERCEL_ENV: process.env.VERCEL_ENV || null
-  });
-}
+};
