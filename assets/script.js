@@ -13,7 +13,7 @@
 const PACK_SIZES = {
   pack10: 10,
   pack20: 20,
-  pack30: 30,
+  pack30: 30
 };
 
 const STORAGE_KEYS = {
@@ -22,7 +22,7 @@ const STORAGE_KEYS = {
   CREDITS_USED: "yourphotoai_creditsUsed",
   USER_EMAIL: "yourphotoai_userEmail",
   PENDING_PACK: "yourphotoai_pendingPack",
-  GENERATED_IMAGES: "yourphotoai_generatedImages",
+  GENERATED_IMAGES: "yourphotoai_generatedImages"
 };
 
 // =========================
@@ -53,7 +53,7 @@ const appState = {
   generatedImages: [],
 
   // UI-слой для кнопки "Назад"
-  layer: "home", // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
+  layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
 };
 
 // =========================
@@ -400,7 +400,7 @@ function openStyleSheet() {
     { value: "oil", label: "Картина маслом" },
     { value: "anime", label: "Аниме" },
     { value: "poster", label: "Постер" },
-    { value: "classic", label: "Классический портрет" },
+    { value: "classic", label: "Классический портрет" }
   ];
 
   openSheet({
@@ -413,8 +413,8 @@ function openStyleSheet() {
         appState.selectedStyle = value;
         refreshSelectionChips();
         closeSheet();
-      },
-    })),
+      }
+    }))
   });
 }
 
@@ -422,7 +422,7 @@ function openSkinSheet() {
   const options = [
     { value: "no-wrinkles", label: "Без морщин" },
     { value: "younger", label: "Моложе" },
-    { value: "smooth-skin", label: "Гладкая кожа" },
+    { value: "smooth-skin", label: "Гладкая кожа" }
   ];
 
   openSheet({
@@ -435,8 +435,8 @@ function openSkinSheet() {
         toggleEffect(value);
         refreshSelectionChips();
         // не закрываем сразу, чтобы можно было выбрать несколько
-      },
-    })),
+      }
+    }))
   });
 }
 
@@ -449,7 +449,7 @@ function openMimicSheet() {
     { value: "neutral", label: "Нейтральное лицо" },
     { value: "serious", label: "Серьёзный взгляд" },
     { value: "eyes-bigger", label: "Чуть больше глаза" },
-    { value: "eyes-brighter", label: "Ярче глаза" },
+    { value: "eyes-brighter", label: "Ярче глаза" }
   ];
 
   openSheet({
@@ -464,8 +464,8 @@ function openMimicSheet() {
         toggleEffect(value);
         refreshSelectionChips();
         closeSheet();
-      },
-    })),
+      }
+    }))
   });
 }
 
@@ -474,7 +474,7 @@ function openGreetingSheet() {
     { value: "new-year", label: "Новый год" },
     { value: "birthday", label: "День рождения" },
     { value: "funny", label: "Смешное" },
-    { value: "scary", label: "Страшное" },
+    { value: "scary", label: "Страшное" }
   ];
 
   openSheet({
@@ -489,8 +489,8 @@ function openGreetingSheet() {
           appState.selectedGreeting === value ? null : value;
         refreshSelectionChips();
         closeSheet();
-      },
-    })),
+      }
+    }))
   });
 }
 
@@ -595,12 +595,12 @@ async function startStripeCheckout(email) {
     const resp = await fetch("/api/create-checkout-session", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         pack: appState.selectedPack,
-        email,
-      }),
+        email
+      })
     });
 
     if (!resp.ok) {
@@ -614,7 +614,9 @@ async function startStripeCheckout(email) {
 
     closeAgreementModal(false);
 
-    const stripe = window.Stripe ? window.Stripe(data.publishableKey) : null;
+    const stripe = window.Stripe
+      ? window.Stripe(data.publishableKey)
+      : null;
 
     if (!stripe) {
       alert(
@@ -624,7 +626,7 @@ async function startStripeCheckout(email) {
     }
 
     const { error } = await stripe.redirectToCheckout({
-      sessionId: data.sessionId,
+      sessionId: data.sessionId
     });
 
     if (error) {
@@ -723,7 +725,7 @@ function removeAllMimicEffects() {
     "neutral",
     "serious",
     "eyes-bigger",
-    "eyes-brighter",
+    "eyes-brighter"
   ];
   appState.selectedEffects = appState.selectedEffects.filter(
     (e) => !mimicKeys.includes(e)
@@ -752,7 +754,7 @@ function refreshSelectionChips() {
       oil: "Стиль: Масло",
       anime: "Стиль: Аниме",
       poster: "Стиль: Постер",
-      classic: "Стиль: Классика",
+      classic: "Стиль: Классика"
     };
     addChip(map[appState.selectedStyle] || "Стиль: выбран");
   }
@@ -769,7 +771,7 @@ function refreshSelectionChips() {
       neutral: "Нейтрально",
       serious: "Серьёзно",
       "eyes-bigger": "Больше глаза",
-      "eyes-brighter": "Ярче глаза",
+      "eyes-brighter": "Ярче глаза"
     };
     addChip(map[e] || e);
   });
@@ -779,7 +781,7 @@ function refreshSelectionChips() {
       "new-year": "Поздравление: Новый год",
       birthday: "Поздравление: День рождения",
       funny: "Поздравление: Смешное",
-      scary: "Поздравление: Страшное",
+      scary: "Поздравление: Страшное"
     };
     addChip(map[appState.selectedGreeting] || "Поздравление выбрано");
   }
@@ -788,14 +790,17 @@ function refreshSelectionChips() {
     const map = {
       pack10: "Пакет: 10 генераций",
       pack20: "Пакет: 20 генераций",
-      pack30: "Пакет: 30 генераций",
+      pack30: "Пакет: 30 генераций"
     };
     addChip(map[appState.selectedPack] || "Пакет выбран");
   }
 
   // Статус по кредитам
   if (appState.creditsTotal > 0) {
-    const left = Math.max(appState.creditsTotal - appState.creditsUsed, 0);
+    const left = Math.max(
+      appState.creditsTotal - appState.creditsUsed,
+      0
+    );
     addChip(`Осталось ${left} из ${appState.creditsTotal}`);
   }
 
@@ -813,18 +818,18 @@ function refreshSelectionChips() {
 async function handleGenerateClick() {
   if (appState.isGenerating) return;
 
-  // Блокировка генерации без оплаты
-  if (!appState.hasActivePack || appState.creditsTotal <= 0) {
-    alert("Сначала оплатите пакет генераций.");
-    openPayModal();
-    return;
-  }
+  // Раньше здесь была жёсткая блокировка без оплаты:
+  // if (!appState.hasActivePack || appState.creditsTotal <= 0) { ... }
+  // Для настройки и тестов отключаем paywall — генерация доступна и в демо.
 
-  const left = appState.creditsTotal - appState.creditsUsed;
-  if (left <= 0) {
-    alert("У вас закончились генерации. Мы отправим ваши портреты на email.");
-    finishSessionAndSendEmail();
-    return;
+  let left = null;
+  if (appState.creditsTotal > 0) {
+    left = appState.creditsTotal - appState.creditsUsed;
+    if (left <= 0) {
+      alert("У вас закончились генерации. Мы отправим ваши портреты на email.");
+      finishSessionAndSendEmail();
+      return;
+    }
   }
 
   if (!appState.photoBase64) {
@@ -841,15 +846,15 @@ async function handleGenerateClick() {
       text: "",
       photo: appState.photoBase64,
       effects: appState.selectedEffects,
-      greeting: appState.selectedGreeting || null,
+      greeting: appState.selectedGreeting || null
     };
 
     const resp = await fetch("/api/generate", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload)
     });
 
     if (!resp.ok) {
@@ -894,10 +899,12 @@ function registerGeneration(imageUrl) {
 
   refreshSelectionChips();
 
-  const left = appState.creditsTotal - appState.creditsUsed;
-  if (left <= 0) {
-    // кредиты кончились — отправляем все портреты на email
-    finishSessionAndSendEmail();
+  if (appState.creditsTotal > 0) {
+    const left = appState.creditsTotal - appState.creditsUsed;
+    if (left <= 0) {
+      // кредиты кончились — отправляем все портреты на email
+      finishSessionAndSendEmail();
+    }
   }
 }
 
@@ -939,40 +946,15 @@ function exitResultView(pushHistory = true) {
 
 async function finishSessionAndSendEmail() {
   let email = "";
-
-  // 1) Пытаемся взять email из localStorage (как было изначально)
   try {
     email = window.localStorage.getItem(STORAGE_KEYS.USER_EMAIL) || "";
   } catch (e) {
-    console.warn("Cannot read user email from localStorage", e);
+    console.warn("Cannot read user email", e);
   }
 
-  // 2) Если в localStorage пусто — пробуем взять из поля согласия (если пользователь только что вводил)
-  if (!email && els.agreeEmail && els.agreeEmail.value) {
-    email = els.agreeEmail.value.trim();
-  }
-
-  // 3) Если всё ещё пусто — спрашиваем через prompt
   if (!email) {
-    const entered = window.prompt(
-      "Введите email, на который отправить все ваши портреты:"
-    );
-    if (!entered) {
-      alert("Email не указан. Невозможно отправить портреты.");
-      return;
-    }
-    email = entered.trim();
-    if (!email) {
-      alert("Email не указан. Невозможно отправить портреты.");
-      return;
-    }
-
-    // Сохраняем, чтобы в следующий раз не спрашивать
-    try {
-      window.localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
-    } catch (e) {
-      console.warn("Cannot store user email to localStorage", e);
-    }
+    alert("Не найден email. Невозможно отправить портреты.");
+    return;
   }
 
   if (!appState.generatedImages || appState.generatedImages.length === 0) {
@@ -984,14 +966,14 @@ async function finishSessionAndSendEmail() {
     const resp = await fetch("/api/send-portraits", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         email,
         images: appState.generatedImages,
         total: appState.creditsTotal,
-        used: appState.creditsUsed,
-      }),
+        used: appState.creditsUsed
+      })
     });
 
     if (!resp.ok) {
@@ -1029,7 +1011,7 @@ function resetSession() {
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
     window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
     window.localStorage.removeItem(STORAGE_KEYS.PENDING_PACK);
-    // email оставляем, чтобы не вводить каждый раз
+    // email можно оставить, чтобы не вводить каждый раз
   } catch (e) {
     console.warn("Cannot clear session storage", e);
   }
