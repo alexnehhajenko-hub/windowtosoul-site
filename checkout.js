@@ -4,6 +4,11 @@
 //  - input с email имеет id="user-email"
 //  - кнопка "Перейти к оплате" имеет id="pay-button"
 
+// Флаг включения реальных платежей.
+// Пока настраиваем проект — оставляем false.
+// Когда будешь готов брать деньги — поставишь true.
+const PAYMENTS_ENABLED = false;
+
 async function createCheckoutSession() {
   const emailInput = document.getElementById("user-email");
   const email = emailInput ? emailInput.value.trim() : "";
@@ -27,7 +32,6 @@ async function createCheckoutSession() {
       // ответ не JSON — оставим текст как есть
     }
 
-    // Если статус не 2xx — покажем, ЧТО именно вернул сервер
     if (!response.ok) {
       const msgFromServer =
         (data && (data.error || data.message)) || rawText || "";
@@ -64,6 +68,15 @@ function initCheckoutButton() {
 
   button.addEventListener("click", async (event) => {
     event.preventDefault();
+
+    // Пока платежи выключены — показываем аккуратное сообщение и выходим.
+    if (!PAYMENTS_ENABLED) {
+      alert(
+        "Оплата пока в режиме настройки.\n" +
+          "Сервис работает в демо-режиме, скоро мы включим покупку пакетов."
+      );
+      return;
+    }
 
     if (button.disabled) return;
 
