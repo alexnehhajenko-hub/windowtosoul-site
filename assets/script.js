@@ -1,28 +1,28 @@
 // YourPhotoAI — основной фронтенд-скрипт
 // UI: выбор стиля, эффектов кожи, мимики, поздравлений, пакетов и генерации.
-// Оплата: Stripe Checkout через /api/create-checkout-session.
-// Дополнительно: обработка кнопки "Назад" на телефоне — закрывает окна/результат,
-// а не выкидывает с сайта.
+// Оплата: Stripe Checkout через /api/create-checkout-session (в боевом режиме).
+// Дополнительно: обработка кнопки "Назад" на телефоне.
 
 // =========================
 // РЕЖИМ РАБОТЫ
 // =========================
 //
-// DEMO_MODE = true  → генерация ДОСТУПНА без оплаты (для тестов)
-// DEMO_MODE = false → генерация ТОЛЬКО после оплаты (боевой режим)
+// DEMO_MODE = true  → генерация БЕЗ оплаты, но с email + согласием и пакетом на 5 генераций
+// DEMO_MODE = false → генерация ТОЛЬКО после оплаты (Stripe)
 
 const DEMO_MODE = true;
 
-// Сколько генераций считать в одной "сессии" перед отправкой на email
-const DEMO_SESSION_LIMIT = 10;
+// Сколько генераций в одном "пакете" в демо-режиме
+const DEMO_SESSION_LIMIT = 5;
 
 // =========================
 // КОНСТАНТЫ ДЛЯ ХРАНЕНИЯ СОСТОЯНИЯ
 // =========================
 
 const STORAGE_KEYS = {
-  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack",
+  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack", // боевой режим (Stripe)
   USER_EMAIL: "yourphotoai_userEmail",
+  USER_AGREED: "yourphotoai_userAgreed",
   CREDITS_TOTAL: "yourphotoai_creditsTotal",
   CREDITS_USED: "yourphotoai_creditsUsed",
   GENERATED_IMAGES: "yourphotoai_generatedImages"
@@ -35,27 +35,31 @@ const STORAGE_KEYS = {
 const appState = {
   // генерация
   selectedStyle: null,
-  selectedEffects: [], // массив ключей эффектов
+  selectedEffects: [], // кожа + мимика + прочие эффекты
   selectedGreeting: null,
 
   // фото
   originalFile: null,
   photoBase64: null,
 
-  // пакеты Stripe
+  // Stripe-пакет (боевой сценарий)
   selectedPack: null, // 'pack10' | 'pack20' | 'pack30'
 
   // статус
   isGenerating: false,
   isPaying: false,
 
-  // оплата (для боевого режима)
+  // оплата (боевой режим)
   hasActivePack: false,
 
-  // кредиты / демо-сессия
-  creditsTotal: 0,     // в демо заполняем 10
+  // демо-пакет/кредиты
+  creditsTotal: 0,
   creditsUsed: 0,
   generatedImages: [],
+
+  // согласие и email
+  userEmail: "",
+  userAgreed: false,
 
   // UI-слой для кнопки "Назад"
   layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
@@ -105,13 +109,13 @@ function bindElements() {
   els.payError = document.getElementById("payError");
   els.payNextBtn = document.getElementById("payNextBtn");
 
-  // Модалка согласия
+  // Модалка согласия (используем и в демо, и в бою)
   els.agreementBackdrop = document.getElementById("agreementBackdrop");
   els.agreementCloseBtn = document.getElementById("agreementCloseBtn");
   els.agreeEmail = document.getElementById("agreeEmail");
   els.agreeCheckbox = document.getElementById("agreeCheckbox");
   els.agreeError = document.getElementById("agreeError");
-  els.agreePayBtn = document.getElementById("agreePayBtn");
+  els.agreePayBtn = document.getElementById("agreePayBtn"); // кнопка "Продолжить"
 
   // Кнопка скачивания результата
   els.downloadLink = document.getElementById("downloadLink");
@@ -124,11 +128,21 @@ function bindElements() {
 document.addEventListener("DOMContentLoaded", () => {
   bindElements();
 
-  // подхватываем состояние оплаты и демо-сессии из localStorage
+  // подхватываем состояние из localStorage
   try {
     const storedPaid = window.localStorage.getItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
     if (storedPaid === "1") {
       appState.hasActivePack = true;
+    }
+
+    const storedEmail = window.localStorage.getItem(STORAGE_KEYS.USER_EMAIL);
+    if (storedEmail) {
+      appState.userEmail = storedEmail;
+    }
+
+    const storedAgreed = window.localStorage.getItem(STORAGE_KEYS.USER_AGREED);
+    if (storedAgreed === "1") {
+      appState.userAgreed = true;
     }
 
     const storedTotal = parseInt(
@@ -182,7 +196,6 @@ function setLayer(newLayer, pushToHistory = true) {
 }
 
 function setupBackButtonLogic() {
-  // Начальное состояние
   if (window.history && window.history.replaceState) {
     window.history.replaceState({ layer: "home" }, "", window.location.href);
   }
@@ -202,7 +215,6 @@ function setupBackButtonLogic() {
         exitResultView(false);
         break;
       default:
-        // уже на home — позволяем браузеру уходить назад
         return;
     }
     appState.layer = "home";
@@ -238,7 +250,7 @@ function attachMainHandlers() {
     els.fileInput.addEventListener("change", handleFileSelected);
   }
 
-  // Оплата
+  // Оплата (боевой режим)
   if (els.btnPay) {
     els.btnPay.addEventListener("click", () => openPayModal());
   }
@@ -258,13 +270,14 @@ function attachMainHandlers() {
     els.payNextBtn.addEventListener("click", () => handlePayNext());
   }
 
+  // Модалка согласия
   if (els.agreementCloseBtn) {
     els.agreementCloseBtn.addEventListener("click", () =>
       closeAgreementModal()
     );
   }
   if (els.agreePayBtn) {
-    els.agreePayBtn.addEventListener("click", () => handleAgreePay());
+    els.agreePayBtn.addEventListener("click", () => handleAgreeConfirm());
   }
 
   if (els.sheetCloseBtn) {
@@ -273,7 +286,6 @@ function attachMainHandlers() {
 
   if (els.downloadLink) {
     els.downloadLink.addEventListener("click", (e) => {
-      // если нет src — ничего не делаем
       if (!els.previewImage || !els.previewImage.src) {
         e.preventDefault();
       }
@@ -343,7 +355,6 @@ function openSheet({ title, description, categories, options }) {
   els.sheetTitle.textContent = title || "";
   els.sheetDescription.textContent = description || "";
 
-  // Категории (если есть)
   if (categories && categories.length > 0) {
     els.sheetCategoryTitle.style.display = "block";
     els.sheetCategoryRow.style.display = "flex";
@@ -365,7 +376,6 @@ function openSheet({ title, description, categories, options }) {
     els.sheetCategoryRow.innerHTML = "";
   }
 
-  // Основные варианты
   els.sheetOptionsRow.innerHTML = "";
   (options || []).forEach((opt) => {
     const chip = document.createElement("button");
@@ -398,11 +408,12 @@ function closeSheet(pushHistory = true) {
 
 // =========================
 // ЛИСТЫ: СТИЛЬ, КОЖА, МИМИКА, ПОЗДРАВЛЕНИЯ
+// (панель закрывается после выбора)
 // =========================
 
 function openStyleSheet() {
   const options = [
-    { value: "beauty", label: "Светлый бьюти-портрет" },
+    { value: "beauty", label: "✨ Светлый бьюти-портрет" },
     { value: "oil", label: "Картина маслом" },
     { value: "anime", label: "Аниме" },
     { value: "poster", label: "Постер" },
@@ -427,20 +438,24 @@ function openStyleSheet() {
 function openSkinSheet() {
   const options = [
     { value: "no-wrinkles", label: "Без морщин" },
-    { value: "younger", label: "Моложе" },
-    { value: "smooth-skin", label: "Гладкая кожа" }
+    { value: "younger", label: "Моложе на 10–20 лет" },
+    { value: "smooth-skin", label: "Гладкая кожа" },
+    { value: "glow-golden", label: "✨ Золотое сияние" },
+    { value: "cinematic-light", label: "🎬 Кино-свет" }
   ];
 
   openSheet({
     title: "Эффект кожи",
-    description: "Выберите один или несколько эффектов.",
+    description: "Выберите эффект, который даст вау-ощущение.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
+        // один эффект за раз — чтобы было понятно, что выбрано
+        removeSkinEffects();
         toggleEffect(value);
         refreshSelectionChips();
-        // не закрываем сразу, чтобы можно было выбрать несколько
+        closeSheet(); // <<< панель закрывается после выбора
       }
     }))
   });
@@ -448,14 +463,15 @@ function openSkinSheet() {
 
 function openMimicSheet() {
   const options = [
-    { value: "smile-soft", label: "Лёгкая улыбка" },
-    { value: "smile-big", label: "Большая улыбка" },
-    { value: "smile-hollywood", label: "Голливудская улыбка" },
-    { value: "laugh", label: "Смех" },
+    { value: "smile-soft", label: "🙂 Лёгкая улыбка" },
+    { value: "smile-big", label: "😄 Большая улыбка" },
+    { value: "smile-hollywood", label: "😁 Голливудская улыбка" },
+    { value: "laugh", label: "😂 Смех" },
+    { value: "surprised-wow", label: "😲 Вау-удивление" },
+    { value: "eyes-bigger", label: "👁 Чуть больше глаза" },
+    { value: "eyes-brighter", label: "✨ Ярче глаза" },
     { value: "neutral", label: "Нейтральное лицо" },
-    { value: "serious", label: "Серьёзный взгляд" },
-    { value: "eyes-bigger", label: "Чуть больше глаза" },
-    { value: "eyes-brighter", label: "Ярче глаза" }
+    { value: "serious", label: "Серьёзный взгляд" }
   ];
 
   openSheet({
@@ -465,11 +481,10 @@ function openMimicSheet() {
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
-        // одна мимика за раз
         removeAllMimicEffects();
         toggleEffect(value);
         refreshSelectionChips();
-        closeSheet();
+        closeSheet(); // закрываем панель после выбора
       }
     }))
   });
@@ -477,16 +492,16 @@ function openMimicSheet() {
 
 function openGreetingSheet() {
   const options = [
-    { value: "new-year", label: "Новый год" },
-    { value: "birthday", label: "День рождения" },
-    { value: "funny", label: "Смешное" },
-    { value: "scary", label: "Страшное" }
+    { value: "new-year", label: "Новый год 🎄" },
+    { value: "birthday", label: "День рождения 🎂" },
+    { value: "funny", label: "Смешное 😜" },
+    { value: "scary", label: "Страшное 👻" }
   ];
 
   openSheet({
     title: "Поздравления",
     description:
-      "Выберите тип поздравления. Текст будет аккуратным и без грубых фраз.",
+      "Мы аккуратно добавим праздничный антураж к портрету.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedGreeting === opt.value,
@@ -494,14 +509,57 @@ function openGreetingSheet() {
         appState.selectedGreeting =
           appState.selectedGreeting === value ? null : value;
         refreshSelectionChips();
-        closeSheet();
+        closeSheet(); // закрываем после выбора
       }
     }))
   });
 }
 
 // =========================
-// ПАКЕТЫ И ОПЛАТА STRIPE (МОДАЛКИ)
+// ВСПОМОГАТЕЛЬНОЕ ДЛЯ ЭФФЕКТОВ
+// =========================
+
+function toggleEffect(value) {
+  const idx = appState.selectedEffects.indexOf(value);
+  if (idx >= 0) {
+    appState.selectedEffects.splice(idx, 1);
+  } else {
+    appState.selectedEffects.push(value);
+  }
+}
+
+function removeSkinEffects() {
+  const skinKeys = [
+    "no-wrinkles",
+    "younger",
+    "smooth-skin",
+    "glow-golden",
+    "cinematic-light"
+  ];
+  appState.selectedEffects = appState.selectedEffects.filter(
+    (e) => !skinKeys.includes(e)
+  );
+}
+
+function removeAllMimicEffects() {
+  const mimicKeys = [
+    "smile-soft",
+    "smile-big",
+    "smile-hollywood",
+    "laugh",
+    "surprised-wow",
+    "neutral",
+    "serious",
+    "eyes-bigger",
+    "eyes-brighter"
+  ];
+  appState.selectedEffects = appState.selectedEffects.filter(
+    (e) => !mimicKeys.includes(e)
+  );
+}
+
+// =========================
+// ПАКЕТЫ И ОПЛАТА STRIPE (БОЕВОЙ РЕЖИМ)
 // =========================
 
 function openPayModal() {
@@ -542,14 +600,24 @@ function handlePayNext() {
     return;
   }
   closePayModal(false);
-  openAgreementModal();
+  openAgreementModal(); // в бою можно переиспользовать это окно для email
 }
 
 function openAgreementModal() {
   if (!els.agreementBackdrop) return;
-  els.agreementBackdrop.style.display = "flex";
+
   if (els.agreeError) els.agreeError.textContent = "";
-  if (els.agreeCheckbox) els.agreeCheckbox.checked = false;
+
+  // подставим email, если уже есть
+  if (els.agreeEmail && appState.userEmail) {
+    els.agreeEmail.value = appState.userEmail;
+  }
+
+  if (els.agreeCheckbox) {
+    els.agreeCheckbox.checked = appState.userAgreed || false;
+  }
+
+  els.agreementBackdrop.style.display = "flex";
   setLayer("agree", true);
 }
 
@@ -559,7 +627,11 @@ function closeAgreementModal(pushHistory = true) {
   if (pushHistory) setLayer("home", true);
 }
 
-function handleAgreePay() {
+// =========================
+// СОГЛАСИЕ (ПЕРЕД ГЕНЕРАЦИЕЙ / ОПЛАТОЙ)
+// =========================
+
+function handleAgreeConfirm() {
   const email = (els.agreeEmail && els.agreeEmail.value.trim()) || "";
   const checked = els.agreeCheckbox && els.agreeCheckbox.checked;
 
@@ -573,8 +645,59 @@ function handleAgreePay() {
     return;
   }
 
+  // ВАЖНО: явное соглашение про внешние ИИ
+  const confirmText =
+    "Продолжая, вы согласны, что:\n\n" +
+    "• ваше фото и сгенерированные портреты будут отправлены в сторонний AI-сервис для обработки;\n" +
+    "• обработка происходит автоматически, без ручной модерации;\n" +
+    "• вы имеете права на загружаемые изображения и разрешаете их такую обработку.\n\n" +
+    "Нажмите «OK», если вы согласны.";
+  const ok = window.confirm(confirmText);
+  if (!ok) {
+    return;
+  }
+
   if (els.agreeError) els.agreeError.textContent = "";
-  startStripeCheckout(email);
+
+  // сохраняем email и согласие
+  appState.userEmail = email;
+  appState.userAgreed = true;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
+    window.localStorage.setItem(STORAGE_KEYS.USER_AGREED, "1");
+  } catch (e) {
+    console.warn("Cannot store email/agreement", e);
+  }
+
+  if (DEMO_MODE) {
+    // В ДЕМО: модалка = согласие перед генерацией
+    closeAgreementModal(false);
+
+    // инициализируем пакет на 5 генераций, если ещё нет
+    if (appState.creditsTotal <= 0) {
+      appState.creditsTotal = DEMO_SESSION_LIMIT;
+      appState.creditsUsed = 0;
+      try {
+        window.localStorage.setItem(
+          STORAGE_KEYS.CREDITS_TOTAL,
+          String(appState.creditsTotal)
+        );
+        window.localStorage.setItem(
+          STORAGE_KEYS.CREDITS_USED,
+          String(appState.creditsUsed)
+        );
+      } catch (e) {
+        console.warn("Cannot store demo credits", e);
+      }
+    }
+
+    refreshSelectionChips();
+    // пользователь нажимает "Сделать портрет" ещё раз, и генерация идёт
+  } else {
+    // В БОЕВОМ РЕЖИМЕ: после согласия запускаем Stripe Checkout
+    startStripeCheckout(email);
+  }
 }
 
 async function startStripeCheckout(email) {
@@ -643,7 +766,6 @@ function handleStripeStatusFromUrl() {
     if (!status) return;
 
     if (status === "success") {
-      // помечаем, что оплата прошла, и разрешаем генерации (боевой сценарий)
       appState.hasActivePack = true;
       try {
         window.localStorage.setItem(STORAGE_KEYS.HAS_ACTIVE_PACK, "1");
@@ -663,35 +785,6 @@ function handleStripeStatusFromUrl() {
   } catch (e) {
     console.warn("Cannot parse URL for Stripe status", e);
   }
-}
-
-// =========================
-// ВСПОМОГАТЕЛЬНОЕ ДЛЯ ЭФФЕКТОВ
-// =========================
-
-function toggleEffect(value) {
-  const idx = appState.selectedEffects.indexOf(value);
-  if (idx >= 0) {
-    appState.selectedEffects.splice(idx, 1);
-  } else {
-    appState.selectedEffects.push(value);
-  }
-}
-
-function removeAllMimicEffects() {
-  const mimicKeys = [
-    "smile-soft",
-    "smile-big",
-    "smile-hollywood",
-    "laugh",
-    "neutral",
-    "serious",
-    "eyes-bigger",
-    "eyes-brighter"
-  ];
-  appState.selectedEffects = appState.selectedEffects.filter(
-    (e) => !mimicKeys.includes(e)
-  );
 }
 
 // =========================
@@ -723,17 +816,20 @@ function refreshSelectionChips() {
 
   appState.selectedEffects.forEach((e) => {
     const map = {
-      "no-wrinkles": "Без морщин",
-      younger: "Моложе",
-      "smooth-skin": "Гладкая кожа",
-      "smile-soft": "Лёгкая улыбка",
-      "smile-big": "Большая улыбка",
-      "smile-hollywood": "Голливудская улыбка",
-      laugh: "Смех",
-      neutral: "Нейтрально",
-      serious: "Серьёзно",
-      "eyes-bigger": "Больше глаза",
-      "eyes-brighter": "Ярче глаза"
+      "no-wrinkles": "Эффект: без морщин",
+      younger: "Эффект: моложе",
+      "smooth-skin": "Эффект: гладкая кожа",
+      "glow-golden": "Эффект: золотое сияние",
+      "cinematic-light": "Эффект: кино-свет",
+      "smile-soft": "Мимика: лёгкая улыбка",
+      "smile-big": "Мимика: большая улыбка",
+      "smile-hollywood": "Мимика: голливудская улыбка",
+      laugh: "Мимика: смех",
+      "surprised-wow": "Мимика: вау-удивление",
+      neutral: "Мимика: нейтрально",
+      serious: "Мимика: серьёзно",
+      "eyes-bigger": "Мимика: больше глаза",
+      "eyes-brighter": "Мимика: ярче глаза"
     };
     addChip(map[e] || e);
   });
@@ -742,8 +838,8 @@ function refreshSelectionChips() {
     const map = {
       "new-year": "Поздравление: Новый год",
       birthday: "Поздравление: День рождения",
-      funny: "Поздравление: Смешное",
-      scary: "Поздравление: Страшное"
+      funny: "Поздравление: смешное",
+      scary: "Поздравление: страшное"
     };
     addChip(map[appState.selectedGreeting] || "Поздравление выбрано");
   }
@@ -757,14 +853,12 @@ function refreshSelectionChips() {
     addChip(map[appState.selectedPack] || "Пакет выбран");
   }
 
-  // Счётчик демо-сессии
   if (appState.creditsTotal > 0) {
     addChip(`Сделано ${appState.creditsUsed} из ${appState.creditsTotal}`);
   }
 
-  // Статус оплаты/демо
   if (DEMO_MODE) {
-    addChip("Demo: генерация без оплаты");
+    addChip("Demo: 5 генераций с отправкой на email");
   } else if (appState.hasActivePack) {
     addChip("Оплачено: генерации доступны");
   } else {
@@ -773,22 +867,28 @@ function refreshSelectionChips() {
 }
 
 // =========================
-// ГЕНЕРАЦИЯ ПОРТРЕТА (REPLICATE /api/generate)
+// ГЕНЕРАЦИЯ ПОРТРЕТА
 // =========================
 
 async function handleGenerateClick() {
   if (appState.isGenerating) return;
 
-  // В боевом режиме (DEMO_MODE = false) блокируем генерацию без оплаты
-  if (!DEMO_MODE && !appState.hasActivePack) {
-    alert("Сначала оплатите пакет генераций.");
-    openPayModal();
-    return;
-  }
-
   if (!appState.photoBase64) {
     alert("Сначала добавьте фото.");
     return;
+  }
+
+  if (DEMO_MODE) {
+    if (!appState.userEmail || !appState.userAgreed) {
+      openAgreementModal();
+      return;
+    }
+  } else {
+    if (!appState.hasActivePack) {
+      alert("Сначала оплатите пакет генераций.");
+      openPayModal();
+      return;
+    }
   }
 
   appState.isGenerating = true;
@@ -821,7 +921,9 @@ async function handleGenerateClick() {
     }
 
     showResultPortrait(data.image);
-    registerGeneration(data.image);
+    if (DEMO_MODE) {
+      registerGeneration(data.image);
+    }
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert("Не удалось сгенерировать портрет. Попробуйте ещё раз.");
@@ -831,10 +933,7 @@ async function handleGenerateClick() {
   }
 }
 
-// === УЧЁТ ГЕНЕРАЦИЙ И ОТПРАВКА EMAIL ПОСЛЕ 10 ===
-
 function registerGeneration(imageUrl) {
-  // Инициализируем "пакет" в демо, если ещё нет
   if (appState.creditsTotal <= 0) {
     appState.creditsTotal = DEMO_SESSION_LIMIT;
   }
@@ -865,7 +964,6 @@ function registerGeneration(imageUrl) {
   refreshSelectionChips();
 
   if (appState.creditsUsed >= appState.creditsTotal) {
-    // достигли лимита (10) — отправляем всё на email
     finishSessionAndSendEmail();
   }
 }
@@ -907,35 +1005,11 @@ function exitResultView(pushHistory = true) {
 // =========================
 
 async function finishSessionAndSendEmail() {
-  let email = "";
+  const email = appState.userEmail;
 
-  // 1) Пытаемся взять email из localStorage
-  try {
-    email = window.localStorage.getItem(STORAGE_KEYS.USER_EMAIL) || "";
-  } catch (e) {
-    console.warn("Cannot read user email", e);
-  }
-
-  // 2) Если пусто — спрашиваем у пользователя
   if (!email) {
-    const entered = window.prompt(
-      "Введите email, на который отправить ваши портреты:"
-    );
-    if (!entered) {
-      alert("Email не указан. Невозможно отправить портреты.");
-      return;
-    }
-    email = entered.trim();
-    if (!email) {
-      alert("Email не указан. Невозможно отправить портреты.");
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
-    } catch (e) {
-      console.warn("Cannot store user email", e);
-    }
+    alert("Email не найден. Невозможно отправить портреты.");
+    return;
   }
 
   if (!appState.generatedImages || appState.generatedImages.length === 0) {
@@ -988,7 +1062,7 @@ function resetDemoSession() {
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
     window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
-    // EMAIL мы НЕ трём, чтобы не вводить каждый раз
+    // email и согласие оставляем, чтобы не вводить каждый раз
   } catch (e) {
     console.warn("Cannot clear demo session storage", e);
   }
