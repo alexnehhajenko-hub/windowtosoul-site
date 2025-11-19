@@ -1,35 +1,20 @@
-// api/debug-env.js
+// /api/debug-env.js
+export default function handler(req, res) {
+  res.status(200).json({
+    // Показываем только факт наличия ключей (true/false)
+    RESEND_API_KEY: !!process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: !!process.env.RESEND_FROM_EMAIL,
+    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    REPLICATE_API_TOKEN: !!process.env.REPLICATE_API_TOKEN,
 
-module.exports = async (req, res) => {
-  const stripePublishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-  const stripeSecret = process.env.STRIPE_SECRET_KEY;
-  const resendKey = process.env.RESEND_API_KEY;
+    // Диагностика домена
+    NODE_ENV: process.env.NODE_ENV || "unknown",
 
-  res.setHeader('Content-Type', 'application/json');
+    // Текущий origin
+    HOST: req.headers.host,
+    PROTO: req.headers["x-forwarded-proto"] || "unknown",
 
-  res.status(200).send(
-    JSON.stringify(
-      {
-        ok: true,
-        stripeKeys: [
-          'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
-          'STRIPE_SECRET_KEY',
-        ],
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_raw_defined:
-          !!stripePublishable,
-        STRIPE_SECRET_KEY_raw_defined: !!stripeSecret,
-        RESEND_API_KEY_raw_defined: !!resendKey,
-        STRIPE_SECRET_KEY_masked: stripeSecret
-          ? stripeSecret.slice(0, 7) + '...' + stripeSecret.slice(-3)
-          : null,
-        RESEND_API_KEY_masked: resendKey
-          ? resendKey.slice(0, 7) + '...' + resendKey.slice(-3)
-          : null,
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL_ENV: process.env.VERCEL_ENV,
-      },
-      null,
-      2
-    )
-  );
-};
+    time: new Date().toISOString()
+  });
+}
