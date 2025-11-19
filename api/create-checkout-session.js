@@ -1,12 +1,21 @@
 // /api/create-checkout-session.js
-// Серверная функция Vercel для создания Stripe Checkout Session
+// Создаёт Stripe Checkout Session для покупки пакетов генераций
 // Поддерживает несколько пакетов: pack10 / pack20 / pack30
 
 const Stripe = require("stripe");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+// Логируем, если ключа нет — чтобы сразу видно было в логах Vercel
+if (!stripeSecretKey) {
+  console.error("❌ STRIPE_SECRET_KEY is not set in environment variables.");
+}
+
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: "2024-06-20",
+    })
+  : null;
 
 // Карта пакетов: код → { amountInCents, credits }
 const PACKS = {
@@ -25,7 +34,7 @@ const PACKS = {
   pack30: {
     amount: 250, // 2.50 EUR (ещё выгоднее)
     credits: 30,
-    name: "YourPhotoAI — 30 portrait generations",
+    name: "YourPhotoAI — 30 AI portrait generations",
     description: "Package of 30 AI portrait generations on yourphotoai.vip",
   },
 };
@@ -51,6 +60,13 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
+  if (!stripe) {
+    return res.status(500).json({
+      ok: false,
+      error: "Stripe is not configured (missing STRIPE_SECRET_KEY)",
+    });
+  }
+
   try {
     const origin = getOrigin(req);
 
@@ -71,13 +87,19 @@ module.exports = async (req, res) => {
           }
         }
       } catch (e) {
-        // если не получилось распарсить — просто берём дефолтные значения
+        console.warn("create-checkout-session: failed to parse body", e);
       }
     }
 
     const packConfig = PACKS[pack] || PACKS.pack10;
 
-    // Создаём сессию Stripe Checkout.
+    console.log(
+      "[create-checkout-session] Creating session for pack:",
+      pack,
+      "email:",
+      email || "(no email)"
+    );
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -85,7 +107,7 @@ module.exports = async (req, res) => {
         {
           price_data: {
             currency: "eur",
-            unit_amount: packConfig.amount, // цена в центах
+            unit_amount: packConfig.amount,
             product_data: {
               name: packConfig.name,
               description: packConfig.description,
@@ -95,7 +117,6 @@ module.exports = async (req, res) => {
         },
       ],
       customer_email: email || undefined,
-      // В метадате храним данные пакета, чтобы /api/activate-pack их забрал.
       metadata: {
         pack, // pack10 / pack20 / pack30
         email: email || "",
@@ -110,11 +131,19 @@ module.exports = async (req, res) => {
       url: session.url,
     });
   } catch (error) {
-    console.error("Error creating checkout session:", error);
+    console.error("❌ Error creating checkout session:", {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+    });
 
+    // ВОЗВРАЩАЕМ РЕАЛЬНУЮ ОШИБКУ STRIPE В ОТВЕТ,
+    // чтобы на фронте не было "просто неизвестная ошибка".
     return res.status(500).json({
       ok: false,
-      error: "Failed to create checkout session",
+      error: error.message || "Failed to create checkout session",
+      stripeType: error.type || null,
+      stripeCode: error.code || null,
     });
   }
 };
