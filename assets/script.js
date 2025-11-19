@@ -13,12 +13,19 @@
 
 const DEMO_MODE = true;
 
+// Сколько генераций считать в одной "сессии" перед отправкой на email
+const DEMO_SESSION_LIMIT = 10;
+
 // =========================
 // КОНСТАНТЫ ДЛЯ ХРАНЕНИЯ СОСТОЯНИЯ
 // =========================
 
 const STORAGE_KEYS = {
-  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack"
+  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack",
+  USER_EMAIL: "yourphotoai_userEmail",
+  CREDITS_TOTAL: "yourphotoai_creditsTotal",
+  CREDITS_USED: "yourphotoai_creditsUsed",
+  GENERATED_IMAGES: "yourphotoai_generatedImages"
 };
 
 // =========================
@@ -42,8 +49,13 @@ const appState = {
   isGenerating: false,
   isPaying: false,
 
-  // оплата
-  hasActivePack: false, // в бою: генерация только если true
+  // оплата (для боевого режима)
+  hasActivePack: false,
+
+  // кредиты / демо-сессия
+  creditsTotal: 0,     // в демо заполняем 10
+  creditsUsed: 0,
+  generatedImages: [],
 
   // UI-слой для кнопки "Назад"
   layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
@@ -112,11 +124,34 @@ function bindElements() {
 document.addEventListener("DOMContentLoaded", () => {
   bindElements();
 
-  // подхватываем состояние оплаты из localStorage
+  // подхватываем состояние оплаты и демо-сессии из localStorage
   try {
     const storedPaid = window.localStorage.getItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
     if (storedPaid === "1") {
       appState.hasActivePack = true;
+    }
+
+    const storedTotal = parseInt(
+      window.localStorage.getItem(STORAGE_KEYS.CREDITS_TOTAL) || "0",
+      10
+    );
+    const storedUsed = parseInt(
+      window.localStorage.getItem(STORAGE_KEYS.CREDITS_USED) || "0",
+      10
+    );
+    if (!Number.isNaN(storedTotal)) appState.creditsTotal = storedTotal;
+    if (!Number.isNaN(storedUsed)) appState.creditsUsed = storedUsed;
+
+    const storedImages = window.localStorage.getItem(STORAGE_KEYS.GENERATED_IMAGES);
+    if (storedImages) {
+      try {
+        const arr = JSON.parse(storedImages);
+        if (Array.isArray(arr)) {
+          appState.generatedImages = arr;
+        }
+      } catch (e) {
+        console.warn("Cannot parse GENERATED_IMAGES", e);
+      }
     }
   } catch (e) {
     console.warn("Cannot read localStorage", e);
@@ -608,7 +643,7 @@ function handleStripeStatusFromUrl() {
     if (!status) return;
 
     if (status === "success") {
-      // помечаем, что оплата прошла, и разрешаем генерации
+      // помечаем, что оплата прошла, и разрешаем генерации (боевой сценарий)
       appState.hasActivePack = true;
       try {
         window.localStorage.setItem(STORAGE_KEYS.HAS_ACTIVE_PACK, "1");
@@ -722,7 +757,12 @@ function refreshSelectionChips() {
     addChip(map[appState.selectedPack] || "Пакет выбран");
   }
 
-  // Показываем статус: оплачен / не оплачен / демо
+  // Счётчик демо-сессии
+  if (appState.creditsTotal > 0) {
+    addChip(`Сделано ${appState.creditsUsed} из ${appState.creditsTotal}`);
+  }
+
+  // Статус оплаты/демо
   if (DEMO_MODE) {
     addChip("Demo: генерация без оплаты");
   } else if (appState.hasActivePack) {
@@ -739,7 +779,7 @@ function refreshSelectionChips() {
 async function handleGenerateClick() {
   if (appState.isGenerating) return;
 
-  // В БОЕВОМ РЕЖИМЕ (DEMO_MODE = false) — блокируем генерацию без оплаты
+  // В боевом режиме (DEMO_MODE = false) блокируем генерацию без оплаты
   if (!DEMO_MODE && !appState.hasActivePack) {
     alert("Сначала оплатите пакет генераций.");
     openPayModal();
@@ -781,12 +821,52 @@ async function handleGenerateClick() {
     }
 
     showResultPortrait(data.image);
+    registerGeneration(data.image);
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert("Не удалось сгенерировать портрет. Попробуйте ещё раз.");
   } finally {
     showGenerating(false);
     appState.isGenerating = false;
+  }
+}
+
+// === УЧЁТ ГЕНЕРАЦИЙ И ОТПРАВКА EMAIL ПОСЛЕ 10 ===
+
+function registerGeneration(imageUrl) {
+  // Инициализируем "пакет" в демо, если ещё нет
+  if (appState.creditsTotal <= 0) {
+    appState.creditsTotal = DEMO_SESSION_LIMIT;
+  }
+
+  appState.creditsUsed += 1;
+
+  if (!appState.generatedImages.includes(imageUrl)) {
+    appState.generatedImages.push(imageUrl);
+  }
+
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEYS.CREDITS_TOTAL,
+      String(appState.creditsTotal)
+    );
+    window.localStorage.setItem(
+      STORAGE_KEYS.CREDITS_USED,
+      String(appState.creditsUsed)
+    );
+    window.localStorage.setItem(
+      STORAGE_KEYS.GENERATED_IMAGES,
+      JSON.stringify(appState.generatedImages)
+    );
+  } catch (e) {
+    console.warn("Cannot store credits/images", e);
+  }
+
+  refreshSelectionChips();
+
+  if (appState.creditsUsed >= appState.creditsTotal) {
+    // достигли лимита (10) — отправляем всё на email
+    finishSessionAndSendEmail();
   }
 }
 
@@ -820,4 +900,98 @@ function showResultPortrait(url) {
 function exitResultView(pushHistory = true) {
   document.body.classList.remove("result-mode");
   if (pushHistory) setLayer("home", true);
+}
+
+// =========================
+// ЗАВЕРШЕНИЕ СЕССИИ И ОТПРАВКА НА EMAIL
+// =========================
+
+async function finishSessionAndSendEmail() {
+  let email = "";
+
+  // 1) Пытаемся взять email из localStorage
+  try {
+    email = window.localStorage.getItem(STORAGE_KEYS.USER_EMAIL) || "";
+  } catch (e) {
+    console.warn("Cannot read user email", e);
+  }
+
+  // 2) Если пусто — спрашиваем у пользователя
+  if (!email) {
+    const entered = window.prompt(
+      "Введите email, на который отправить ваши портреты:"
+    );
+    if (!entered) {
+      alert("Email не указан. Невозможно отправить портреты.");
+      return;
+    }
+    email = entered.trim();
+    if (!email) {
+      alert("Email не указан. Невозможно отправить портреты.");
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
+    } catch (e) {
+      console.warn("Cannot store user email", e);
+    }
+  }
+
+  if (!appState.generatedImages || appState.generatedImages.length === 0) {
+    alert("Нет сгенерированных портретов для отправки.");
+    return;
+  }
+
+  try {
+    const resp = await fetch("/api/send-portraits", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email,
+        images: appState.generatedImages,
+        total: appState.creditsTotal,
+        used: appState.creditsUsed
+      })
+    });
+
+    if (!resp.ok) {
+      throw new Error("Сервер email вернул ошибку.");
+    }
+
+    const data = await resp.json();
+    if (!data || !data.ok) {
+      throw new Error("Сервис email не подтвердил отправку.");
+    }
+
+    alert(
+      `Сессия завершена. Мы отправили ${appState.generatedImages.length} портрет(ов) на ${email}.`
+    );
+
+    resetDemoSession();
+  } catch (err) {
+    console.error("SEND EMAIL ERROR:", err);
+    alert(
+      "Портреты были сгенерированы, но не удалось отправить email. Попробуйте позже или свяжитесь с поддержкой."
+    );
+  }
+}
+
+function resetDemoSession() {
+  appState.creditsTotal = 0;
+  appState.creditsUsed = 0;
+  appState.generatedImages = [];
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
+    window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
+    window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
+    // EMAIL мы НЕ трём, чтобы не вводить каждый раз
+  } catch (e) {
+    console.warn("Cannot clear demo session storage", e);
+  }
+
+  refreshSelectionChips();
 }
