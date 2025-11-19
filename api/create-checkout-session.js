@@ -1,12 +1,34 @@
 // /api/create-checkout-session.js
-
 // Серверная функция Vercel для создания Stripe Checkout Session
+// Поддерживает несколько пакетов: pack10 / pack20 / pack30
 
 const Stripe = require("stripe");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20", // можно оставить как есть, Stripe сам подстроит
+  apiVersion: "2024-06-20",
 });
+
+// Карта пакетов: код → { amountInCents, credits }
+const PACKS = {
+  pack10: {
+    amount: 100, // 1.00 EUR
+    credits: 10,
+    name: "YourPhotoAI — 10 portrait generations",
+    description: "Package of 10 AI portrait generations on yourphotoai.vip",
+  },
+  pack20: {
+    amount: 180, // 1.80 EUR (пример: чуть выгоднее)
+    credits: 20,
+    name: "YourPhotoAI — 20 portrait generations",
+    description: "Package of 20 AI portrait generations on yourphotoai.vip",
+  },
+  pack30: {
+    amount: 250, // 2.50 EUR (ещё выгоднее)
+    credits: 30,
+    name: "YourPhotoAI — 30 portrait generations",
+    description: "Package of 30 AI portrait generations on yourphotoai.vip",
+  },
+};
 
 /**
  * Helper: получить origin (домен) из запроса
@@ -32,22 +54,30 @@ module.exports = async (req, res) => {
   try {
     const origin = getOrigin(req);
 
-    // Тело запроса с фронта (email пользователя)
+    // Тело запроса с фронта: { email, pack }
     let email = null;
+    let pack = "pack10"; // значение по умолчанию
+
     if (req.body) {
       try {
         const body =
           typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-        if (body && typeof body.email === "string") {
-          email = body.email.trim();
+        if (body) {
+          if (typeof body.email === "string") {
+            email = body.email.trim();
+          }
+          if (typeof body.pack === "string" && PACKS[body.pack]) {
+            pack = body.pack;
+          }
         }
       } catch (e) {
-        // если не получилось распарсить — просто игнорируем
+        // если не получилось распарсить — просто берём дефолтные значения
       }
     }
 
+    const packConfig = PACKS[pack] || PACKS.pack10;
+
     // Создаём сессию Stripe Checkout.
-    // Цена: 1 EUR за пакет из 10 генераций (в тестовом режиме это просто цифра).
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -55,26 +85,26 @@ module.exports = async (req, res) => {
         {
           price_data: {
             currency: "eur",
-            unit_amount: 100, // 1 EUR = 100 центов
+            unit_amount: packConfig.amount, // цена в центах
             product_data: {
-              name: "YourPhotoAI — 10 portrait generations",
-              description:
-                "Package of 10 AI portrait generations on yourphotoai.vip",
+              name: packConfig.name,
+              description: packConfig.description,
             },
           },
           quantity: 1,
         },
       ],
       customer_email: email || undefined,
-      // В метадате можно хранить, сколько генераций положено по пакету.
+      // В метадате храним данные пакета, чтобы /api/activate-pack их забрал.
       metadata: {
-        generations_in_package: "10",
+        pack, // pack10 / pack20 / pack30
+        email: email || "",
+        credits_total: String(packConfig.credits),
       },
       success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?checkout=cancel`,
     });
 
-    // Главное: отдаём обратно URL, куда надо редиректить браузер.
     return res.status(200).json({
       ok: true,
       url: session.url,
