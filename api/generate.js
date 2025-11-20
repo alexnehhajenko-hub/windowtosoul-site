@@ -2,7 +2,7 @@
 // Генерация портрета через Replicate (FLUX-Kontext-Pro)
 // Фото / эффекты кожи / мимика / поздравления
 // Жёстко запрещаем любой текст/логотипы/интерфейс на итоговом фото
-// НОВОЕ: максимально сохраняем ЛИЧНОСТЬ с фото (тот же человек, тот же пол)
+// Максимально сохраняем ЛИЧНОСТЬ с фото (тот же человек, тот же пол)
 
 import Replicate from "replicate";
 
@@ -67,7 +67,11 @@ const EFFECT_PROMPTS = {
   "smile-hollywood": [
     "change expression to a wide hollywood smile with visible white teeth",
     "confident and charismatic look",
-    "keep the same person, same face structure, same gender"
+    "keep the same person as in the input image",
+    "keep the same face structure, same gender and same approximate age",
+    "do not make the face more feminine or change the gender",
+    "do not significantly change jawline, nose shape or eye shape",
+    "do not replace the person with a different model-looking face"
   ].join(", "),
 
   laugh: [
