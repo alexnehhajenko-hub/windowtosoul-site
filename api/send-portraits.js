@@ -1,20 +1,21 @@
 // api/send-portraits.js — YourPhotoAI
 // Отправка серии портретов пользователю на email через Resend.
-// Версия "железно должна работать", отправитель onboarding@resend.dev.
+// Отправитель: onboarding@resend.dev (не требует настройки домена/DNS).
 
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Используем тестовый домен Resend — он работает без настройки DNS
+// Тестовый домен Resend — работает без SPF/DKIM
 const FROM_EMAIL = "YourPhotoAI <onboarding@resend.dev>";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ ok: false, error: "Method not allowed" });
+    return res
+      .status(405)
+      .json({ ok: false, error: "Method not allowed" });
   }
 
-  // Проверяем, что ключ вообще есть
   if (!process.env.RESEND_API_KEY) {
     console.error("RESEND_API_KEY is missing");
     return res.status(500).json({
@@ -43,7 +44,9 @@ export default async function handler(req, res) {
     });
 
     if (!email) {
-      return res.status(400).json({ ok: false, error: "Email is required" });
+      return res
+        .status(400)
+        .json({ ok: false, error: "Email is required" });
     }
 
     if (!Array.isArray(images) || images.length === 0) {
