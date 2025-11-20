@@ -4,8 +4,7 @@ const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Можно хранить только адрес в переменной окружения,
-// а имя добавить здесь
+// Формируем красивый From
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL
     ? `YourPhotoAI <${process.env.RESEND_FROM_EMAIL}>`
@@ -25,7 +24,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // На тестах можно передавать одну картинку или вообще пустой массив
     const urls = Array.isArray(imageUrls) ? imageUrls : [];
 
     const imagesHtml = urls.length
@@ -51,16 +49,34 @@ module.exports = async (req, res) => {
       </div>
     `;
 
-    const sendResult = await resend.emails.send({
-      from: FROM_EMAIL,      // теперь используем домен yourphotoai.vip / RESEND_FROM_EMAIL
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
       to: email,
       subject: 'Your AI portraits from YourPhotoAI',
       html,
     });
 
-    res.status(200).json({ ok: true, result: sendResult });
+    console.log('Resend send-email result', {
+      to: email,
+      data,
+      error,
+    });
+
+    if (error) {
+      console.error('Resend API error:', error);
+      res.status(500).json({
+        ok: false,
+        error: error.message || 'Resend failed to send email',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      ok: true,
+      id: data && data.id,
+    });
   } catch (err) {
-    console.error('Resend error:', err);
+    console.error('Resend unexpected error:', err);
     res.status(500).json({
       ok: false,
       error: err.message || 'Failed to send email',
