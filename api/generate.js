@@ -11,15 +11,16 @@ import Replicate from "replicate";
 // ----------------------
 // СТИЛИ
 // ----------------------
-// beauty добавлен специально под UI ("Стиль: Бьюти")
+// beauty / poster / classic: максимально бережны к лицу
 
 const STYLE_PREFIX = {
   beauty: [
     "edit this exact input photo into a slightly more polished portrait",
     "soft flattering studio-like lighting, natural colors",
     "very gentle beauty retouch only",
-    "keep the same person as in the input image",
-    "keep the same gender, same face structure and same approximate age"
+    "KEEP the same person as in the input image",
+    "KEEP the same gender, same face structure and same approximate age",
+    "facial features must stay almost identical, only light and skin polishing"
   ].join(", "),
 
   oil: [
@@ -36,14 +37,16 @@ const STYLE_PREFIX = {
 
   poster: [
     "edit this input photo into a cinematic movie-poster look of the same person",
-    "more dramatic lighting and contrast",
-    "same face, same gender"
+    "more dramatic lighting and slightly more contrast",
+    "KEEP the same person, same gender and same facial features",
+    "do NOT change the face type, only lighting, color grading and background"
   ].join(", "),
 
   classic: [
     "edit this input photo into a classic portrait painting of the same person",
     "warm tones, detailed skin, subtle vignette background",
-    "keep the same identity and gender"
+    "KEEP the same identity, same gender and same face proportions",
+    "only stylize colors and background, not the face shape"
   ].join(", "),
 
   default: [
@@ -202,7 +205,7 @@ export default async function handler(req, res) {
 
     const { style, text, photo, effects, greeting } = body || {};
 
-    // Без фото теперь НЕЛЬЗЯ — иначе модель рисует рандомное лицо
+    // Без фото — нельзя, иначе модель рисует случайное лицо
     if (!photo) {
       return res.status(400).json({
         error: "Photo is required for portrait editing"
@@ -212,7 +215,7 @@ export default async function handler(req, res) {
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // 2. Пользовательский текст (пока не используем, но оставим)
+    // 2. Пользовательский текст (пока не используется)
     const userPrompt = (text || "").trim();
 
     // 3. Эффекты
@@ -224,13 +227,13 @@ export default async function handler(req, res) {
         .join(", ");
     }
 
-    // 4. Поздравление / атмосфера
+    // 4. Атмосфера поздравления
     let greetingPrompt = "";
     if (greeting && GREETING_PROMPTS[greeting]) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
-    // 5. Финальный prompt (остаётся только на сервере)
+    // 5. Итоговый prompt
     const promptParts = [stylePrefix, NO_TEXT_BASE_PROMPT];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
@@ -279,7 +282,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // prompt пользователю не отдаём
     return res.status(200).json({
       ok: true,
       image: imageUrl
