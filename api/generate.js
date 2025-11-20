@@ -1,67 +1,105 @@
-// api/generate.js — YourPhotoAI
-// Генерация портрета через Replicate (FLUX-Kontext-Pro)
-// Фото / эффекты кожи / мимика / поздравления
-// Жёстко запрещаем любой текст/логотипы/интерфейс на итоговом фото
-// Максимально сохраняем ЛИЧНОСТЬ с фото (тот же человек, тот же пол)
+// api/generate.js — YourPhotoAI (режим редактирования портрета)
+// Модель: Replicate / FLUX-Kontext-Pro
+// Цели:
+// 1) Всегда редактируем ИМЕННО загруженное фото (photo обязательно).
+// 2) Сохраняем того же человека и тот же пол.
+// 3) Меняем только кожу / мимику / атмосферу / стиль.
+// 4) Никакого текста, логотипов и интерфейсов на итоговом изображении.
 
 import Replicate from "replicate";
 
-// Стили (в том числе "beauty")
+// ----------------------
+// СТИЛИ
+// ----------------------
+// beauty добавлен специально под UI ("Стиль: Бьюти")
+
 const STYLE_PREFIX = {
   beauty: [
-    "high-quality beauty portrait",
-    "studio lighting, bright airy tones",
-    "smooth skin with gentle beauty retouch",
-    "keep the same person as in the input photo",
-    "keep the same facial structure and gender as the original",
-    "natural but slightly polished look",
-    "pastel or soft background"
+    "edit this exact input photo into a slightly more polished portrait",
+    "soft flattering studio-like lighting, natural colors",
+    "very gentle beauty retouch only",
+    "keep the same person as in the input image",
+    "keep the same gender, same face structure and same approximate age"
   ].join(", "),
 
-  oil:
-    "dramatic oil painting portrait, impasto style, very visible thick brush strokes, rich oil paint texture, canvas texture, painterly background, face slightly stylized, not photorealistic, strong painterly look, soft edges",
+  oil: [
+    "edit this input photo into an oil painting version of the same person",
+    "visible brush strokes and canvas texture",
+    "keep the same facial features, proportions and gender"
+  ].join(", "),
 
-  anime: "anime style portrait, clean lines, soft pastel shading",
-  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
-  classic: "classical old master portrait, realism, warm tones, detailed skin",
-  default: "realistic portrait, detailed face, soft studio lighting"
+  anime: [
+    "edit this input photo into an anime-style version of the same person",
+    "preserve key face shape, hairstyle and expression",
+    "same gender and identity as original"
+  ].join(", "),
+
+  poster: [
+    "edit this input photo into a cinematic movie-poster look of the same person",
+    "more dramatic lighting and contrast",
+    "same face, same gender"
+  ].join(", "),
+
+  classic: [
+    "edit this input photo into a classic portrait painting of the same person",
+    "warm tones, detailed skin, subtle vignette background",
+    "keep the same identity and gender"
+  ].join(", "),
+
+  default: [
+    "edit this input photo into a clean high-quality portrait of the same person",
+    "soft studio-like lighting, natural color balance"
+  ].join(", ")
 };
 
-// Эффекты: кожа + мимика
+// ----------------------
+// ЭФФЕКТЫ: кожа + мимика
+// ----------------------
+
 const EFFECT_PROMPTS = {
-  // ── кожа ──
+  // кожа
   "no-wrinkles": [
-    "reduce or remove visible facial wrinkles, especially on the forehead and around the eyes",
-    "keep the same person, same facial features and bone structure",
-    "do NOT change gender or identity",
-    "result should look like the same person with smoother, younger-looking skin"
+    "slightly soften and reduce visible facial wrinkles",
+    "especially on the forehead and around the eyes",
+    "keep skin texture realistic, not plastic",
+    "absolutely keep the same person, do not replace the face or change gender"
   ].join(", "),
 
   younger: [
-    "make the person look about 15–20 years younger",
-    "fresher and healthier skin, less sagging, more vibrant eyes",
-    "keep the same identity, same gender and facial proportions"
+    "make the person look a bit more rested and slightly younger",
+    "subtly reduce signs of tiredness and age",
+    "keep the same age group, same identity and gender"
   ].join(", "),
 
   "smooth-skin": [
-    "smooth and even skin tone",
-    "subtle beauty retouch, remove small blemishes",
-    "keep pores and details slightly visible so it still feels realistic",
-    "do not change identity or gender"
+    "smooth and even out the skin tone a little",
+    "hide small blemishes while keeping pores visible",
+    "do not over-retouch, keep the same person and gender"
   ].join(", "),
 
-  // ── мимика ──
+  "glow-golden": [
+    "add a soft golden glow to the skin",
+    "slightly warmer highlights and gentle radiance",
+    "keep the same face structure and gender"
+  ].join(", "),
+
+  "cinematic-light": [
+    "add soft cinematic lighting with gentle contrast",
+    "more depth and subtle shadows on the face",
+    "same person, same gender"
+  ].join(", "),
+
+  // мимика
   "smile-soft": [
-    "change expression to a subtle soft smile",
-    "corners of the mouth slightly lifted",
-    "eyes relaxed and friendly",
-    "keep the same person and facial proportions"
+    "slightly change expression to a soft gentle smile",
+    "corners of the mouth a bit lifted, relaxed and friendly eyes",
+    "same person, same facial proportions and same gender"
   ].join(", "),
 
   "smile-big": [
-    "change expression to a big happy smile, showing teeth",
-    "cheeks slightly lifted, joyful and friendly look",
-    "keep the same identity and gender as the original person"
+    "change expression to a clear big smile, possibly showing some teeth",
+    "very happy but still natural",
+    "keep the same person and gender, do not change the face type"
   ].join(", "),
 
   "smile-hollywood": [
@@ -69,7 +107,7 @@ const EFFECT_PROMPTS = {
     "confident and charismatic look",
     "keep the same person as in the input image",
     "keep the same face structure, same gender and same approximate age",
-    "do not make the face more feminine or change the gender",
+    "do not feminize or masculinize the person compared to the original",
     "do not significantly change jawline, nose shape or eye shape",
     "do not replace the person with a different model-looking face"
   ].join(", "),
@@ -82,7 +120,7 @@ const EFFECT_PROMPTS = {
 
   neutral: [
     "neutral relaxed expression",
-    "no visible strong emotion",
+    "no strong visible emotion",
     "keep the same person and facial structure"
   ].join(", "),
 
@@ -93,47 +131,59 @@ const EFFECT_PROMPTS = {
   ].join(", "),
 
   "eyes-bigger": [
-    "slightly bigger, more open eyes",
+    "make the eyes just slightly more open and bigger",
     "more attentive and awake look",
-    "keep realistic proportions and do not change identity"
+    "keep realistic proportions and do not change identity or gender"
   ].join(", "),
 
   "eyes-brighter": [
     "brighter, more vivid eyes",
     "slightly more contrast and clarity in the eyes",
-    "keep the same color and shape of the eyes"
+    "keep the same eye color and shape"
   ].join(", ")
 };
 
-// Поздравления — только атмосфера, БЕЗ текста на картинке
+// ----------------------
+// ПОЗДРАВЛЕНИЯ — ТОЛЬКО АТМОСФЕРА, БЕЗ ТЕКСТА
+// ----------------------
+
 const GREETING_PROMPTS = {
   "new-year":
-    "festive New Year portrait, glowing warm lights, soft snow, cozy winter atmosphere, no visible text, no logos, clean background",
+    "festive New Year portrait of the same person, glowing warm lights, soft snow, cozy winter atmosphere, no visible text, no logos, clean background",
+
   birthday:
-    "birthday themed portrait, balloons, confetti, festive colorful composition, joyful mood, no visible text, no logos, clean background",
+    "birthday themed portrait of the same person, balloons, confetti, festive colorful composition, joyful mood, no visible text, no logos, clean background",
+
   funny:
-    "playful humorous portrait, bright vivid colors, fun dynamic composition, cheerful mood, no visible text, no logos, clean background",
+    "playful humorous portrait of the same person, bright vivid colors, fun dynamic composition, cheerful mood, no visible text, no logos, clean background",
+
   scary:
-    "dark horror themed portrait, spooky lighting, eerie atmosphere, mysterious background, no visible text, no logos, clean background"
+    "dark horror themed portrait of the same person, spooky lighting, eerie atmosphere, mysterious background, no visible text, no logos, clean background"
 };
 
-// Базовое правило: удалить весь текст/логотипы/интерфейс
-// и явно сохранить личность и пол исходного человека
+// ----------------------
+// БАЗОВЫЕ ПРАВИЛА
+// ----------------------
+
 const NO_TEXT_BASE_PROMPT = [
-  "clean high-quality portrait of the SAME person from the input photo",
-  "keep the same identity, same gender, same approximate age group",
-  "keep the same face structure, head shape, and key facial features",
-  "do not change the person into someone else",
-  "if the original is a man, keep him clearly male; if a woman, keep her female",
-  "remove all text, remove all numbers, remove all watermarks, remove all logos",
-  "remove any UI elements, phone screen overlays, status bar, timestamps, notifications",
-  "no captions, no writing, no symbols on the image",
-  "simple clean background"
+  "edit THIS input photo only (image-to-image editing, not text-to-image)",
+  "final image must clearly show the SAME person from the input",
+  "keep the same gender, same basic age group and same identity",
+  "keep the same head shape and main facial features",
+  "do not turn the person into a different model or celebrity",
+  "do not change the perceived gender of the person",
+  "remove any text, numbers, watermarks, logos or UI elements from the image",
+  "no phone interface, no status bar, no timestamps, no notification icons",
+  "no captions, no writing, no symbols, no emojis on the image",
+  "simple clean background without distracting elements"
 ].join(", ");
 
-// Negative prompt — явно запрещаем текст и интерфейсы
 const NEGATIVE_TEXT_PROMPT =
   "text, numbers, letters, subtitles, captions, watermark, logo, stickers, emojis, UI elements, phone interface, time, battery icon, notification icons, status bar, on-screen controls, overlays";
+
+// ----------------------
+// HANDLER
+// ----------------------
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -142,8 +192,6 @@ export default async function handler(req, res) {
 
   try {
     let body = req.body;
-
-    // На всякий случай, если Vercel отдаст строку
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
@@ -154,11 +202,11 @@ export default async function handler(req, res) {
 
     const { style, text, photo, effects, greeting } = body || {};
 
-    // Без фото — запрещаем генерацию, иначе опять будет "левая девушка"
+    // Без фото теперь НЕЛЬЗЯ — иначе модель рисует рандомное лицо
     if (!photo) {
-      return res
-        .status(400)
-        .json({ error: "Photo is required for portrait editing" });
+      return res.status(400).json({
+        error: "Photo is required for portrait editing"
+      });
     }
 
     // 1. Стиль
@@ -167,7 +215,7 @@ export default async function handler(req, res) {
     // 2. Пользовательский текст (пока не используем, но оставим)
     const userPrompt = (text || "").trim();
 
-    // 3. Эффекты (кожа + мимика)
+    // 3. Эффекты
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
@@ -176,13 +224,13 @@ export default async function handler(req, res) {
         .join(", ");
     }
 
-    // 4. Атмосфера поздравления (без текста на изображении)
+    // 4. Поздравление / атмосфера
     let greetingPrompt = "";
     if (greeting && GREETING_PROMPTS[greeting]) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
-    // 5. Финальный prompt
+    // 5. Финальный prompt (остаётся только на сервере)
     const promptParts = [stylePrefix, NO_TEXT_BASE_PROMPT];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
@@ -190,13 +238,10 @@ export default async function handler(req, res) {
 
     const prompt = promptParts.join(". ").trim();
 
-    console.log("GENERATE PROMPT:", prompt);
-
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    // 6. Вход в Replicate — ОБЯЗАТЕЛЬНО используем фото
     const input = {
       prompt,
       negative_prompt: NEGATIVE_TEXT_PROMPT,
@@ -204,11 +249,12 @@ export default async function handler(req, res) {
       input_image: photo
     };
 
-    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
-      input
-    });
+    const output = await replicate.run(
+      "black-forest-labs/flux-kontext-pro",
+      { input }
+    );
 
-    // 7. Достаём URL картинки
+    // Достаём URL
     let imageUrl = null;
 
     if (Array.isArray(output)) {
@@ -233,6 +279,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // prompt пользователю не отдаём
     return res.status(200).json({
       ok: true,
       image: imageUrl
