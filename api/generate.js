@@ -2,13 +2,24 @@
 // Генерация портрета через Replicate (FLUX-Kontext-Pro)
 // Фото / эффекты кожи / мимика / поздравления
 // Жёстко запрещаем любой текст/логотипы/интерфейс на итоговом фото
+// НОВОЕ: максимально сохраняем ЛИЧНОСТЬ с фото (тот же человек, тот же пол)
 
 import Replicate from "replicate";
 
 // Стили (в том числе новый "beauty")
 const STYLE_PREFIX = {
   beauty:
-    "soft beauty portrait, studio lighting, bright airy tones, smooth flawless skin, no wrinkles, gentle high-end retouch, subtle glow, k-beauty style, pastel background, flattering look",
+    [
+      "high-quality beauty portrait",
+      "studio lighting, bright airy tones",
+      "smooth skin with gentle beauty retouch",
+      // Важно: не просим рисовать абстрактную девушку,
+      // а подчёркиваем, что это тот же человек
+      "keep the same person as in the input photo",
+      "keep the same facial structure and gender as the original",
+      "natural but slightly polished look",
+      "pastel or soft background"
+    ].join(", "),
 
   oil:
     "dramatic oil painting portrait, impasto style, very visible thick brush strokes, rich oil paint texture, canvas texture, painterly background, face slightly stylized, not photorealistic, strong painterly look, soft edges",
@@ -21,21 +32,87 @@ const STYLE_PREFIX = {
 
 // Эффекты: кожа + мимика
 const EFFECT_PROMPTS = {
-  // кожа
-  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
-  younger: "looks 20 years younger, fresh and healthy skin, lively eyes",
-  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting",
+  // ----- кожа -----
+  "no-wrinkles":
+    [
+      "reduce or remove visible facial wrinkles, especially on the forehead and around the eyes",
+      "keep the same person, same facial features and bone structure",
+      "do NOT change gender or identity",
+      "result should look like the same person with smoother, younger-looking skin"
+    ].join(", "),
 
-  // мимика
-  "smile-soft": "subtle soft smile, calm and relaxed expression",
-  "smile-big": "big warm smile, expressive and friendly face",
+  younger:
+    [
+      "make the person look about 15–20 years younger",
+      "fresher and healthier skin, less sagging, more vibrant eyes",
+      "keep the same identity, same gender and facial proportions"
+    ].join(", "),
+
+  "smooth-skin":
+    [
+      "smooth and even skin tone",
+      "subtle beauty retouch, remove small blemishes",
+      "keep pores and details slightly visible so it still feels realistic",
+      "do not change identity or gender"
+    ].join(", "),
+
+  // ----- мимика -----
+  "smile-soft":
+    [
+      "change expression to a subtle soft smile",
+      "corners of the mouth slightly lifted",
+      "eyes relaxed and friendly",
+      "keep the same person and facial proportions"
+    ].join(", "),
+
+  "smile-big":
+    [
+      "change expression to a big happy smile, showing teeth",
+      "cheeks slightly lifted, joyful and friendly look",
+      "keep the same identity and gender as the original person"
+    ].join(", "),
+
   "smile-hollywood":
-    "wide hollywood smile, visible white teeth, confident look",
-  laugh: "laughing with a bright smile, joyful and natural expression",
-  neutral: "neutral face expression, relaxed, no strong visible emotion",
-  serious: "serious face, no smile, focused expression",
-  "eyes-bigger": "slightly bigger eyes, more open and attentive look",
-  "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
+    [
+      "change expression to a wide hollywood smile with visible white teeth",
+      "confident and charismatic look",
+      "keep the same person, same face structure, same gender"
+    ].join(", "),
+
+  laugh:
+    [
+      "change expression to laughing with a bright smile",
+      "very joyful and natural expression",
+      "keep the same person and facial proportions"
+    ].join(", "),
+
+  neutral:
+    [
+      "neutral relaxed expression",
+      "no visible strong emotion",
+      "keep the same person and facial structure"
+    ].join(", "),
+
+  serious:
+    [
+      "serious focused expression",
+      "no smile",
+      "keep the same identity and gender"
+    ].join(", "),
+
+  "eyes-bigger":
+    [
+      "slightly bigger, more open eyes",
+      "more attentive and awake look",
+      "keep realistic proportions and do not change identity"
+    ].join(", "),
+
+  "eyes-brighter":
+    [
+      "brighter, more vivid eyes",
+      "slightly more contrast and clarity in the eyes",
+      "keep the same color and shape of the eyes"
+    ].join(", ")
 };
 
 // Поздравления — только атмосфера, БЕЗ текста на картинке
@@ -51,8 +128,19 @@ const GREETING_PROMPTS = {
 };
 
 // Базовое правило: удалить весь текст/логотипы/интерфейс
+// НОВОЕ: явно просим сохранить ЛИЧНОСТЬ и ПОЛ из исходного фото.
 const NO_TEXT_BASE_PROMPT =
-  "clean high-quality portrait of the person, reconstruct face only, remove all text, remove all numbers, remove all watermarks, remove all logos, remove any UI elements, remove phone screen overlays, remove status bar, remove timestamps, remove notifications, no captions, no writing, no symbols on the image, no artifacts, simple clean background";
+  [
+    "clean high-quality portrait of the SAME person from the input photo",
+    "keep the same identity, same gender, same approximate age group",
+    "keep the same face structure, head shape, and key facial features",
+    "do not change the person into someone else",
+    "if the original is a man, keep him clearly male; if a woman, keep her female",
+    "remove all text, remove all numbers, remove all watermarks, remove all logos",
+    "remove any UI elements, phone screen overlays, status bar, timestamps, notifications",
+    "no captions, no writing, no symbols on the image",
+    "simple clean background"
+  ].join(", ");
 
 // Negative prompt — явно запрещаем текст и интерфейсы
 const NEGATIVE_TEXT_PROMPT =
@@ -76,6 +164,13 @@ export default async function handler(req, res) {
     }
 
     const { style, text, photo, effects, greeting } = body || {};
+
+    // Без фото — смысла нет, модель рисует "левую девушку".
+    if (!photo) {
+      return res
+        .status(400)
+        .json({ error: "Photo is required for portrait editing" });
+    }
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
@@ -102,62 +197,4 @@ export default async function handler(req, res) {
     const promptParts = [stylePrefix, NO_TEXT_BASE_PROMPT];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
-    if (greetingPrompt) promptParts.push(greetingPrompt);
-
-    const prompt = promptParts.join(". ").trim();
-
-    // 6. Вход в Replicate
-    const input = {
-      prompt,
-      negative_prompt: NEGATIVE_TEXT_PROMPT,
-      output_format: "jpg"
-    };
-
-    if (photo) {
-      input.input_image = photo;
-    }
-
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN
-    });
-
-    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
-      input
-    });
-
-    // 7. Достаём URL картинки
-    let imageUrl = null;
-
-    if (Array.isArray(output)) {
-      imageUrl = output[0];
-    } else if (output?.output) {
-      if (Array.isArray(output.output)) imageUrl = output.output[0];
-      else if (typeof output.output === "string") imageUrl = output.output;
-    } else if (typeof output === "string") {
-      imageUrl = output;
-    } else if (output?.url) {
-      try {
-        imageUrl = output.url();
-      } catch {
-        // ignore
-      }
-    }
-
-    if (!imageUrl) {
-      return res.status(500).json({
-        error: "No image URL returned"
-      });
-    }
-
-    return res.status(200).json({
-      ok: true,
-      image: imageUrl
-    });
-  } catch (err) {
-    console.error("GENERATION ERROR:", err);
-    return res.status(500).json({
-      error: "Generation failed",
-      details: err?.message || String(err)
-    });
-  }
-}
+    if
