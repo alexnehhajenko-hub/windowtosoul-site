@@ -4,6 +4,13 @@ const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Можно хранить только адрес в переменной окружения,
+// а имя добавить здесь
+const FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL
+    ? `YourPhotoAI <${process.env.RESEND_FROM_EMAIL}>`
+    : 'YourPhotoAI <no-reply@yourphotoai.vip>';
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -45,8 +52,7 @@ module.exports = async (req, res) => {
     `;
 
     const sendResult = await resend.emails.send({
-      // Для тестов используем домен Resend — без настройки DNS
-      from: 'YourPhotoAI Test <onboarding@resend.dev>',
+      from: FROM_EMAIL,      // теперь используем домен yourphotoai.vip / RESEND_FROM_EMAIL
       to: email,
       subject: 'Your AI portraits from YourPhotoAI',
       html,
