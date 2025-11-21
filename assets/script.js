@@ -1,97 +1,419 @@
-// YourPhotoAI — основной фронтенд-скрипт
-// UI: выбор стиля, эффектов кожи, мимики, поздравлений, пакетов и генерации.
-// Оплата: Stripe Checkout через /api/create-checkout-session (в боевом режиме).
-// Дополнительно: обработка кнопки "Назад" на телефоне.
+// YourPhotoAI — frontend script
+// UI: style selection, skin effects, expression, greetings, packages, generation.
+// Payments: Stripe Checkout via /api/create-checkout-session.
+// Extra: back-button handling, multi-language UI (EN/DE/ES/RU), email sending when
+// package is finished, simple localStorage persistence.
 
 // =========================
-// РЕЖИМ РАБОТЫ
+// BASIC SETTINGS
 // =========================
+
+// Support email (shown on the site + reply-to in emails)
+const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
+
+// WORK MODE
 //
-// DEMO_MODE = true  → генерация БЕЗ оплаты, но с email + согласием и пакетом на 5 генераций
-// DEMO_MODE = false → генерация ТОЛЬКО после оплаты (Stripe)
+// DEMO_MODE = true  → generation WITHOUT payment, but with email + consent,
+//                      fixed DEMO_SESSION_LIMIT generations in one local session.
+// DEMO_MODE = false → generation ONLY after payment (Stripe packages 10/20/30).
+const DEMO_MODE = false;
 
-const DEMO_MODE = true;
-
-// Сколько генераций в одном "пакете" в демо-режиме
+// Demo-session size (when DEMO_MODE = true)
 const DEMO_SESSION_LIMIT = 5;
 
-// Endpoint серверной сессии
-const API_SESSION = "/api/session";
+// Package sizes (paid mode)
+const PACK_SIZES = {
+  pack10: 10,
+  pack20: 20,
+  pack30: 30
+};
 
-// Почта поддержки
-const SUPPORT_EMAIL = "support@yourphotoai.vip";
+// Languages for UI (backend still uses only "en" or "ru")
+const SUPPORTED_LANGS = ["en", "de", "es", "ru"];
 
 // =========================
-// КОНСТАНТЫ ДЛЯ ХРАНЕНИЯ СОСТОЯНИЯ
+// STORAGE KEYS
 // =========================
 
 const STORAGE_KEYS = {
-  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack", // боевой режим (Stripe)
+  HAS_ACTIVE_PACK: "yourphotoai_hasActivePack",
   USER_EMAIL: "yourphotoai_userEmail",
   USER_AGREED: "yourphotoai_userAgreed",
   CREDITS_TOTAL: "yourphotoai_creditsTotal",
   CREDITS_USED: "yourphotoai_creditsUsed",
   GENERATED_IMAGES: "yourphotoai_generatedImages",
-  SESSION_ID: "yourphotoai_sessionId"
+  LANGUAGE: "yourphotoai_language",
+  SELECTED_PACK: "yourphotoai_selectedPack"
 };
 
 // =========================
-// ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+// UI TEXTS (EN = default)
+// =========================
+
+const UI_TEXT = {
+  en: {
+    subtitle: "Create your unique AI portrait",
+    previewLabel: "PREVIEW",
+    previewPlaceholder:
+      "Add a photo and choose effects.\nAfter generation your portrait will appear here.",
+    generateStatus: "Generating portrait…",
+
+    btnStyle: "PORTRAIT STYLE",
+    btnSkin: "SKIN EFFECT",
+    btnMimic: "EXPRESSION",
+    btnGreetings: "GREETINGS",
+    btnGenerate: "GENERATE",
+    btnAddPhoto: "ADD PHOTO",
+    btnPay: "PACKAGES",
+
+    sheetOptionsTitle: "Options",
+    sheetCategoryTitle: "Categories",
+
+    payTitle: "Choose a package",
+    paySectionTitle: "Generation packages",
+    payNext: "Continue",
+    payPack10Title: "10 generations",
+    payPack20Title: "20 generations",
+    payPack30Title: "30 generations",
+
+    agreementTitle: "Confirmation",
+    agreementText:
+      "Before payment, please confirm your age and consent.\n\n" +
+      "Important: YourPhotoAI creates AI portraits based on your photo. " +
+      "After the session ends, the final images will be sent to the email you specify.",
+    agreementEmailTitle: "Your email",
+    agreementCheckboxHtml:
+      'I am 16+ and I agree with the <a href="#">Terms</a>, ' +
+      '<a href="#">Privacy</a>, <a href="#">Refunds</a>.',
+    agreementSubmitDemo: "Continue",
+    agreementSubmitPaid: "Go to payment",
+    agreementHint:
+      "Payments are processed via Stripe. We do not see or store your card data.",
+
+    download: "Download portrait",
+    supportLabel: "Support:",
+
+    alertAddPhoto: "Please add a photo first.",
+    alertSelectPack: "Please select a package.",
+    alertNoActivePack:
+      "Please purchase a package first. After payment you can generate portraits.",
+    alertDemoFinished:
+      "Your free demo limit has been used. Please reload the page to start a new demo or purchase a package.",
+    alertPaidFinished:
+      "Your package is finished. Please purchase a new package to continue.",
+    alertGenerationFailed:
+      "Could not generate the portrait. Please try again.",
+    alertPaymentCreateFailed:
+      "Error while creating payment. Please try again.",
+    alertStripeMissing:
+      "Stripe.js not found. Please ensure <script src=\"https://js.stripe.com/v3/\"></script> is present in index.html.",
+    alertEmailMissing: "Please enter your email.",
+    alertAgreeMissing: "Please confirm age and consent.",
+
+    paymentSuccess:
+      "Payment completed! 🎉 You can now generate portraits with your package."
+  },
+
+  de: {
+    subtitle: "Erstelle dein einzigartiges KI-Porträt",
+    previewLabel: "VORSCHAU",
+    previewPlaceholder:
+      "Füge ein Foto hinzu und wähle Effekte.\nNach der Generierung erscheint dein Porträt hier.",
+    generateStatus: "Porträt wird generiert…",
+
+    btnStyle: "PORTRÄTSTIL",
+    btnSkin: "HAUTEFFEKT",
+    btnMimic: "MIMIK",
+    btnGreetings: "GRUßKARTEN",
+    btnGenerate: "GENERIEREN",
+    btnAddPhoto: "FOTO HINZUFÜGEN",
+    btnPay: "PAKETE",
+
+    sheetOptionsTitle: "Optionen",
+    sheetCategoryTitle: "Kategorien",
+
+    payTitle: "Paket auswählen",
+    paySectionTitle: "Generierungspakete",
+    payNext: "Weiter",
+    payPack10Title: "10 Generationen",
+    payPack20Title: "20 Generationen",
+    payPack30Title: "30 Generationen",
+
+    agreementTitle: "Bestätigung",
+    agreementText:
+      "Bestätige vor der Zahlung bitte dein Alter und dein Einverständnis.\n\n" +
+      "Wichtig: YourPhotoAI erstellt KI-Porträts auf Basis deines Fotos. " +
+      "Nach dem Ende der Session werden die fertigen Bilder an deine E-Mail gesendet.",
+    agreementEmailTitle: "Deine E-Mail",
+    agreementCheckboxHtml:
+      'Ich bin 16+ und stimme den <a href="#">AGB</a>, ' +
+      '<a href="#">Datenschutz</a> und <a href="#">Rückerstattungen</a> zu.',
+    agreementSubmitDemo: "Weiter",
+    agreementSubmitPaid: "Zur Zahlung",
+    agreementHint:
+      "Die Zahlung wird über Stripe verarbeitet. Wir sehen oder speichern deine Kartendaten nicht.",
+
+    download: "Porträt herunterladen",
+    supportLabel: "Support:"
+  },
+
+  es: {
+    subtitle: "Crea tu retrato único con IA",
+    previewLabel: "VISTA PREVIA",
+    previewPlaceholder:
+      "Añade una foto y elige efectos.\nDespués de generar, tu retrato aparecerá aquí.",
+    generateStatus: "Generando retrato…",
+
+    btnStyle: "ESTILO DE RETRATO",
+    btnSkin: "EFECTO DE PIEL",
+    btnMimic: "EXPRESIÓN",
+    btnGreetings: "FELICITACIONES",
+    btnGenerate: "GENERAR",
+    btnAddPhoto: "AÑADIR FOTO",
+    btnPay: "PAQUETES",
+
+    sheetOptionsTitle: "Opciones",
+    sheetCategoryTitle: "Categorías",
+
+    payTitle: "Elige un paquete",
+    paySectionTitle: "Paquetes de generación",
+    payNext: "Continuar",
+    payPack10Title: "10 generaciones",
+    payPack20Title: "20 generaciones",
+    payPack30Title: "30 generaciones",
+
+    agreementTitle: "Confirmación",
+    agreementText:
+      "Antes del pago, confirma tu edad y tu consentimiento.\n\n" +
+      "Importante: YourPhotoAI crea retratos con IA basados en tu foto. " +
+      "Al finalizar la sesión, las imágenes se enviarán al correo que indiques.",
+    agreementEmailTitle: "Tu email",
+    agreementCheckboxHtml:
+      'Tengo 16+ años y acepto los <a href="#">Términos</a>, ' +
+      '<a href="#">Privacidad</a> y <a href="#">Reembolsos</a>.',
+    agreementSubmitDemo: "Continuar",
+    agreementSubmitPaid: "Ir al pago",
+    agreementHint:
+      "Los pagos se procesan con Stripe. No vemos ni guardamos los datos de tu tarjeta.",
+
+    download: "Descargar retrato",
+    supportLabel: "Soporte:"
+  },
+
+  ru: {
+    subtitle: "Создайте свой уникальный AI-портрет",
+    previewLabel: "ПРЕДПРОСМОТР",
+    previewPlaceholder:
+      "Добавьте фото и выберите эффекты.\nПосле генерации сюда попадёт ваш портрет.",
+    generateStatus: "Генерация портрета…",
+
+    btnStyle: "СТИЛЬ ПОРТРЕТА",
+    btnSkin: "ЭФФЕКТ КОЖИ",
+    btnMimic: "МИМИКА",
+    btnGreetings: "ПОЗДРАВЛЕНИЯ",
+    btnGenerate: "ГЕНЕРИРОВАТЬ",
+    btnAddPhoto: "ДОБАВИТЬ ФОТО",
+    btnPay: "ПАКЕТЫ",
+
+    sheetOptionsTitle: "Варианты",
+    sheetCategoryTitle: "Категории",
+
+    payTitle: "Выберите пакет",
+    paySectionTitle: "Пакеты генераций",
+    payNext: "Далее",
+    payPack10Title: "10 генераций",
+    payPack20Title: "20 генераций",
+    payPack30Title: "30 генераций",
+
+    agreementTitle: "Подтверждение",
+    agreementText:
+      "Перед оплатой подтвердите возраст и согласие с условиями.\n\n" +
+      "Важно: YourPhotoAI создаёт AI-портреты по вашему фото. " +
+      "После завершения сессии готовые изображения будут отправлены на указанный email.",
+    agreementEmailTitle: "Ваш email",
+    agreementCheckboxHtml:
+      'Мне 16+ и я согласен с <a href="#">Terms</a>, ' +
+      '<a href="#">Privacy</a>, <a href="#">Refunds</a>.',
+    agreementSubmitDemo: "Продолжить",
+    agreementSubmitPaid: "Перейти к оплате",
+    agreementHint:
+      "Оплата обрабатывается через Stripe. Мы не видим и не храним данные вашей карты.",
+
+    download: "Скачать портрет",
+    supportLabel: "Поддержка:"
+  }
+};
+
+// Greeting labels per language (for list in sheet)
+// Text ON THE CARD itself is always in English (GREETING_TEXT below).
+const GREETING_LABELS = {
+  en: {
+    "new-year": "New Year 🎄",
+    birthday: "Birthday 🎂",
+    funny: "Funny 😜",
+    scary: "Scary 👻"
+  },
+  de: {
+    "new-year": "Neujahr 🎄",
+    birthday: "Geburtstag 🎂",
+    funny: "Witzig 😜",
+    scary: "Gruselig 👻"
+  },
+  es: {
+    "new-year": "Año Nuevo 🎄",
+    birthday: "Cumpleaños 🎂",
+    funny: "Divertido 😜",
+    scary: "Terrorífico 👻"
+  },
+  ru: {
+    "new-year": "Новый год 🎄",
+    birthday: "День рождения 🎂",
+    funny: "Смешное 😜",
+    scary: "Страшное 👻"
+  }
+};
+
+// English text that we show ON TOP OF THE PORTRAIT as greeting
+const GREETING_TEXT = {
+  "new-year": "Happy New Year!",
+  birthday: "Happy Birthday!",
+  funny: "You are AI-level awesome!",
+  scary: "Your AI twin is watching you..."
+};
+
+// Labels for style and effects (for chips, always in English)
+const STYLE_LABELS_EN = {
+  beauty: "Beauty",
+  oil: "Oil painting",
+  anime: "Anime",
+  poster: "Poster",
+  classic: "Classic portrait"
+};
+
+const EFFECT_CHIP_LABELS_EN = {
+  "no-wrinkles": "Effect: no wrinkles",
+  younger: "Effect: younger",
+  "smooth-skin": "Effect: smooth skin",
+  "glow-golden": "Effect: golden glow",
+  "cinematic-light": "Effect: cinematic light",
+  "smile-soft": "Expression: soft smile",
+  "smile-big": "Expression: big smile",
+  "smile-hollywood": "Expression: Hollywood smile",
+  laugh: "Expression: laugh",
+  "surprised-wow": "Expression: wow-surprised",
+  neutral: "Expression: neutral",
+  serious: "Expression: serious look",
+  "eyes-bigger": "Expression: bigger eyes",
+  "eyes-brighter": "Expression: brighter eyes"
+};
+
+// Texts for sheets (titles/descriptions) per language
+const SHEET_TEXT = {
+  en: {
+    styleTitle: "Portrait style",
+    styleDescription: "Choose the main artistic style.",
+    skinTitle: "Skin effect",
+    skinDescription: "Choose an effect that gives a wow feeling.",
+    mimicTitle: "Expression",
+    mimicDescription: "Choose the facial expression.",
+    greetingTitle: "Greetings",
+    greetingDescription: "We will gently add festive atmosphere to the portrait."
+  },
+  de: {
+    styleTitle: "Porträtstil",
+    styleDescription: "Wähle den künstlerischen Stil.",
+    skinTitle: "Hauteffekt",
+    skinDescription: "Wähle einen Effekt mit Wow-Effekt.",
+    mimicTitle: "Mimik",
+    mimicDescription: "Wähle den Gesichtsausdruck.",
+    greetingTitle: "Grußkarten",
+    greetingDescription:
+      "Wir fügen dem Porträt vorsichtig eine festliche Atmosphäre hinzu."
+  },
+  es: {
+    styleTitle: "Estilo de retrato",
+    styleDescription: "Elige el estilo artístico principal.",
+    skinTitle: "Efecto de piel",
+    skinDescription: "Elige un efecto con efecto wow.",
+    mimicTitle: "Expresión",
+    mimicDescription: "Elige la expresión facial.",
+    greetingTitle: "Felicitaciones",
+    greetingDescription:
+      "Añadiremos suavemente un ambiente festivo al retrato."
+  },
+  ru: {
+    styleTitle: "Стиль портрета",
+    styleDescription: "Выберите основной художественный стиль.",
+    skinTitle: "Эффект кожи",
+    skinDescription: "Выберите эффект, который даст вау-ощущение.",
+    mimicTitle: "Мимика",
+    mimicDescription: "Выберите выражение лица.",
+    greetingTitle: "Поздравления",
+    greetingDescription:
+      "Мы аккуратно добавим праздничный антураж к портрету."
+  }
+};
+
+// =========================
+// GLOBAL APP STATE
 // =========================
 
 const appState = {
-  // генерация
+  // generation
   selectedStyle: null,
-  selectedEffects: [], // кожа + мимика + прочие эффекты
+  selectedEffects: [],
   selectedGreeting: null,
 
-  // язык интерфейса / поздравлений
-  language: "ru", // "ru" | "en"
+  // UI language (en/de/es/ru) – default EN
+  language: "en",
 
-  // фото
+  // photo
   originalFile: null,
   photoBase64: null,
 
-  // Stripe-пакет (боевой сценарий)
+  // Stripe package (paid mode)
   selectedPack: null, // 'pack10' | 'pack20' | 'pack30'
 
-  // статус
+  // status
   isGenerating: false,
   isPaying: false,
 
-  // оплата (боевой режим)
+  // payment (paid mode)
   hasActivePack: false,
 
-  // демо-пакет/кредиты
+  // credits (both demo and paid)
   creditsTotal: 0,
   creditsUsed: 0,
   generatedImages: [],
 
-  // согласие и email
+  // consent + email
   userEmail: "",
   userAgreed: false,
 
-  // серверная сессия
-  serverSessionId: null,
-
-  // UI-слой для кнопки "Назад"
+  // UI layer for back button
   layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
 };
 
 // =========================
-// DOM-ЭЛЕМЕНТЫ
+// DOM ELEMENTS
 // =========================
 
 const els = {};
 
 function bindElements() {
+  // main layout
+  els.appTitle = document.querySelector(".app-title");
+  els.appSubtitle = document.querySelector(".app-subtitle");
+
+  els.previewLabel = document.querySelector(".preview-label");
   els.previewImage = document.getElementById("previewImage");
   els.previewPlaceholder = document.getElementById("previewPlaceholder");
   els.greetingOverlay = document.getElementById("greetingOverlay");
   els.generateStatus = document.getElementById("generateStatus");
+  els.generateStatusText = document.querySelector(".generate-status-text");
   els.selectionRow = document.getElementById("selectionRow");
 
-  // Кнопки главного экрана
+  // buttons
   els.btnStyle = document.getElementById("btnStyle");
   els.btnSkin = document.getElementById("btnSkin");
   els.btnMimic = document.getElementById("btnMimic");
@@ -100,17 +422,19 @@ function bindElements() {
   els.btnAddPhoto = document.getElementById("btnAddPhoto");
   els.btnPay = document.getElementById("btnPay");
 
-  // Язык
-  els.btnLangRu = document.getElementById("langRu");
+  // language buttons (may be missing for some languages, that's okay)
   els.btnLangEn = document.getElementById("langEn");
+  els.btnLangDe = document.getElementById("langDe");
+  els.btnLangEs = document.getElementById("langEs");
+  els.btnLangRu = document.getElementById("langRu");
 
-  // Почта поддержки
+  // support email
   els.supportEmail = document.getElementById("supportEmail");
 
-  // input файла
+  // file input
   els.fileInput = document.getElementById("fileInput");
 
-  // Нижний sheet
+  // sheet
   els.sheetBackdrop = document.getElementById("sheetBackdrop");
   els.sheetTitle = document.getElementById("sheetTitle");
   els.sheetDescription = document.getElementById("sheetDescription");
@@ -120,7 +444,7 @@ function bindElements() {
   els.sheetOptionsRow = document.getElementById("sheetOptionsRow");
   els.sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-  // Модалка оплаты
+  // payment modal
   els.payBackdrop = document.getElementById("payBackdrop");
   els.payCloseBtn = document.getElementById("payCloseBtn");
   els.pkg10 = document.getElementById("pkg10");
@@ -128,35 +452,49 @@ function bindElements() {
   els.pkg30 = document.getElementById("pkg30");
   els.payError = document.getElementById("payError");
   els.payNextBtn = document.getElementById("payNextBtn");
+  els.payTitle = document.querySelector(".pay-title");
+  els.paySectionTitle = document.querySelector(".pay-section-title");
 
-  // Модалка согласия (используем и в демо, и в бою)
+  // agreement modal
   els.agreementBackdrop = document.getElementById("agreementBackdrop");
   els.agreementCloseBtn = document.getElementById("agreementCloseBtn");
   els.agreeEmail = document.getElementById("agreeEmail");
   els.agreeCheckbox = document.getElementById("agreeCheckbox");
   els.agreeError = document.getElementById("agreeError");
-  els.agreePayBtn = document.getElementById("agreePayBtn"); // кнопка "Продолжить"
+  els.agreePayBtn = document.getElementById("agreePayBtn");
+  els.agreementTitle = document.querySelector(".agreement-title");
+  els.agreementText = document.querySelector(".agreement-text");
+  els.agreementEmailTitle = document.querySelector(
+    ".agreement-section-title"
+  );
+  els.agreementCheckboxLabel = document.querySelector(
+    ".agreement-checkbox-row span"
+  );
+  els.agreementHint = document.querySelector(".agreement-hint");
 
-  // Кнопка скачивания результата
+  // download
   els.downloadLink = document.getElementById("downloadLink");
 }
 
 // =========================
-// ИНИЦИАЛИЗАЦИЯ
+// INIT
 // =========================
 
 document.addEventListener("DOMContentLoaded", () => {
   bindElements();
+  setupSupportEmail();
 
-  // почта поддержки
-  if (els.supportEmail) {
-    els.supportEmail.href = `mailto:${SUPPORT_EMAIL}`;
-    els.supportEmail.textContent = SUPPORT_EMAIL;
-  }
-
-  // подхватываем состояние из localStorage
+  // read state from localStorage
   try {
-    const storedPaid = window.localStorage.getItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
+    // language
+    const storedLang = window.localStorage.getItem(STORAGE_KEYS.LANGUAGE);
+    if (storedLang && SUPPORTED_LANGS.includes(storedLang)) {
+      appState.language = storedLang;
+    }
+
+    const storedPaid = window.localStorage.getItem(
+      STORAGE_KEYS.HAS_ACTIVE_PACK
+    );
     if (storedPaid === "1") {
       appState.hasActivePack = true;
     }
@@ -166,7 +504,9 @@ document.addEventListener("DOMContentLoaded", () => {
       appState.userEmail = storedEmail;
     }
 
-    const storedAgreed = window.localStorage.getItem(STORAGE_KEYS.USER_AGREED);
+    const storedAgreed = window.localStorage.getItem(
+      STORAGE_KEYS.USER_AGREED
+    );
     if (storedAgreed === "1") {
       appState.userAgreed = true;
     }
@@ -182,7 +522,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!Number.isNaN(storedTotal)) appState.creditsTotal = storedTotal;
     if (!Number.isNaN(storedUsed)) appState.creditsUsed = storedUsed;
 
-    const storedImages = window.localStorage.getItem(STORAGE_KEYS.GENERATED_IMAGES);
+    const storedImages = window.localStorage.getItem(
+      STORAGE_KEYS.GENERATED_IMAGES
+    );
     if (storedImages) {
       try {
         const arr = JSON.parse(storedImages);
@@ -194,9 +536,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    const storedSessionId = window.localStorage.getItem(STORAGE_KEYS.SESSION_ID);
-    if (storedSessionId) {
-      appState.serverSessionId = storedSessionId;
+    const storedPack = window.localStorage.getItem(
+      STORAGE_KEYS.SELECTED_PACK
+    );
+    if (storedPack && PACK_SIZES[storedPack]) {
+      appState.selectedPack = storedPack;
     }
   } catch (e) {
     console.warn("Cannot read localStorage", e);
@@ -204,20 +548,168 @@ document.addEventListener("DOMContentLoaded", () => {
 
   attachMainHandlers();
   setupBackButtonLogic();
-  applyLanguageUI();
   refreshSelectionChips();
   hideOverlaysOnStart();
   handleStripeStatusFromUrl();
+  setLanguage(appState.language, false);
 });
 
 function hideOverlaysOnStart() {
   if (els.sheetBackdrop) els.sheetBackdrop.style.display = "none";
   if (els.payBackdrop) els.payBackdrop.style.display = "none";
   if (els.agreementBackdrop) els.agreementBackdrop.style.display = "none";
+  if (els.greetingOverlay) els.greetingOverlay.style.display = "none";
+}
+
+function setupSupportEmail() {
+  if (!els.supportEmail) return;
+  els.supportEmail.href = `mailto:${SUPPORT_EMAIL}`;
+  els.supportEmail.textContent = SUPPORT_EMAIL;
 }
 
 // =========================
-// ЛОГИКА КНОПКИ НАЗАД
+// LANGUAGE SWITCHING
+// =========================
+
+function setLanguage(lang, saveToStorage = true) {
+  if (!SUPPORTED_LANGS.includes(lang)) {
+    lang = "en";
+  }
+  appState.language = lang;
+
+  if (saveToStorage) {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
+    } catch (e) {
+      console.warn("Cannot store language", e);
+    }
+  }
+
+  const t = UI_TEXT[lang] || UI_TEXT.en;
+
+  // buttons highlight
+  const mapping = {
+    en: els.btnLangEn,
+    de: els.btnLangDe,
+    es: els.btnLangEs,
+    ru: els.btnLangRu
+  };
+  const allButtons = [
+    els.btnLangEn,
+    els.btnLangDe,
+    els.btnLangEs,
+    els.btnLangRu
+  ];
+  allButtons.forEach((b) => {
+    if (!b) return;
+    b.classList.remove("lang-selected");
+  });
+  if (mapping[lang]) {
+    mapping[lang].classList.add("lang-selected");
+  }
+
+  // header
+  if (els.appSubtitle) {
+    els.appSubtitle.textContent = t.subtitle;
+  }
+
+  // preview label & placeholder
+  if (els.previewLabel) {
+    els.previewLabel.textContent = t.previewLabel;
+  }
+  if (els.previewPlaceholder) {
+    els.previewPlaceholder.innerHTML = t.previewPlaceholder
+      .split("\n")
+      .join("<br>");
+  }
+
+  // generating status
+  if (els.generateStatusText) {
+    els.generateStatusText.textContent = t.generateStatus;
+  }
+
+  // main buttons (second span)
+  function setButtonLabel(btn, text) {
+    if (!btn) return;
+    const spans = btn.querySelectorAll("span");
+    if (spans.length >= 2) {
+      spans[1].textContent = text;
+    }
+  }
+  setButtonLabel(els.btnStyle, t.btnStyle);
+  setButtonLabel(els.btnSkin, t.btnSkin);
+  setButtonLabel(els.btnMimic, t.btnMimic);
+  setButtonLabel(els.btnGreetings, t.btnGreetings);
+  setButtonLabel(els.btnGenerate, t.btnGenerate);
+  setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
+  setButtonLabel(els.btnPay, t.btnPay);
+
+  // sheet titles
+  if (els.sheetOptionsTitle) {
+    els.sheetOptionsTitle.textContent = t.sheetOptionsTitle;
+  }
+  if (els.sheetCategoryTitle) {
+    els.sheetCategoryTitle.textContent = t.sheetCategoryTitle;
+  }
+
+  // payment modal
+  if (els.payTitle) els.payTitle.textContent = t.payTitle;
+  if (els.paySectionTitle) els.paySectionTitle.textContent = t.paySectionTitle;
+  if (els.pkg10) {
+    const titleEl = els.pkg10.querySelector(".pay-package-title");
+    if (titleEl) titleEl.textContent = t.payPack10Title;
+  }
+  if (els.pkg20) {
+    const titleEl = els.pkg20.querySelector(".pay-package-title");
+    if (titleEl) titleEl.textContent = t.payPack20Title;
+  }
+  if (els.pkg30) {
+    const titleEl = els.pkg30.querySelector(".pay-package-title");
+    if (titleEl) titleEl.textContent = t.payPack30Title;
+  }
+  if (els.payNextBtn) els.payNextBtn.textContent = t.payNext;
+
+  // agreement modal
+  if (els.agreementTitle) els.agreementTitle.textContent = t.agreementTitle;
+  if (els.agreementText) {
+    els.agreementText.innerHTML = t.agreementText
+      .split("\n")
+      .join("<br><br>");
+  }
+  if (els.agreementEmailTitle) {
+    els.agreementEmailTitle.textContent = t.agreementEmailTitle;
+  }
+  if (els.agreementCheckboxLabel) {
+    els.agreementCheckboxLabel.innerHTML = t.agreementCheckboxHtml;
+  }
+  if (els.agreementHint) {
+    els.agreementHint.textContent = t.agreementHint;
+  }
+  if (els.agreePayBtn) {
+    els.agreePayBtn.textContent = DEMO_MODE
+      ? t.agreementSubmitDemo
+      : t.agreementSubmitPaid;
+  }
+
+  // download link
+  if (els.downloadLink) {
+    els.downloadLink.textContent = t.download;
+  }
+
+  // support label (rebuild block to keep link)
+  const supportBlock = els.supportEmail && els.supportEmail.parentElement;
+  if (supportBlock) {
+    supportBlock.innerHTML = `${t.supportLabel} <a id="supportEmail"></a>`;
+    els.supportEmail = document.getElementById("supportEmail");
+    setupSupportEmail();
+  }
+
+  // if sheet is open, we may want updated titles (style/skin/etc.)
+  // but they will refresh on next open; этого достаточно.
+}
+
+// =========================
+// BACK BUTTON LOGIC
 // =========================
 
 function setLayer(newLayer, pushToHistory = true) {
@@ -254,10 +746,11 @@ function setupBackButtonLogic() {
 }
 
 // =========================
-// ОБРАБОТЧИКИ ОСНОВНЫХ КНОПОК
+// MAIN BUTTON HANDLERS
 // =========================
 
 function attachMainHandlers() {
+  // style/skin/mimic/greetings
   if (els.btnStyle) {
     els.btnStyle.addEventListener("click", () => openStyleSheet());
   }
@@ -270,9 +763,13 @@ function attachMainHandlers() {
   if (els.btnGreetings) {
     els.btnGreetings.addEventListener("click", () => openGreetingSheet());
   }
+
+  // generate
   if (els.btnGenerate) {
     els.btnGenerate.addEventListener("click", () => handleGenerateClick());
   }
+
+  // add photo
   if (els.btnAddPhoto) {
     els.btnAddPhoto.addEventListener("click", () => {
       if (els.fileInput) els.fileInput.click();
@@ -282,7 +779,7 @@ function attachMainHandlers() {
     els.fileInput.addEventListener("change", handleFileSelected);
   }
 
-  // Оплата (боевой режим)
+  // payment
   if (els.btnPay) {
     els.btnPay.addEventListener("click", () => openPayModal());
   }
@@ -302,7 +799,7 @@ function attachMainHandlers() {
     els.payNextBtn.addEventListener("click", () => handlePayNext());
   }
 
-  // Модалка согласия
+  // agreement modal
   if (els.agreementCloseBtn) {
     els.agreementCloseBtn.addEventListener("click", () =>
       closeAgreementModal()
@@ -312,10 +809,12 @@ function attachMainHandlers() {
     els.agreePayBtn.addEventListener("click", () => handleAgreeConfirm());
   }
 
+  // sheet close
   if (els.sheetCloseBtn) {
     els.sheetCloseBtn.addEventListener("click", () => closeSheet());
   }
 
+  // download
   if (els.downloadLink) {
     els.downloadLink.addEventListener("click", (e) => {
       if (!els.previewImage || !els.previewImage.src) {
@@ -324,40 +823,23 @@ function attachMainHandlers() {
     });
   }
 
-  // Переключение языка
-  if (els.btnLangRu) {
-    els.btnLangRu.addEventListener("click", () => setLanguage("ru"));
-  }
+  // language buttons
   if (els.btnLangEn) {
     els.btnLangEn.addEventListener("click", () => setLanguage("en"));
   }
-}
-
-// =========================
-// ЯЗЫК: RU / EN
-// =========================
-
-function setLanguage(lang) {
-  if (lang !== "ru" && lang !== "en") return;
-  appState.language = lang;
-  applyLanguageUI();
-  refreshSelectionChips();
-}
-
-function applyLanguageUI() {
-  if (els.btnLangRu && els.btnLangEn) {
-    if (appState.language === "ru") {
-      els.btnLangRu.classList.add("lang-selected");
-      els.btnLangEn.classList.remove("lang-selected");
-    } else {
-      els.btnLangEn.classList.add("lang-selected");
-      els.btnLangRu.classList.remove("lang-selected");
-    }
+  if (els.btnLangDe) {
+    els.btnLangDe.addEventListener("click", () => setLanguage("de"));
+  }
+  if (els.btnLangEs) {
+    els.btnLangEs.addEventListener("click", () => setLanguage("es"));
+  }
+  if (els.btnLangRu) {
+    els.btnLangRu.addEventListener("click", () => setLanguage("ru"));
   }
 }
 
 // =========================
-// РАБОТА С ФАЙЛОМ
+// FILE HANDLING
 // =========================
 
 function handleFileSelected(event) {
@@ -409,7 +891,7 @@ function resizeImageToMax(img, maxSize) {
 }
 
 // =========================
-// НИЖНИЙ SHEET (СПИСКИ ОПЦИЙ)
+// BOTTOM SHEET (OPTIONS)
 // =========================
 
 function openSheet({ title, description, categories, options }) {
@@ -470,65 +952,55 @@ function closeSheet(pushHistory = true) {
 }
 
 // =========================
-// ЛИСТЫ: СТИЛЬ, КОЖА, МИМИКА, ПОЗДРАВЛЕНИЯ
+// SHEETS: STYLE, SKIN, MIMIC, GREETINGS
 // =========================
 
 function openStyleSheet() {
-  const options = [
-    { value: "beauty", label: appState.language === "ru" ? "✨ Светлый бьюти-портрет" : "✨ Bright beauty portrait" },
-    { value: "oil", label: appState.language === "ru" ? "Картина маслом" : "Oil painting" },
-    { value: "anime", label: appState.language === "ru" ? "Аниме" : "Anime" },
-    { value: "poster", label: appState.language === "ru" ? "Постер" : "Poster" },
-    { value: "classic", label: appState.language === "ru" ? "Классический портрет" : "Classic portrait" }
+  const lang = appState.language;
+  const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+
+  const optionsConfig = [
+    "beauty",
+    "oil",
+    "anime",
+    "poster",
+    "classic"
   ];
 
+  const options = optionsConfig.map((value) => ({
+    value,
+    label: STYLE_LABELS_EN[value] || value,
+    selected: appState.selectedStyle === value,
+    onClick: (val) => {
+      appState.selectedStyle = val;
+      refreshSelectionChips();
+      closeSheet();
+    }
+  }));
+
   openSheet({
-    title: appState.language === "ru" ? "Стиль портрета" : "Portrait style",
-    description: appState.language === "ru"
-      ? "Выберите основной художественный стиль."
-      : "Choose the main art style.",
-    options: options.map((opt) => ({
-      ...opt,
-      selected: appState.selectedStyle === opt.value,
-      onClick: (value) => {
-        appState.selectedStyle = value;
-        refreshSelectionChips();
-        closeSheet();
-      }
-    }))
+    title: sheet.styleTitle,
+    description: sheet.styleDescription,
+    options
   });
 }
 
 function openSkinSheet() {
-  const options = [
-    {
-      value: "no-wrinkles",
-      label: appState.language === "ru" ? "Без морщин" : "No wrinkles"
-    },
-    {
-      value: "younger",
-      label: appState.language === "ru" ? "Моложе на 10–20 лет" : "10–20 years younger"
-    },
-    {
-      value: "smooth-skin",
-      label: appState.language === "ru" ? "Гладкая кожа" : "Smooth skin"
-    },
-    {
-      value: "glow-golden",
-      label: appState.language === "ru" ? "✨ Золотое сияние" : "✨ Golden glow"
-    },
-    {
-      value: "cinematic-light",
-      label: appState.language === "ru" ? "🎬 Кино-свет" : "🎬 Cinematic light"
-    }
+  const lang = appState.language;
+  const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+
+  const optionsConfig = [
+    { value: "no-wrinkles", label: "No wrinkles" },
+    { value: "younger", label: "Younger by 10–20 years" },
+    { value: "smooth-skin", label: "Smooth skin" },
+    { value: "glow-golden", label: "Golden glow ✨" },
+    { value: "cinematic-light", label: "Cinematic light 🎬" }
   ];
 
   openSheet({
-    title: appState.language === "ru" ? "Эффект кожи" : "Skin effect",
-    description: appState.language === "ru"
-      ? "Выберите эффект, который даст вау-ощущение."
-      : "Choose an effect that gives a wow feeling.",
-    options: options.map((opt) => ({
+    title: sheet.skinTitle,
+    description: sheet.skinDescription,
+    options: optionsConfig.map((opt) => ({
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
@@ -542,51 +1014,25 @@ function openSkinSheet() {
 }
 
 function openMimicSheet() {
-  const options = [
-    {
-      value: "smile-soft",
-      label: appState.language === "ru" ? "🙂 Лёгкая улыбка" : "🙂 Soft smile"
-    },
-    {
-      value: "smile-big",
-      label: appState.language === "ru" ? "😄 Большая улыбка" : "😄 Big smile"
-    },
-    {
-      value: "smile-hollywood",
-      label: appState.language === "ru" ? "😁 Голливудская улыбка" : "😁 Hollywood smile"
-    },
-    {
-      value: "laugh",
-      label: appState.language === "ru" ? "😂 Смех" : "😂 Laugh"
-    },
-    {
-      value: "surprised-wow",
-      label: appState.language === "ru" ? "😲 Вау-удивление" : "😲 Wow surprise"
-    },
-    {
-      value: "eyes-bigger",
-      label: appState.language === "ru" ? "👁 Чуть больше глаза" : "👁 Slightly bigger eyes"
-    },
-    {
-      value: "eyes-brighter",
-      label: appState.language === "ru" ? "✨ Ярче глаза" : "✨ Brighter eyes"
-    },
-    {
-      value: "neutral",
-      label: appState.language === "ru" ? "Нейтральное лицо" : "Neutral face"
-    },
-    {
-      value: "serious",
-      label: appState.language === "ru" ? "Серьёзный взгляд" : "Serious look"
-    }
+  const lang = appState.language;
+  const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+
+  const optionsConfig = [
+    { value: "smile-soft", label: "Soft smile 🙂" },
+    { value: "smile-big", label: "Big smile 😄" },
+    { value: "smile-hollywood", label: "Hollywood smile 😁" },
+    { value: "laugh", label: "Laugh 😂" },
+    { value: "surprised-wow", label: "Wow surprise 😲" },
+    { value: "eyes-bigger", label: "Slightly bigger eyes 👁" },
+    { value: "eyes-brighter", label: "Brighter eyes ✨" },
+    { value: "neutral", label: "Neutral face" },
+    { value: "serious", label: "Serious look" }
   ];
 
   openSheet({
-    title: appState.language === "ru" ? "Мимика" : "Expression",
-    description: appState.language === "ru"
-      ? "Выберите выражение лица."
-      : "Choose facial expression.",
-    options: options.map((opt) => ({
+    title: sheet.mimicTitle,
+    description: sheet.mimicDescription,
+    options: optionsConfig.map((opt) => ({
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
@@ -600,46 +1046,34 @@ function openMimicSheet() {
 }
 
 function openGreetingSheet() {
-  // фильтры с поздравлениями (категории)
-  const labels = appState.language === "ru"
-    ? {
-        "new-year": "Новый год 🎄",
-        birthday: "День рождения 🎂",
-        funny: "Смешное 😜",
-        scary: "Страшное 👻"
-      }
-    : {
-        "new-year": "New Year 🎄",
-        birthday: "Birthday 🎂",
-        funny: "Funny 😜",
-        scary: "Scary 👻"
-      };
+  const lang = appState.language;
+  const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+  const labels = GREETING_LABELS[lang] || GREETING_LABELS.en;
 
-  const options = Object.entries(labels).map(([value, label]) => ({
+  const optionsConfig = ["new-year", "birthday", "funny", "scary"];
+
+  const options = optionsConfig.map((value) => ({
     value,
-    label
+    label: labels[value],
+    selected: appState.selectedGreeting === value,
+    onClick: (val) => {
+      appState.selectedGreeting =
+        appState.selectedGreeting === val ? null : val;
+      refreshSelectionChips();
+      updateGreetingOverlay();
+      closeSheet();
+    }
   }));
 
   openSheet({
-    title: appState.language === "ru" ? "Поздравления" : "Greetings",
-    description: appState.language === "ru"
-      ? "Мы аккуратно добавим праздничный антураж к портрету."
-      : "We gently add a festive mood to your portrait.",
-    options: options.map((opt) => ({
-      ...opt,
-      selected: appState.selectedGreeting === opt.value,
-      onClick: (value) => {
-        appState.selectedGreeting =
-          appState.selectedGreeting === value ? null : value;
-        refreshSelectionChips();
-        closeSheet();
-      }
-    }))
+    title: sheet.greetingTitle,
+    description: sheet.greetingDescription,
+    options
   });
 }
 
 // =========================
-// ВСПОМОГАТЕЛЬНОЕ ДЛЯ ЭФФЕКТОВ
+// EFFECTS HELPERS
 // =========================
 
 function toggleEffect(value) {
@@ -681,25 +1115,36 @@ function removeAllMimicEffects() {
   );
 }
 
-// СБРОС СТИЛЕЙ/ЭФФЕКТОВ/ПОЗДРАВЛЕНИЙ ПОСЛЕ КАЖДОЙ ГЕНЕРАЦИИ
-function resetEffectsAndGreeting() {
-  appState.selectedStyle = null;
-  appState.selectedEffects = [];
-  appState.selectedGreeting = null;
+// =========================
+// GREETING OVERLAY
+// =========================
 
-  if (els.greetingOverlay) {
+function updateGreetingOverlay() {
+  if (!els.greetingOverlay) return;
+
+  const key = appState.selectedGreeting;
+  if (!key) {
     els.greetingOverlay.textContent = "";
     els.greetingOverlay.style.display = "none";
+    return;
   }
 
-  refreshSelectionChips();
+  const text = GREETING_TEXT[key] || "";
+  els.greetingOverlay.textContent = text;
+  els.greetingOverlay.style.display = "block";
 }
 
 // =========================
-// ПАКЕТЫ И ОПЛАТА STRIPE (БОЕВОЙ РЕЖИМ)
+// PACKAGES & STRIPE (PAID MODE)
 // =========================
 
 function openPayModal() {
+  if (DEMO_MODE) {
+    // In demo mode we don't really need packages – redirect to agreement for email.
+    openAgreementModal();
+    return;
+  }
+
   if (!els.payBackdrop) return;
   els.payBackdrop.style.display = "flex";
   if (els.payError) els.payError.textContent = "";
@@ -714,6 +1159,12 @@ function closePayModal(pushHistory = true) {
 
 function selectPack(packKey) {
   appState.selectedPack = packKey;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.SELECTED_PACK, packKey);
+  } catch (e) {
+    console.warn("Cannot store selected pack", e);
+  }
+
   if (els.payError) els.payError.textContent = "";
 
   const all = [els.pkg10, els.pkg20, els.pkg30];
@@ -730,9 +1181,17 @@ function selectPack(packKey) {
 }
 
 function handlePayNext() {
+  if (DEMO_MODE) {
+    openAgreementModal();
+    return;
+  }
+
   if (!appState.selectedPack) {
+    const t = UI_TEXT[appState.language] || UI_TEXT.en;
     if (els.payError) {
-      els.payError.textContent = "Пожалуйста, выберите пакет.";
+      els.payError.textContent = t.alertSelectPack || "Please select a package.";
+    } else {
+      alert(t.alertSelectPack || "Please select a package.");
     }
     return;
   }
@@ -745,6 +1204,7 @@ function openAgreementModal() {
 
   if (els.agreeError) els.agreeError.textContent = "";
 
+  // pre-fill email if we already saved it
   if (els.agreeEmail && appState.userEmail) {
     els.agreeEmail.value = appState.userEmail;
   }
@@ -764,29 +1224,30 @@ function closeAgreementModal(pushHistory = true) {
 }
 
 // =========================
-// СОГЛАСИЕ (ПЕРЕД ГЕНЕРАЦИЕЙ / ОПЛАТОЙ)
+// CONSENT BEFORE GENERATION / PAYMENT
 // =========================
 
 function handleAgreeConfirm() {
+  const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
   const email = (els.agreeEmail && els.agreeEmail.value.trim()) || "";
   const checked = els.agreeCheckbox && els.agreeCheckbox.checked;
 
   if (!email) {
-    if (els.agreeError) els.agreeError.textContent = "Введите email.";
+    if (els.agreeError) els.agreeError.textContent = t.alertEmailMissing;
     return;
   }
   if (!checked) {
-    if (els.agreeError)
-      els.agreeError.textContent = "Нужно подтвердить возраст и согласие.";
+    if (els.agreeError) els.agreeError.textContent = t.alertAgreeMissing;
     return;
   }
 
   const confirmText =
-    "Продолжая, вы согласны, что:\n\n" +
-    "• ваше фото и сгенерированные портреты будут отправлены в сторонний AI-сервис для обработки;\n" +
-    "• обработка происходит автоматически, без ручной модерации;\n" +
-    "• вы имеете права на загружаемые изображения и разрешаете их такую обработку.\n\n" +
-    "Нажмите «OK», если вы согласны.";
+    "By continuing, you agree that:\n\n" +
+    "• your photo and generated portraits will be sent to an external AI service for processing;\n" +
+    "• processing is automatic, without manual moderation;\n" +
+    "• you have the rights to the uploaded images and allow this processing.\n\n" +
+    'Press "OK", if you agree.';
   const ok = window.confirm(confirmText);
   if (!ok) {
     return;
@@ -794,6 +1255,7 @@ function handleAgreeConfirm() {
 
   if (els.agreeError) els.agreeError.textContent = "";
 
+  // save email & consent
   appState.userEmail = email;
   appState.userAgreed = true;
 
@@ -807,6 +1269,7 @@ function handleAgreeConfirm() {
   if (DEMO_MODE) {
     closeAgreementModal(false);
 
+    // init demo package if not set
     if (appState.creditsTotal <= 0) {
       appState.creditsTotal = DEMO_SESSION_LIMIT;
       appState.creditsUsed = 0;
@@ -831,8 +1294,10 @@ function handleAgreeConfirm() {
 }
 
 async function startStripeCheckout(email) {
+  const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
   if (!appState.selectedPack) {
-    alert("Сначала выберите пакет.");
+    alert(t.alertSelectPack || "Please select a package.");
     return;
   }
 
@@ -852,12 +1317,12 @@ async function startStripeCheckout(email) {
     });
 
     if (!resp.ok) {
-      throw new Error("Сервер оплаты вернул ошибку.");
+      throw new Error("Server returned error.");
     }
 
     const data = await resp.json();
     if (!data || !data.sessionId || !data.publishableKey) {
-      throw new Error("Неверный ответ от сервера оплаты.");
+      throw new Error("Invalid response from payment server.");
     }
 
     closeAgreementModal(false);
@@ -867,9 +1332,7 @@ async function startStripeCheckout(email) {
       : null;
 
     if (!stripe) {
-      alert(
-        'Stripe.js не найден. Убедитесь, что в index.html есть <script src="https://js.stripe.com/v3/"></script>.'
-      );
+      alert(t.alertStripeMissing || UI_TEXT.en.alertStripeMissing);
       return;
     }
 
@@ -879,11 +1342,13 @@ async function startStripeCheckout(email) {
 
     if (error) {
       console.error("Stripe redirect error:", error);
-      alert("Не удалось открыть страницу оплаты: " + error.message);
+      alert(
+        "Could not open payment page: " + (error.message || String(error))
+      );
     }
   } catch (err) {
     console.error("PAY ERROR:", err);
-    alert("Ошибка при создании оплаты. Попробуйте ещё раз.");
+    alert(t.alertPaymentCreateFailed || UI_TEXT.en.alertPaymentCreateFailed);
   } finally {
     appState.isPaying = false;
   }
@@ -902,23 +1367,48 @@ function handleStripeStatusFromUrl() {
       } catch (e) {
         console.warn("Cannot write localStorage", e);
       }
-      alert("Оплата успешно завершена! 🎉 Теперь вы можете генерировать портреты.");
+
+      // set credits according to selected pack
+      const storedPack = window.localStorage.getItem(
+        STORAGE_KEYS.SELECTED_PACK
+      );
+      const packKey = storedPack || appState.selectedPack;
+      const size = PACK_SIZES[packKey] || 0;
+      if (size > 0) {
+        appState.creditsTotal = size;
+        appState.creditsUsed = 0;
+        try {
+          window.localStorage.setItem(
+            STORAGE_KEYS.CREDITS_TOTAL,
+            String(size)
+          );
+          window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, "0");
+        } catch (e) {
+          console.warn("Cannot store credits after payment", e);
+        }
+      }
+
+      const t = UI_TEXT[appState.language] || UI_TEXT.en;
+      alert(t.paymentSuccess || UI_TEXT.en.paymentSuccess);
     } else if (status === "cancel") {
       console.log("Stripe checkout cancelled");
     }
 
+    // clean URL
     url.searchParams.delete("status");
     url.searchParams.delete("session_id");
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, "", url.toString());
     }
+
+    refreshSelectionChips();
   } catch (e) {
     console.warn("Cannot parse URL for Stripe status", e);
   }
 }
 
 // =========================
-// ЧИПЫ ВЫБРАННЫХ ОПЦИЙ ПОД ПРЕВЬЮ
+// SELECTION CHIPS
 // =========================
 
 function refreshSelectionChips() {
@@ -933,214 +1423,56 @@ function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
-  // язык
-  if (appState.language === "ru") {
-    addChip("Язык: Русский");
-  } else {
-    addChip("Language: English");
-  }
-
   if (appState.selectedStyle) {
-    const mapRu = {
-      beauty: "Стиль: Бьюти",
-      oil: "Стиль: Масло",
-      anime: "Стиль: Аниме",
-      poster: "Стиль: Постер",
-      classic: "Стиль: Классика"
-    };
-    const mapEn = {
-      beauty: "Style: Beauty",
-      oil: "Style: Oil painting",
-      anime: "Style: Anime",
-      poster: "Style: Poster",
-      classic: "Style: Classic"
-    };
-    const map = appState.language === "ru" ? mapRu : mapEn;
-    addChip(map[appState.selectedStyle] || (appState.language === "ru" ? "Стиль: выбран" : "Style: selected"));
+    const name =
+      STYLE_LABELS_EN[appState.selectedStyle] || appState.selectedStyle;
+    addChip(`Style: ${name}`);
   }
 
   appState.selectedEffects.forEach((e) => {
-    const mapRu = {
-      "no-wrinkles": "Эффект: без морщин",
-      younger: "Эффект: моложе",
-      "smooth-skin": "Эффект: гладкая кожа",
-      "glow-golden": "Эффект: золотое сияние",
-      "cinematic-light": "Эффект: кино-свет",
-      "smile-soft": "Мимика: лёгкая улыбка",
-      "smile-big": "Мимика: большая улыбка",
-      "smile-hollywood": "Мимика: голливудская улыбка",
-      laugh: "Мимика: смех",
-      "surprised-wow": "Мимика: вау-удивление",
-      neutral: "Мимика: нейтрально",
-      serious: "Мимика: серьёзно",
-      "eyes-bigger": "Мимика: больше глаза",
-      "eyes-brighter": "Мимика: ярче глаза"
-    };
-    const mapEn = {
-      "no-wrinkles": "Effect: no wrinkles",
-      younger: "Effect: younger",
-      "smooth-skin": "Effect: smooth skin",
-      "glow-golden": "Effect: golden glow",
-      "cinematic-light": "Effect: cinematic light",
-      "smile-soft": "Expression: soft smile",
-      "smile-big": "Expression: big smile",
-      "smile-hollywood": "Expression: Hollywood smile",
-      laugh: "Expression: laugh",
-      "surprised-wow": "Expression: wow surprise",
-      neutral: "Expression: neutral",
-      serious: "Expression: serious",
-      "eyes-bigger": "Expression: bigger eyes",
-      "eyes-brighter": "Expression: brighter eyes"
-    };
-    const map = appState.language === "ru" ? mapRu : mapEn;
-    addChip(map[e] || e);
+    const label = EFFECT_CHIP_LABELS_EN[e] || e;
+    addChip(label);
   });
 
   if (appState.selectedGreeting) {
-    const mapRu = {
-      "new-year": "Поздравление: Новый год",
-      birthday: "Поздравление: День рождения",
-      funny: "Поздравление: смешное",
-      scary: "Поздравление: страшное"
-    };
-    const mapEn = {
-      "new-year": "Greeting: New Year",
-      birthday: "Greeting: Birthday",
-      funny: "Greeting: funny",
-      scary: "Greeting: scary"
-    };
-    const map = appState.language === "ru" ? mapRu : mapEn;
-    addChip(map[appState.selectedGreeting] || (appState.language === "ru" ? "Поздравление выбрано" : "Greeting chosen"));
+    const labels = GREETING_LABELS[appState.language] || GREETING_LABELS.en;
+    const name = labels[appState.selectedGreeting] || "Greeting selected";
+    addChip(`Greeting: ${name}`);
   }
 
   if (appState.selectedPack) {
-    const mapRu = {
-      pack10: "Пакет: 10 генераций",
-      pack20: "Пакет: 20 генераций",
-      pack30: "Пакет: 30 генераций"
+    const map = {
+      pack10: "Package: 10 generations",
+      pack20: "Package: 20 generations",
+      pack30: "Package: 30 generations"
     };
-    const mapEn = {
-      pack10: "Pack: 10 generations",
-      pack20: "Pack: 20 generations",
-      pack30: "Pack: 30 generations"
-    };
-    const map = appState.language === "ru" ? mapRu : mapEn;
-    addChip(map[appState.selectedPack] || (appState.language === "ru" ? "Пакет выбран" : "Pack selected"));
+    addChip(map[appState.selectedPack] || "Package selected");
   }
 
   if (appState.creditsTotal > 0) {
-    if (appState.language === "ru") {
-      addChip(`Сделано ${appState.creditsUsed} из ${appState.creditsTotal}`);
-    } else {
-      addChip(`Generated ${appState.creditsUsed} of ${appState.creditsTotal}`);
-    }
+    addChip(`Used ${appState.creditsUsed} of ${appState.creditsTotal}`);
   }
 
   if (DEMO_MODE) {
-    if (appState.language === "ru") {
-      addChip("Demo: 5 генераций с отправкой на email");
-    } else {
-      addChip("Demo: 5 generations with email delivery");
-    }
+    addChip("Demo: 5 generations with email");
   } else if (appState.hasActivePack) {
-    addChip(appState.language === "ru" ? "Оплачено: генерации доступны" : "Paid: generations available");
+    addChip("Paid: package active");
   } else {
-    addChip(appState.language === "ru" ? "Оплата не выполнена" : "Payment not completed");
+    addChip("No paid package yet");
   }
 }
 
 // =========================
-// СЕРВЕРНАЯ СЕССИЯ
-// =========================
-
-async function ensureServerSession() {
-  if (!appState.userEmail) return null;
-
-  if (appState.serverSessionId) {
-    return appState.serverSessionId;
-  }
-
-  let existingId = null;
-  try {
-    existingId = window.localStorage.getItem(STORAGE_KEYS.SESSION_ID);
-  } catch (e) {
-    console.warn("Cannot read SESSION_ID from storage", e);
-  }
-
-  if (existingId) {
-    appState.serverSessionId = existingId;
-    return existingId;
-  }
-
-  try {
-    const resp = await fetch(API_SESSION, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email: appState.userEmail,
-        totalCredits: appState.creditsTotal || DEMO_SESSION_LIMIT
-      })
-    });
-
-    if (!resp.ok) {
-      console.warn("Session create error:", await resp.text());
-      return null;
-    }
-
-    const data = await resp.json();
-    const newId = data.sessionId || (data.session && data.session.id);
-    if (!newId) return null;
-
-    appState.serverSessionId = newId;
-    try {
-      window.localStorage.setItem(STORAGE_KEYS.SESSION_ID, newId);
-    } catch (e) {
-      console.warn("Cannot save SESSION_ID", e);
-    }
-    return newId;
-  } catch (e) {
-    console.warn("ensureServerSession failed", e);
-    return null;
-  }
-}
-
-async function updateServerSessionAfterGeneration(imageUrl) {
-  if (!appState.serverSessionId || !imageUrl) return;
-
-  try {
-    await fetch(API_SESSION, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        sessionId: appState.serverSessionId,
-        imageUrl,
-        incrementUsedCredits: 1,
-        meta: {
-          style: appState.selectedStyle || "beauty",
-          effects: appState.selectedEffects,
-          greeting: appState.selectedGreeting || null,
-          language: appState.language
-        }
-      })
-    });
-  } catch (e) {
-    console.warn("updateServerSessionAfterGeneration failed", e);
-  }
-}
-
-// =========================
-// ГЕНЕРАЦИЯ ПОРТРЕТА
+// PORTRAIT GENERATION
 // =========================
 
 async function handleGenerateClick() {
+  const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
   if (appState.isGenerating) return;
 
   if (!appState.photoBase64) {
-    alert(appState.language === "ru" ? "Сначала добавьте фото." : "Please upload a photo first.");
+    alert(t.alertAddPhoto || UI_TEXT.en.alertAddPhoto);
     return;
   }
 
@@ -1149,32 +1481,36 @@ async function handleGenerateClick() {
       openAgreementModal();
       return;
     }
+    if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+      alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
+      return;
+    }
   } else {
     if (!appState.hasActivePack) {
-      alert(appState.language === "ru"
-        ? "Сначала оплатите пакет генераций."
-        : "Please purchase a generation pack first."
-      );
+      alert(t.alertNoActivePack || UI_TEXT.en.alertNoActivePack);
       openPayModal();
       return;
     }
-  }
-
-  if (appState.userEmail) {
-    await ensureServerSession();
+    if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+      alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
+      return;
+    }
   }
 
   appState.isGenerating = true;
   showGenerating(true);
 
   try {
+    // Backend only supports "en" or "ru" for now
+    const backendLanguage = appState.language === "ru" ? "ru" : "en";
+
     const payload = {
       style: appState.selectedStyle || "beauty",
       text: "",
       photo: appState.photoBase64,
       effects: appState.selectedEffects,
       greeting: appState.selectedGreeting || null,
-      language: appState.language // язык для поздравлений/надписей
+      language: backendLanguage
     };
 
     const resp = await fetch("/api/generate", {
@@ -1186,30 +1522,20 @@ async function handleGenerateClick() {
     });
 
     if (!resp.ok) {
-      throw new Error("Сервер генерации вернул ошибку.");
+      throw new Error("Generation server returned error.");
     }
 
     const data = await resp.json();
     if (!data || !data.image) {
-      throw new Error("Сервер не вернул ссылку на изображение.");
+      throw new Error("Server did not return image URL.");
     }
 
     showResultPortrait(data.image);
-
-    await updateServerSessionAfterGeneration(data.image);
-
-    if (DEMO_MODE) {
-      registerGeneration(data.image);
-    }
-
-    resetEffectsAndGreeting();
+    registerGeneration(data.image);
+    resetEffectsAfterGeneration();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
-    alert(
-      appState.language === "ru"
-        ? "Не удалось сгенерировать портрет. Попробуйте ещё раз."
-        : "Failed to generate the portrait. Please try again."
-    );
+    alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
   } finally {
     showGenerating(false);
     appState.isGenerating = false;
@@ -1218,7 +1544,12 @@ async function handleGenerateClick() {
 
 function registerGeneration(imageUrl) {
   if (appState.creditsTotal <= 0) {
-    appState.creditsTotal = DEMO_SESSION_LIMIT;
+    if (DEMO_MODE) {
+      appState.creditsTotal = DEMO_SESSION_LIMIT;
+    } else if (appState.hasActivePack) {
+      const size = PACK_SIZES[appState.selectedPack] || 0;
+      if (size > 0) appState.creditsTotal = size;
+    }
   }
 
   appState.creditsUsed += 1;
@@ -1246,9 +1577,17 @@ function registerGeneration(imageUrl) {
 
   refreshSelectionChips();
 
-  if (appState.creditsUsed >= appState.creditsTotal) {
+  if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
     finishSessionAndSendEmail();
   }
+}
+
+function resetEffectsAfterGeneration() {
+  appState.selectedStyle = null;
+  appState.selectedEffects = [];
+  appState.selectedGreeting = null;
+  updateGreetingOverlay();
+  refreshSelectionChips();
 }
 
 function showGenerating(isOn) {
@@ -1257,7 +1596,7 @@ function showGenerating(isOn) {
 }
 
 // =========================
-// ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА / СКАЧИВАНИЕ
+// RESULT / DOWNLOAD
 // =========================
 
 function showResultPortrait(url) {
@@ -1284,31 +1623,26 @@ function exitResultView(pushHistory = true) {
 }
 
 // =========================
-// ЗАВЕРШЕНИЕ СЕССИИ И ОТПРАВКА НА EMAIL
+// SESSION FINISH & EMAIL
 // =========================
 
 async function finishSessionAndSendEmail() {
   const email = appState.userEmail;
 
   if (!email) {
-    alert(
-      appState.language === "ru"
-        ? "Email не найден. Невозможно отправить портреты."
-        : "Email not found. Cannot send portraits."
-    );
+    alert("Email not found. Cannot send portraits.");
     return;
   }
 
   if (!appState.generatedImages || appState.generatedImages.length === 0) {
-    alert(
-      appState.language === "ru"
-        ? "Нет сгенерированных портретов для отправки."
-        : "No generated portraits to send."
-    );
+    alert("No generated portraits to send.");
     return;
   }
 
   try {
+    // Backend supports only 'en' / 'ru'; map other languages to 'en'
+    const backendLanguage = appState.language === "ru" ? "ru" : "en";
+
     const resp = await fetch("/api/send-portraits", {
       method: "POST",
       headers: {
@@ -1319,47 +1653,45 @@ async function finishSessionAndSendEmail() {
         images: appState.generatedImages,
         total: appState.creditsTotal,
         used: appState.creditsUsed,
-        language: appState.language
+        language: backendLanguage
       })
     });
 
     if (!resp.ok) {
-      throw new Error("Сервер email вернул ошибку.");
+      throw new Error("Email server returned error.");
     }
 
     const data = await resp.json();
     if (!data || !data.ok) {
-      throw new Error("Сервис email не подтвердил отправку.");
+      throw new Error("Email service did not confirm sending.");
     }
 
     alert(
-      appState.language === "ru"
-        ? `Сессия завершена. Мы отправили ${appState.generatedImages.length} портрет(ов) на ${email}.`
-        : `Session finished. We sent ${appState.generatedImages.length} portrait(s) to ${email}.`
+      `Session finished. We have sent ${appState.generatedImages.length} portrait(s) to ${email}.`
     );
 
-    resetDemoSession();
+    resetSessionCredits();
   } catch (err) {
     console.error("SEND EMAIL ERROR:", err);
     alert(
-      appState.language === "ru"
-        ? "Портреты были сгенерированы, но не удалось отправить email. Попробуйте позже или свяжитесь с поддержкой."
-        : "Portraits were generated, but email sending failed. Please try again later or contact support."
+      "Portraits were generated, but we could not send the email. Please try again later or contact support."
     );
   }
 }
 
-function resetDemoSession() {
+function resetSessionCredits() {
   appState.creditsTotal = 0;
   appState.creditsUsed = 0;
   appState.generatedImages = [];
+  appState.hasActivePack = false;
 
   try {
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
     window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
+    window.localStorage.removeItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
   } catch (e) {
-    console.warn("Cannot clear demo session storage", e);
+    console.warn("Cannot clear session storage", e);
   }
 
   refreshSelectionChips();
