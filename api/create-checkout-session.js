@@ -1,149 +1,104 @@
-// /api/create-checkout-session.js
-// Создаёт Stripe Checkout Session для покупки пакетов генераций
-// Поддерживает несколько пакетов: pack10 / pack20 / pack30
+// api/create-checkout-session.js
+//
+// Создаёт Stripe Checkout Session для пакетов генераций.
+// Ожидает в body: { pack: "pack10" | "pack20" | "pack30", email }
+// Возвращает: { sessionId, publishableKey }
 
-const Stripe = require("stripe");
+import Stripe from "stripe";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripePublishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  process.env.STRIPE_PUBLISHABLE_KEY ||
+  "";
 
-// Логируем, если ключа нет — чтобы сразу видно было в логах Vercel
-if (!stripeSecretKey) {
-  console.error("❌ STRIPE_SECRET_KEY is not set in environment variables.");
+let stripe = null;
+if (stripeSecretKey) {
+  stripe = new Stripe(stripeSecretKey, {
+    apiVersion: "2023-10-16"
+  });
 }
 
-const stripe = stripeSecretKey
-  ? new Stripe(stripeSecretKey, {
-      apiVersion: "2024-06-20",
-    })
-  : null;
-
-// Карта пакетов: код → { amountInCents, credits }
-const PACKS = {
-  pack10: {
-    amount: 100, // 1.00 EUR
-    credits: 10,
-    name: "YourPhotoAI — 10 portrait generations",
-    description: "Package of 10 AI portrait generations on yourphotoai.vip",
-  },
-  pack20: {
-    amount: 180, // 1.80 EUR (пример: чуть выгоднее)
-    credits: 20,
-    name: "YourPhotoAI — 20 portrait generations",
-    description: "Package of 20 AI portrait generations on yourphotoai.vip",
-  },
-  pack30: {
-    amount: 250, // 2.50 EUR (ещё выгоднее)
-    credits: 30,
-    name: "YourPhotoAI — 30 AI portrait generations",
-    description: "Package of 30 AI portrait generations on yourphotoai.vip",
-  },
-};
-
-/**
- * Helper: получить origin (домен) из запроса
- */
-function getOrigin(req) {
-  const proto =
-    req.headers["x-forwarded-proto"] ||
-    (req.headers["x-forwarded-protocol"]
-      ? req.headers["x-forwarded-protocol"].split(",")[0]
-      : "https");
-
-  const host = req.headers["x-forwarded-host"] || req.headers.host;
-
-  return `${proto}://${host}`;
-}
-
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
+  // Разрешим только POST
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
-  if (!stripe) {
-    return res.status(500).json({
-      ok: false,
-      error: "Stripe is not configured (missing STRIPE_SECRET_KEY)",
-    });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const origin = getOrigin(req);
-
-    // Тело запроса с фронта: { email, pack }
-    let email = null;
-    let pack = "pack10"; // значение по умолчанию
-
-    if (req.body) {
-      try {
-        const body =
-          typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-        if (body) {
-          if (typeof body.email === "string") {
-            email = body.email.trim();
-          }
-          if (typeof body.pack === "string" && PACKS[body.pack]) {
-            pack = body.pack;
-          }
-        }
-      } catch (e) {
-        console.warn("create-checkout-session: failed to parse body", e);
-      }
+    if (!stripe || !stripeSecretKey || !stripePublishableKey) {
+      console.error("Stripe keys are missing");
+      return res.status(500).json({
+        error: "Stripe is not configured on the server."
+      });
     }
 
-    const packConfig = PACKS[pack] || PACKS.pack10;
+    const { pack, email } = req.body || {};
 
-    console.log(
-      "[create-checkout-session] Creating session for pack:",
-      pack,
-      "email:",
-      email || "(no email)"
-    );
+    if (!pack) {
+      return res.status(400).json({ error: "pack is required" });
+    }
 
+    // Настройка пакетов
+    const packs = {
+      pack10: { credits: 10, amount: 499 },   // €4.99
+      pack20: { credits: 20, amount: 899 },   // €8.99
+      pack30: { credits: 30, amount: 1199 }   // €11.99
+    };
+
+    const packConfig = packs[pack];
+
+    if (!packConfig) {
+      return res.status(400).json({ error: "Unknown pack" });
+    }
+
+    // Определяем домен для redirect'ов
+    const hostHeader = req.headers["x-forwarded-host"] || req.headers.host;
+    const protoHeader = req.headers["x-forwarded-proto"] || "https";
+
+    const domainUrl =
+      process.env.DOMAIN_URL ||
+      (hostHeader ? `${protoHeader}://${hostHeader}` : "http://localhost:3000");
+
+    // Создаём Checkout Session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
+      customer_email: email || undefined,
       line_items: [
         {
           price_data: {
             currency: "eur",
-            unit_amount: packConfig.amount,
             product_data: {
-              name: packConfig.name,
-              description: packConfig.description,
+              name: `YourPhotoAI – ${packConfig.credits} AI portraits`
             },
+            unit_amount: packConfig.amount
           },
-          quantity: 1,
-        },
+          quantity: 1
+        }
       ],
-      customer_email: email || undefined,
       metadata: {
-        pack, // pack10 / pack20 / pack30
-        email: email || "",
-        credits_total: String(packConfig.credits),
+        pack,
+        credits: String(packConfig.credits)
       },
-      success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?checkout=cancel`,
+      success_url:
+        `${domainUrl}/?status=success` +
+        `&pack=${encodeURIComponent(pack)}` +
+        `&credits=${encodeURIComponent(packConfig.credits)}` +
+        `&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${domainUrl}/?status=cancel`
     });
 
     return res.status(200).json({
-      ok: true,
-      url: session.url,
+      sessionId: session.id,
+      publishableKey: stripePublishableKey
     });
-  } catch (error) {
-    console.error("❌ Error creating checkout session:", {
-      message: error.message,
-      type: error.type,
-      code: error.code,
-    });
-
-    // ВОЗВРАЩАЕМ РЕАЛЬНУЮ ОШИБКУ STRIPE В ОТВЕТ,
-    // чтобы на фронте не было "просто неизвестная ошибка".
+  } catch (err) {
+    console.error("Stripe create-checkout-session error:", err);
     return res.status(500).json({
-      ok: false,
-      error: error.message || "Failed to create checkout session",
-      stripeType: error.type || null,
-      stripeCode: error.code || null,
+      error: "Stripe checkout failed",
+      details: err?.message || String(err)
     });
   }
-};
+}
