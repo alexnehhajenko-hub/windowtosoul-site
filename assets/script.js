@@ -15,6 +15,9 @@ const DEMO_MODE = true;
 // Сколько генераций в одном "пакете" в демо-режиме
 const DEMO_SESSION_LIMIT = 5;
 
+// Endpoint серверной сессии
+const API_SESSION = "/api/session";
+
 // =========================
 // КОНСТАНТЫ ДЛЯ ХРАНЕНИЯ СОСТОЯНИЯ
 // =========================
@@ -25,7 +28,8 @@ const STORAGE_KEYS = {
   USER_AGREED: "yourphotoai_userAgreed",
   CREDITS_TOTAL: "yourphotoai_creditsTotal",
   CREDITS_USED: "yourphotoai_creditsUsed",
-  GENERATED_IMAGES: "yourphotoai_generatedImages"
+  GENERATED_IMAGES: "yourphotoai_generatedImages",
+  SESSION_ID: "yourphotoai_sessionId"
 };
 
 // =========================
@@ -60,6 +64,9 @@ const appState = {
   // согласие и email
   userEmail: "",
   userAgreed: false,
+
+  // серверная сессия
+  serverSessionId: null,
 
   // UI-слой для кнопки "Назад"
   layer: "home" // 'home' | 'sheet' | 'pay' | 'agree' | 'result'
@@ -166,6 +173,11 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (e) {
         console.warn("Cannot parse GENERATED_IMAGES", e);
       }
+    }
+
+    const storedSessionId = window.localStorage.getItem(STORAGE_KEYS.SESSION_ID);
+    if (storedSessionId) {
+      appState.serverSessionId = storedSessionId;
     }
   } catch (e) {
     console.warn("Cannot read localStorage", e);
@@ -558,6 +570,14 @@ function removeAllMimicEffects() {
   );
 }
 
+// СБРОС СТИЛЕЙ/ЭФФЕКТОВ/ПОЗДРАВЛЕНИЙ ПОСЛЕ КАЖДОЙ ГЕНЕРАЦИИ
+function resetEffectsAndGreeting() {
+  appState.selectedStyle = null;
+  appState.selectedEffects = [];
+  appState.selectedGreeting = null;
+  refreshSelectionChips();
+}
+
 // =========================
 // ПАКЕТЫ И ОПЛАТА STRIPE (БОЕВОЙ РЕЖИМ)
 // =========================
@@ -867,6 +887,90 @@ function refreshSelectionChips() {
 }
 
 // =========================
+// СЕРВЕРНАЯ СЕССИЯ
+// =========================
+
+// Создать / прочитать сессию на сервере и сохранить sessionId в appState + localStorage
+async function ensureServerSession() {
+  if (!appState.userEmail) return null;
+
+  if (appState.serverSessionId) {
+    return appState.serverSessionId;
+  }
+
+  let existingId = null;
+  try {
+    existingId = window.localStorage.getItem(STORAGE_KEYS.SESSION_ID);
+  } catch (e) {
+    console.warn("Cannot read SESSION_ID from storage", e);
+  }
+
+  if (existingId) {
+    appState.serverSessionId = existingId;
+    return existingId;
+  }
+
+  try {
+    const resp = await fetch(API_SESSION, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: appState.userEmail,
+        totalCredits: appState.creditsTotal || DEMO_SESSION_LIMIT
+      })
+    });
+
+    if (!resp.ok) {
+      console.warn("Session create error:", await resp.text());
+      return null;
+    }
+
+    const data = await resp.json();
+    const newId = data.sessionId || (data.session && data.session.id);
+    if (!newId) return null;
+
+    appState.serverSessionId = newId;
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.SESSION_ID, newId);
+    } catch (e) {
+      console.warn("Cannot save SESSION_ID", e);
+    }
+    return newId;
+  } catch (e) {
+    console.warn("ensureServerSession failed", e);
+    return null;
+  }
+}
+
+// Обновление сессии после генерации (сохранение картинки + +1 генерация)
+async function updateServerSessionAfterGeneration(imageUrl) {
+  if (!appState.serverSessionId || !imageUrl) return;
+
+  try {
+    await fetch(API_SESSION, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sessionId: appState.serverSessionId,
+        imageUrl,
+        incrementUsedCredits: 1,
+        meta: {
+          style: appState.selectedStyle || "beauty",
+          effects: appState.selectedEffects,
+          greeting: appState.selectedGreeting || null
+        }
+      })
+    });
+  } catch (e) {
+    console.warn("updateServerSessionAfterGeneration failed", e);
+  }
+}
+
+// =========================
 // ГЕНЕРАЦИЯ ПОРТРЕТА
 // =========================
 
@@ -889,6 +993,11 @@ async function handleGenerateClick() {
       openPayModal();
       return;
     }
+  }
+
+  // гарантируем, что на сервере создана сессия с email и лимитом генераций
+  if (appState.userEmail) {
+    await ensureServerSession();
   }
 
   appState.isGenerating = true;
@@ -920,10 +1029,19 @@ async function handleGenerateClick() {
       throw new Error("Сервер не вернул ссылку на изображение.");
     }
 
+    // показать результат
     showResultPortrait(data.image);
+
+    // записать генерацию на сервер (сессия + картинка + мета)
+    await updateServerSessionAfterGeneration(data.image);
+
+    // локальный учёт для демо-режима
     if (DEMO_MODE) {
       registerGeneration(data.image);
     }
+
+    // после каждой генерации полностью сбрасываем стиль/эффекты/поздравление
+    resetEffectsAndGreeting();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert("Не удалось сгенерировать портрет. Попробуйте ещё раз.");
