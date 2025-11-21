@@ -5,13 +5,11 @@ import {
   SUPPORT_EMAIL,
   UI_TEXT,
   SUPPORTED_LANGS,
-  GREETING_LABELS,
   GREETING_TEXT,
   SHEET_TEXT,
   EFFECT_CHIP_LABELS_EN,
   STYLE_LABELS_EN,
   DEMO_MODE,
-  PACK_SIZES,
   STORAGE_KEYS,
   appState
 } from "./state.js";
@@ -112,12 +110,10 @@ export function setLanguage(lang) {
 
   const t = UI_TEXT[lang] || UI_TEXT.en;
 
-  // Подзаголовок
   if (els.appSubtitle) {
     els.appSubtitle.textContent = t.subtitle;
   }
 
-  // Preview label & placeholder
   if (els.previewLabel) {
     els.previewLabel.textContent = t.previewLabel;
   }
@@ -131,7 +127,6 @@ export function setLanguage(lang) {
     els.generateStatusText.textContent = t.generateStatus;
   }
 
-  // Кнопки
   function setButtonLabel(btn, text) {
     if (!btn) return;
     const spans = btn.querySelectorAll("span");
@@ -148,7 +143,6 @@ export function setLanguage(lang) {
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
 
-  // Sheet заголовки
   if (els.sheetOptionsTitle) {
     els.sheetOptionsTitle.textContent = t.sheetOptionsTitle;
   }
@@ -156,7 +150,6 @@ export function setLanguage(lang) {
     els.sheetCategoryTitle.textContent = t.sheetCategoryTitle;
   }
 
-  // Pay модалка
   if (els.payTitle) els.payTitle.textContent = t.payTitle;
   if (els.paySectionTitle) els.paySectionTitle.textContent = t.paySectionTitle;
   if (els.pkg10) {
@@ -173,7 +166,6 @@ export function setLanguage(lang) {
   }
   if (els.payNextBtn) els.payNextBtn.textContent = t.payNext;
 
-  // Agreement модалка
   if (els.agreementTitle) els.agreementTitle.textContent = t.agreementTitle;
   if (els.agreementText) {
     els.agreementText.innerHTML = t.agreementText
@@ -190,17 +182,13 @@ export function setLanguage(lang) {
     els.agreementHint.textContent = t.agreementHint;
   }
   if (els.agreePayBtn) {
-    els.agreePayBtn.textContent = DEMO_MODE
-      ? t.agreementSubmitDemo
-      : t.agreementSubmitPaid;
+    els.agreePayBtn.textContent = t.agreementSubmitDemo;
   }
 
-  // Download
   if (els.downloadLink) {
     els.downloadLink.textContent = t.download;
   }
 
-  // Лейбл поддержки
   const supportBlock = els.supportEmail && els.supportEmail.parentElement;
   if (supportBlock) {
     supportBlock.innerHTML = `${t.supportLabel} <a id="supportEmail"></a>`;
@@ -208,7 +196,6 @@ export function setLanguage(lang) {
     setupSupportEmail();
   }
 
-  // Подсветка языка
   const allButtons = [
     els.btnLangEn,
     els.btnLangDe,
@@ -230,7 +217,6 @@ export function setLanguage(lang) {
   }
 }
 
-// Слои
 export function setLayer(newLayer, pushToHistory = true) {
   appState.layer = newLayer;
   if (pushToHistory && window.history && window.history.pushState) {
@@ -238,7 +224,7 @@ export function setLayer(newLayer, pushToHistory = true) {
   }
 }
 
-// Общий sheet (нижний)
+// Общий sheet
 export function openSheet({ title, description, categories, options }) {
   if (!els.sheetBackdrop) return;
 
@@ -321,9 +307,7 @@ export function refreshSelectionChips() {
   });
 
   if (appState.selectedGreeting) {
-    const labels = GREETING_LABELS[appState.language] || GREETING_LABELS.en;
-    const name = labels[appState.selectedGreeting] || "Greeting selected";
-    addChip(`Greeting: ${name}`);
+    addChip(`Greeting selected`);
   }
 
   if (appState.selectedPack) {
@@ -348,7 +332,7 @@ export function refreshSelectionChips() {
   }
 }
 
-// Поздравительный текст поверх картинки
+// Текст поверх картинки (пока просто включаем/выключаем, сам текст в письме)
 export function updateGreetingOverlay() {
   if (!els.greetingOverlay) return;
 
