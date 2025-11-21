@@ -1,39 +1,49 @@
 // assets/main.js
 // Точка входа: инициализация DOM, состояния, языков, истории и обработчиков.
 
-import { bindElements, setupSupportEmail, hideOverlaysOnStart, setLanguage, refreshSelectionChips } from "./js/interface.js";
+import {
+  bindElements,
+  setupSupportEmail,
+  hideOverlaysOnStart,
+  setLanguage,
+  refreshSelectionChips,
+  closeSheet
+} from "./js/interface.js";
 import { appState, loadStateFromStorage } from "./js/state.js";
 import { attachMainHandlers } from "./js/events.js";
-import { handleStripeStatusFromUrl, closePayModal, closeAgreementModal } from "./js/payment.js";
-import { closeSheet } from "./js/interface.js";
+import {
+  handleStripeStatusFromUrl,
+  closePayModal,
+  closeAgreementModal
+} from "./js/payment.js";
 import { exitResultView } from "./js/generation.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Находим все DOM-элементы
   bindElements();
 
-  // 2. Email поддержки
+  // 2. Email поддержки (если есть блок в верстке)
   setupSupportEmail();
 
-  // 3. Загружаем состояние из localStorage (язык, демо, пакеты...)
+  // 3. Загружаем состояние из localStorage
   loadStateFromStorage();
 
-  // 4. Применяем язык к интерфейсу
+  // 4. Ставим язык (по умолчанию en)
   setLanguage(appState.language || "en");
 
-  // 5. Прячем оверлеи на старте
+  // 5. Прячем оверлеи
   hideOverlaysOnStart();
 
-  // 6. Вешаем все обработчики кнопок
+  // 6. Вешаем обработчики на кнопки
   attachMainHandlers();
 
-  // 7. Настраиваем кнопку "Назад"
+  // 7. Логика кнопки "назад"
   setupBackButtonLogic();
 
-  // 8. Обрабатываем возврат со Stripe (?status=success/cancel)
+  // 8. Статус Stripe (?status=success/cancel)
   handleStripeStatusFromUrl();
 
-  // 9. Обновляем чипы под предпросмотром
+  // 9. Обновляем чипы под фото
   refreshSelectionChips();
 });
 
@@ -43,7 +53,6 @@ function setupBackButtonLogic() {
   }
 
   window.addEventListener("popstate", () => {
-    // смотрим текущий слой в состоянии
     const layer = appState.layer;
     switch (layer) {
       case "sheet":
