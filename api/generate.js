@@ -14,9 +14,9 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
 });
 
-// Модель Replicate. Можешь:
-//  - либо задать REPLICATE_MODEL_ID в env,
-//  - либо прямо здесь вписать свой ID модели (например, из старой версии).
+// Модель Replicate:
+//  - можно задать REPLICATE_MODEL_ID в env,
+//  - иначе по умолчанию используем FLUX.1 [dev].
 const MODEL_ID =
   process.env.REPLICATE_MODEL_ID ||
   "black-forest-labs/flux-dev"; // при необходимости замени на свою модель
@@ -169,24 +169,24 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
   return parts.join(", ");
 }
 
-// Сила изменения изображения (strength) — чтобы при омоложении было заметно,
-// а при обычных стилях и scary — мягко.
-function computeStrength({ effects = [], style, greeting }) {
+// Сила влияния промпта (prompt_strength) для режима image-to-image.
+// Чем МЕНЬШЕ, тем ближе к исходному фото.
+function computePromptStrength({ effects = [], style, greeting }) {
   const hasYounger =
     effects.includes("younger") || effects.includes("no-wrinkles");
 
   if (hasYounger) {
-    // Омоложение должно быть видно, но лицо всё равно узнаваемо
-    return 0.58;
+    // Омоложение: заметно, но лицо остаётся очень похожим.
+    return 0.45;
   }
 
-  // Страшные / постерные стили — немного сильнее стилизация
+  // Страшные / постерные / аниме стили — чуть сильнее стилизация
   if (greeting === "scary" || style === "poster" || style === "anime") {
-    return 0.42;
+    return 0.38;
   }
 
-  // По умолчанию — мягкие изменения
-  return 0.36;
+  // По умолчанию — мягкие изменения, максимально похожее лицо
+  return 0.32;
 }
 
 export default async function handler(req, res) {
@@ -232,21 +232,30 @@ export default async function handler(req, res) {
       extraText: text
     });
 
-    const strength = computeStrength({
+    const promptStrength = computePromptStrength({
       effects: safeEffects,
       style,
       greeting
     });
 
-    // Важно: модель должна поддерживать image-to-image (prompt + image + strength).
+    console.log("GENERATE PROMPT:", prompt);
+    console.log("PROMPT STRENGTH:", promptStrength);
+
+    // Для FLUX.1 [dev]:
+    // - image: исходное фото
+    // - prompt: текст
+    // - prompt_strength: насколько сильно мы отклоняемся от исходного кадра
     const output = await replicate.run(MODEL_ID, {
       input: {
         prompt,
         image: photo,
-        strength,
-        // guidance_scale поменьше, чтобы модель не улетала в стиль и не ломала лицо
-        guidance_scale: 3.5,
-        num_inference_steps: 28
+        prompt_strength: promptStrength,
+        go_fast: false,
+        guidance: 3.0,
+        num_inference_steps: 28,
+        // можно добавить формат, если нужно строго PNG/JPG:
+        // output_format: "png",
+        // output_quality: 90
       }
     });
 
