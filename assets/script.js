@@ -467,7 +467,7 @@ function openSkinSheet() {
         removeSkinEffects();
         toggleEffect(value);
         refreshSelectionChips();
-        closeSheet(); // <<< панель закрывается после выбора
+        closeSheet(); // панель закрывается после выбора
       }
     }))
   });
@@ -496,7 +496,7 @@ function openMimicSheet() {
         removeAllMimicEffects();
         toggleEffect(value);
         refreshSelectionChips();
-        closeSheet(); // закрываем панель после выбора
+        closeSheet();
       }
     }))
   });
@@ -521,7 +521,7 @@ function openGreetingSheet() {
         appState.selectedGreeting =
           appState.selectedGreeting === value ? null : value;
         refreshSelectionChips();
-        closeSheet(); // закрываем после выбора
+        closeSheet();
       }
     }))
   });
@@ -575,6 +575,13 @@ function resetEffectsAndGreeting() {
   appState.selectedStyle = null;
   appState.selectedEffects = [];
   appState.selectedGreeting = null;
+
+  // очистить визуальный оверлей поздравления, если он есть
+  if (els.greetingOverlay) {
+    els.greetingOverlay.textContent = "";
+    els.greetingOverlay.style.display = "none";
+  }
+
   refreshSelectionChips();
 }
 
@@ -620,7 +627,7 @@ function handlePayNext() {
     return;
   }
   closePayModal(false);
-  openAgreementModal(); // в бою можно переиспользовать это окно для email
+  openAgreementModal();
 }
 
 function openAgreementModal() {
@@ -665,7 +672,6 @@ function handleAgreeConfirm() {
     return;
   }
 
-  // ВАЖНО: явное соглашение про внешние ИИ
   const confirmText =
     "Продолжая, вы согласны, что:\n\n" +
     "• ваше фото и сгенерированные портреты будут отправлены в сторонний AI-сервис для обработки;\n" +
@@ -679,7 +685,6 @@ function handleAgreeConfirm() {
 
   if (els.agreeError) els.agreeError.textContent = "";
 
-  // сохраняем email и согласие
   appState.userEmail = email;
   appState.userAgreed = true;
 
@@ -691,10 +696,8 @@ function handleAgreeConfirm() {
   }
 
   if (DEMO_MODE) {
-    // В ДЕМО: модалка = согласие перед генерацией
     closeAgreementModal(false);
 
-    // инициализируем пакет на 5 генераций, если ещё нет
     if (appState.creditsTotal <= 0) {
       appState.creditsTotal = DEMO_SESSION_LIMIT;
       appState.creditsUsed = 0;
@@ -713,9 +716,7 @@ function handleAgreeConfirm() {
     }
 
     refreshSelectionChips();
-    // пользователь нажимает "Сделать портрет" ещё раз, и генерация идёт
   } else {
-    // В БОЕВОМ РЕЖИМЕ: после согласия запускаем Stripe Checkout
     startStripeCheckout(email);
   }
 }
@@ -890,7 +891,6 @@ function refreshSelectionChips() {
 // СЕРВЕРНАЯ СЕССИЯ
 // =========================
 
-// Создать / прочитать сессию на сервере и сохранить sessionId в appState + localStorage
 async function ensureServerSession() {
   if (!appState.userEmail) return null;
 
@@ -944,7 +944,6 @@ async function ensureServerSession() {
   }
 }
 
-// Обновление сессии после генерации (сохранение картинки + +1 генерация)
 async function updateServerSessionAfterGeneration(imageUrl) {
   if (!appState.serverSessionId || !imageUrl) return;
 
@@ -995,7 +994,6 @@ async function handleGenerateClick() {
     }
   }
 
-  // гарантируем, что на сервере создана сессия с email и лимитом генераций
   if (appState.userEmail) {
     await ensureServerSession();
   }
@@ -1032,7 +1030,7 @@ async function handleGenerateClick() {
     // показать результат
     showResultPortrait(data.image);
 
-    // записать генерацию на сервер (сессия + картинка + мета)
+    // записать генерацию на сервер
     await updateServerSessionAfterGeneration(data.image);
 
     // локальный учёт для демо-режима
@@ -1040,7 +1038,7 @@ async function handleGenerateClick() {
       registerGeneration(data.image);
     }
 
-    // после каждой генерации полностью сбрасываем стиль/эффекты/поздравление
+    // ВАЖНО: после успешной генерации сбрасываем все эффекты/стиль/поздравление
     resetEffectsAndGreeting();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
@@ -1180,7 +1178,7 @@ function resetDemoSession() {
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
     window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
-    // email и согласие оставляем, чтобы не вводить каждый раз
+    // email и согласие оставляем
   } catch (e) {
     console.warn("Cannot clear demo session storage", e);
   }
