@@ -6,13 +6,14 @@ import {
   STORAGE_KEYS,
   PACK_SIZES,
   UI_TEXT,
-  DEMO_MODE
+  DEMO_MODE,
+  DEMO_SESSION_LIMIT
 } from "./state.js";
-import { els, setLanguage, refreshSelectionChips, setLayer } from "./interface.js";
+import { els, refreshSelectionChips, setLayer } from "./interface.js";
 
 export function openPayModal() {
   if (DEMO_MODE) {
-    // в демо просто показываем окно согласия
+    // в демо вместо оплаты сразу показываем окно согласия
     openAgreementModal();
     return;
   }
@@ -53,13 +54,9 @@ export function selectPack(packKey) {
 }
 
 export function handlePayNext() {
-  if (DEMO_MODE) {
-    openAgreementModal();
-    return;
-  }
+  const t = UI_TEXT[appState.language] || UI_TEXT.en;
 
-  if (!appState.selectedPack) {
-    const t = UI_TEXT[appState.language] || UI_TEXT.en;
+  if (!appState.selectedPack && !DEMO_MODE) {
     if (els.payError) {
       els.payError.textContent =
         t.alertSelectPack || "Please select a package.";
@@ -68,6 +65,7 @@ export function handlePayNext() {
     }
     return;
   }
+
   closePayModal(false);
   openAgreementModal();
 }
@@ -115,7 +113,7 @@ export function handleAgreeConfirm() {
     "• your photo and generated portraits will be sent to an external AI service for processing;\n" +
     "• processing is automatic, without manual moderation;\n" +
     "• you have the rights to the uploaded images and allow this processing.\n\n" +
-    'Press "OK", if you agree.';
+    'Press "OK" if you agree.';
   const ok = window.confirm(confirmText);
   if (!ok) {
     return;
@@ -137,7 +135,7 @@ export function handleAgreeConfirm() {
     closeAgreementModal(false);
 
     if (appState.creditsTotal <= 0) {
-      appState.creditsTotal =  DEMO_SESSION_LIMIT;
+      appState.creditsTotal = DEMO_SESSION_LIMIT;
       appState.creditsUsed = 0;
       try {
         window.localStorage.setItem(
