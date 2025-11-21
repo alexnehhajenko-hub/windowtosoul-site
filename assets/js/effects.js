@@ -7,9 +7,13 @@ import {
   STYLE_LABELS_EN,
   GREETING_LABELS
 } from "./state.js";
-import { openSheet, closeSheet, refreshSelectionChips, updateGreetingOverlay } from "./interface.js";
+import {
+  openSheet,
+  closeSheet,
+  refreshSelectionChips,
+  updateGreetingOverlay
+} from "./interface.js";
 
-// Вспомогательные функции эффектов
 export function toggleEffect(value) {
   const idx = appState.selectedEffects.indexOf(value);
   if (idx >= 0) {
@@ -48,8 +52,6 @@ export function removeAllMimicEffects() {
     (e) => !mimicKeys.includes(e)
   );
 }
-
-// Sheets
 
 export function openStyleSheet() {
   const lang = appState.language;
