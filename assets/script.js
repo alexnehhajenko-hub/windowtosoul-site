@@ -16,7 +16,7 @@ const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
 // DEMO_MODE = true  → generation WITHOUT payment, but with email + consent,
 //                      fixed DEMO_SESSION_LIMIT generations in one local session.
 // DEMO_MODE = false → generation ONLY after payment (Stripe packages 10/20/30).
-const DEMO_MODE = false;
+const DEMO_MODE = true;
 
 // Demo-session size (when DEMO_MODE = true)
 const DEMO_SESSION_LIMIT = 5;
