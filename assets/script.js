@@ -18,6 +18,9 @@ const DEMO_SESSION_LIMIT = 5;
 // Endpoint серверной сессии
 const API_SESSION = "/api/session";
 
+// Почта поддержки
+const SUPPORT_EMAIL = "support@yourphotoai.vip";
+
 // =========================
 // КОНСТАНТЫ ДЛЯ ХРАНЕНИЯ СОСТОЯНИЯ
 // =========================
@@ -41,6 +44,9 @@ const appState = {
   selectedStyle: null,
   selectedEffects: [], // кожа + мимика + прочие эффекты
   selectedGreeting: null,
+
+  // язык интерфейса / поздравлений
+  language: "ru", // "ru" | "en"
 
   // фото
   originalFile: null,
@@ -94,6 +100,13 @@ function bindElements() {
   els.btnAddPhoto = document.getElementById("btnAddPhoto");
   els.btnPay = document.getElementById("btnPay");
 
+  // Язык
+  els.btnLangRu = document.getElementById("langRu");
+  els.btnLangEn = document.getElementById("langEn");
+
+  // Почта поддержки
+  els.supportEmail = document.getElementById("supportEmail");
+
   // input файла
   els.fileInput = document.getElementById("fileInput");
 
@@ -134,6 +147,12 @@ function bindElements() {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindElements();
+
+  // почта поддержки
+  if (els.supportEmail) {
+    els.supportEmail.href = `mailto:${SUPPORT_EMAIL}`;
+    els.supportEmail.textContent = SUPPORT_EMAIL;
+  }
 
   // подхватываем состояние из localStorage
   try {
@@ -185,6 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   attachMainHandlers();
   setupBackButtonLogic();
+  applyLanguageUI();
   refreshSelectionChips();
   hideOverlaysOnStart();
   handleStripeStatusFromUrl();
@@ -303,6 +323,37 @@ function attachMainHandlers() {
       }
     });
   }
+
+  // Переключение языка
+  if (els.btnLangRu) {
+    els.btnLangRu.addEventListener("click", () => setLanguage("ru"));
+  }
+  if (els.btnLangEn) {
+    els.btnLangEn.addEventListener("click", () => setLanguage("en"));
+  }
+}
+
+// =========================
+// ЯЗЫК: RU / EN
+// =========================
+
+function setLanguage(lang) {
+  if (lang !== "ru" && lang !== "en") return;
+  appState.language = lang;
+  applyLanguageUI();
+  refreshSelectionChips();
+}
+
+function applyLanguageUI() {
+  if (els.btnLangRu && els.btnLangEn) {
+    if (appState.language === "ru") {
+      els.btnLangRu.classList.add("lang-selected");
+      els.btnLangEn.classList.remove("lang-selected");
+    } else {
+      els.btnLangEn.classList.add("lang-selected");
+      els.btnLangRu.classList.remove("lang-selected");
+    }
+  }
 }
 
 // =========================
@@ -420,21 +471,22 @@ function closeSheet(pushHistory = true) {
 
 // =========================
 // ЛИСТЫ: СТИЛЬ, КОЖА, МИМИКА, ПОЗДРАВЛЕНИЯ
-// (панель закрывается после выбора)
 // =========================
 
 function openStyleSheet() {
   const options = [
-    { value: "beauty", label: "✨ Светлый бьюти-портрет" },
-    { value: "oil", label: "Картина маслом" },
-    { value: "anime", label: "Аниме" },
-    { value: "poster", label: "Постер" },
-    { value: "classic", label: "Классический портрет" }
+    { value: "beauty", label: appState.language === "ru" ? "✨ Светлый бьюти-портрет" : "✨ Bright beauty portrait" },
+    { value: "oil", label: appState.language === "ru" ? "Картина маслом" : "Oil painting" },
+    { value: "anime", label: appState.language === "ru" ? "Аниме" : "Anime" },
+    { value: "poster", label: appState.language === "ru" ? "Постер" : "Poster" },
+    { value: "classic", label: appState.language === "ru" ? "Классический портрет" : "Classic portrait" }
   ];
 
   openSheet({
-    title: "Стиль портрета",
-    description: "Выберите основной художественный стиль.",
+    title: appState.language === "ru" ? "Стиль портрета" : "Portrait style",
+    description: appState.language === "ru"
+      ? "Выберите основной художественный стиль."
+      : "Choose the main art style.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedStyle === opt.value,
@@ -449,25 +501,41 @@ function openStyleSheet() {
 
 function openSkinSheet() {
   const options = [
-    { value: "no-wrinkles", label: "Без морщин" },
-    { value: "younger", label: "Моложе на 10–20 лет" },
-    { value: "smooth-skin", label: "Гладкая кожа" },
-    { value: "glow-golden", label: "✨ Золотое сияние" },
-    { value: "cinematic-light", label: "🎬 Кино-свет" }
+    {
+      value: "no-wrinkles",
+      label: appState.language === "ru" ? "Без морщин" : "No wrinkles"
+    },
+    {
+      value: "younger",
+      label: appState.language === "ru" ? "Моложе на 10–20 лет" : "10–20 years younger"
+    },
+    {
+      value: "smooth-skin",
+      label: appState.language === "ru" ? "Гладкая кожа" : "Smooth skin"
+    },
+    {
+      value: "glow-golden",
+      label: appState.language === "ru" ? "✨ Золотое сияние" : "✨ Golden glow"
+    },
+    {
+      value: "cinematic-light",
+      label: appState.language === "ru" ? "🎬 Кино-свет" : "🎬 Cinematic light"
+    }
   ];
 
   openSheet({
-    title: "Эффект кожи",
-    description: "Выберите эффект, который даст вау-ощущение.",
+    title: appState.language === "ru" ? "Эффект кожи" : "Skin effect",
+    description: appState.language === "ru"
+      ? "Выберите эффект, который даст вау-ощущение."
+      : "Choose an effect that gives a wow feeling.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
-        // один эффект за раз — чтобы было понятно, что выбрано
         removeSkinEffects();
         toggleEffect(value);
         refreshSelectionChips();
-        closeSheet(); // панель закрывается после выбора
+        closeSheet();
       }
     }))
   });
@@ -475,20 +543,49 @@ function openSkinSheet() {
 
 function openMimicSheet() {
   const options = [
-    { value: "smile-soft", label: "🙂 Лёгкая улыбка" },
-    { value: "smile-big", label: "😄 Большая улыбка" },
-    { value: "smile-hollywood", label: "😁 Голливудская улыбка" },
-    { value: "laugh", label: "😂 Смех" },
-    { value: "surprised-wow", label: "😲 Вау-удивление" },
-    { value: "eyes-bigger", label: "👁 Чуть больше глаза" },
-    { value: "eyes-brighter", label: "✨ Ярче глаза" },
-    { value: "neutral", label: "Нейтральное лицо" },
-    { value: "serious", label: "Серьёзный взгляд" }
+    {
+      value: "smile-soft",
+      label: appState.language === "ru" ? "🙂 Лёгкая улыбка" : "🙂 Soft smile"
+    },
+    {
+      value: "smile-big",
+      label: appState.language === "ru" ? "😄 Большая улыбка" : "😄 Big smile"
+    },
+    {
+      value: "smile-hollywood",
+      label: appState.language === "ru" ? "😁 Голливудская улыбка" : "😁 Hollywood smile"
+    },
+    {
+      value: "laugh",
+      label: appState.language === "ru" ? "😂 Смех" : "😂 Laugh"
+    },
+    {
+      value: "surprised-wow",
+      label: appState.language === "ru" ? "😲 Вау-удивление" : "😲 Wow surprise"
+    },
+    {
+      value: "eyes-bigger",
+      label: appState.language === "ru" ? "👁 Чуть больше глаза" : "👁 Slightly bigger eyes"
+    },
+    {
+      value: "eyes-brighter",
+      label: appState.language === "ru" ? "✨ Ярче глаза" : "✨ Brighter eyes"
+    },
+    {
+      value: "neutral",
+      label: appState.language === "ru" ? "Нейтральное лицо" : "Neutral face"
+    },
+    {
+      value: "serious",
+      label: appState.language === "ru" ? "Серьёзный взгляд" : "Serious look"
+    }
   ];
 
   openSheet({
-    title: "Мимика",
-    description: "Выберите выражение лица.",
+    title: appState.language === "ru" ? "Мимика" : "Expression",
+    description: appState.language === "ru"
+      ? "Выберите выражение лица."
+      : "Choose facial expression.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
@@ -503,17 +600,31 @@ function openMimicSheet() {
 }
 
 function openGreetingSheet() {
-  const options = [
-    { value: "new-year", label: "Новый год 🎄" },
-    { value: "birthday", label: "День рождения 🎂" },
-    { value: "funny", label: "Смешное 😜" },
-    { value: "scary", label: "Страшное 👻" }
-  ];
+  // фильтры с поздравлениями (категории)
+  const labels = appState.language === "ru"
+    ? {
+        "new-year": "Новый год 🎄",
+        birthday: "День рождения 🎂",
+        funny: "Смешное 😜",
+        scary: "Страшное 👻"
+      }
+    : {
+        "new-year": "New Year 🎄",
+        birthday: "Birthday 🎂",
+        funny: "Funny 😜",
+        scary: "Scary 👻"
+      };
+
+  const options = Object.entries(labels).map(([value, label]) => ({
+    value,
+    label
+  }));
 
   openSheet({
-    title: "Поздравления",
-    description:
-      "Мы аккуратно добавим праздничный антураж к портрету.",
+    title: appState.language === "ru" ? "Поздравления" : "Greetings",
+    description: appState.language === "ru"
+      ? "Мы аккуратно добавим праздничный антураж к портрету."
+      : "We gently add a festive mood to your portrait.",
     options: options.map((opt) => ({
       ...opt,
       selected: appState.selectedGreeting === opt.value,
@@ -576,7 +687,6 @@ function resetEffectsAndGreeting() {
   appState.selectedEffects = [];
   appState.selectedGreeting = null;
 
-  // очистить визуальный оверлей поздравления, если он есть
   if (els.greetingOverlay) {
     els.greetingOverlay.textContent = "";
     els.greetingOverlay.style.display = "none";
@@ -635,7 +745,6 @@ function openAgreementModal() {
 
   if (els.agreeError) els.agreeError.textContent = "";
 
-  // подставим email, если уже есть
   if (els.agreeEmail && appState.userEmail) {
     els.agreeEmail.value = appState.userEmail;
   }
@@ -824,19 +933,34 @@ function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
+  // язык
+  if (appState.language === "ru") {
+    addChip("Язык: Русский");
+  } else {
+    addChip("Language: English");
+  }
+
   if (appState.selectedStyle) {
-    const map = {
+    const mapRu = {
       beauty: "Стиль: Бьюти",
       oil: "Стиль: Масло",
       anime: "Стиль: Аниме",
       poster: "Стиль: Постер",
       classic: "Стиль: Классика"
     };
-    addChip(map[appState.selectedStyle] || "Стиль: выбран");
+    const mapEn = {
+      beauty: "Style: Beauty",
+      oil: "Style: Oil painting",
+      anime: "Style: Anime",
+      poster: "Style: Poster",
+      classic: "Style: Classic"
+    };
+    const map = appState.language === "ru" ? mapRu : mapEn;
+    addChip(map[appState.selectedStyle] || (appState.language === "ru" ? "Стиль: выбран" : "Style: selected"));
   }
 
   appState.selectedEffects.forEach((e) => {
-    const map = {
+    const mapRu = {
       "no-wrinkles": "Эффект: без морщин",
       younger: "Эффект: моложе",
       "smooth-skin": "Эффект: гладкая кожа",
@@ -852,38 +976,76 @@ function refreshSelectionChips() {
       "eyes-bigger": "Мимика: больше глаза",
       "eyes-brighter": "Мимика: ярче глаза"
     };
+    const mapEn = {
+      "no-wrinkles": "Effect: no wrinkles",
+      younger: "Effect: younger",
+      "smooth-skin": "Effect: smooth skin",
+      "glow-golden": "Effect: golden glow",
+      "cinematic-light": "Effect: cinematic light",
+      "smile-soft": "Expression: soft smile",
+      "smile-big": "Expression: big smile",
+      "smile-hollywood": "Expression: Hollywood smile",
+      laugh: "Expression: laugh",
+      "surprised-wow": "Expression: wow surprise",
+      neutral: "Expression: neutral",
+      serious: "Expression: serious",
+      "eyes-bigger": "Expression: bigger eyes",
+      "eyes-brighter": "Expression: brighter eyes"
+    };
+    const map = appState.language === "ru" ? mapRu : mapEn;
     addChip(map[e] || e);
   });
 
   if (appState.selectedGreeting) {
-    const map = {
+    const mapRu = {
       "new-year": "Поздравление: Новый год",
       birthday: "Поздравление: День рождения",
       funny: "Поздравление: смешное",
       scary: "Поздравление: страшное"
     };
-    addChip(map[appState.selectedGreeting] || "Поздравление выбрано");
+    const mapEn = {
+      "new-year": "Greeting: New Year",
+      birthday: "Greeting: Birthday",
+      funny: "Greeting: funny",
+      scary: "Greeting: scary"
+    };
+    const map = appState.language === "ru" ? mapRu : mapEn;
+    addChip(map[appState.selectedGreeting] || (appState.language === "ru" ? "Поздравление выбрано" : "Greeting chosen"));
   }
 
   if (appState.selectedPack) {
-    const map = {
+    const mapRu = {
       pack10: "Пакет: 10 генераций",
       pack20: "Пакет: 20 генераций",
       pack30: "Пакет: 30 генераций"
     };
-    addChip(map[appState.selectedPack] || "Пакет выбран");
+    const mapEn = {
+      pack10: "Pack: 10 generations",
+      pack20: "Pack: 20 generations",
+      pack30: "Pack: 30 generations"
+    };
+    const map = appState.language === "ru" ? mapRu : mapEn;
+    addChip(map[appState.selectedPack] || (appState.language === "ru" ? "Пакет выбран" : "Pack selected"));
   }
 
   if (appState.creditsTotal > 0) {
-    addChip(`Сделано ${appState.creditsUsed} из ${appState.creditsTotal}`);
+    if (appState.language === "ru") {
+      addChip(`Сделано ${appState.creditsUsed} из ${appState.creditsTotal}`);
+    } else {
+      addChip(`Generated ${appState.creditsUsed} of ${appState.creditsTotal}`);
+    }
   }
 
   if (DEMO_MODE) {
-    addChip("Demo: 5 генераций с отправкой на email");
+    if (appState.language === "ru") {
+      addChip("Demo: 5 генераций с отправкой на email");
+    } else {
+      addChip("Demo: 5 generations with email delivery");
+    }
   } else if (appState.hasActivePack) {
-    addChip("Оплачено: генерации доступны");
+    addChip(appState.language === "ru" ? "Оплачено: генерации доступны" : "Paid: generations available");
   } else {
-    addChip("Оплата не выполнена");
+    addChip(appState.language === "ru" ? "Оплата не выполнена" : "Payment not completed");
   }
 }
 
@@ -960,7 +1122,8 @@ async function updateServerSessionAfterGeneration(imageUrl) {
         meta: {
           style: appState.selectedStyle || "beauty",
           effects: appState.selectedEffects,
-          greeting: appState.selectedGreeting || null
+          greeting: appState.selectedGreeting || null,
+          language: appState.language
         }
       })
     });
@@ -977,7 +1140,7 @@ async function handleGenerateClick() {
   if (appState.isGenerating) return;
 
   if (!appState.photoBase64) {
-    alert("Сначала добавьте фото.");
+    alert(appState.language === "ru" ? "Сначала добавьте фото." : "Please upload a photo first.");
     return;
   }
 
@@ -988,7 +1151,10 @@ async function handleGenerateClick() {
     }
   } else {
     if (!appState.hasActivePack) {
-      alert("Сначала оплатите пакет генераций.");
+      alert(appState.language === "ru"
+        ? "Сначала оплатите пакет генераций."
+        : "Please purchase a generation pack first."
+      );
       openPayModal();
       return;
     }
@@ -1007,7 +1173,8 @@ async function handleGenerateClick() {
       text: "",
       photo: appState.photoBase64,
       effects: appState.selectedEffects,
-      greeting: appState.selectedGreeting || null
+      greeting: appState.selectedGreeting || null,
+      language: appState.language // язык для поздравлений/надписей
     };
 
     const resp = await fetch("/api/generate", {
@@ -1027,22 +1194,22 @@ async function handleGenerateClick() {
       throw new Error("Сервер не вернул ссылку на изображение.");
     }
 
-    // показать результат
     showResultPortrait(data.image);
 
-    // записать генерацию на сервер
     await updateServerSessionAfterGeneration(data.image);
 
-    // локальный учёт для демо-режима
     if (DEMO_MODE) {
       registerGeneration(data.image);
     }
 
-    // ВАЖНО: после успешной генерации сбрасываем все эффекты/стиль/поздравление
     resetEffectsAndGreeting();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
-    alert("Не удалось сгенерировать портрет. Попробуйте ещё раз.");
+    alert(
+      appState.language === "ru"
+        ? "Не удалось сгенерировать портрет. Попробуйте ещё раз."
+        : "Failed to generate the portrait. Please try again."
+    );
   } finally {
     showGenerating(false);
     appState.isGenerating = false;
@@ -1124,12 +1291,20 @@ async function finishSessionAndSendEmail() {
   const email = appState.userEmail;
 
   if (!email) {
-    alert("Email не найден. Невозможно отправить портреты.");
+    alert(
+      appState.language === "ru"
+        ? "Email не найден. Невозможно отправить портреты."
+        : "Email not found. Cannot send portraits."
+    );
     return;
   }
 
   if (!appState.generatedImages || appState.generatedImages.length === 0) {
-    alert("Нет сгенерированных портретов для отправки.");
+    alert(
+      appState.language === "ru"
+        ? "Нет сгенерированных портретов для отправки."
+        : "No generated portraits to send."
+    );
     return;
   }
 
@@ -1143,7 +1318,8 @@ async function finishSessionAndSendEmail() {
         email,
         images: appState.generatedImages,
         total: appState.creditsTotal,
-        used: appState.creditsUsed
+        used: appState.creditsUsed,
+        language: appState.language
       })
     });
 
@@ -1157,14 +1333,18 @@ async function finishSessionAndSendEmail() {
     }
 
     alert(
-      `Сессия завершена. Мы отправили ${appState.generatedImages.length} портрет(ов) на ${email}.`
+      appState.language === "ru"
+        ? `Сессия завершена. Мы отправили ${appState.generatedImages.length} портрет(ов) на ${email}.`
+        : `Session finished. We sent ${appState.generatedImages.length} portrait(s) to ${email}.`
     );
 
     resetDemoSession();
   } catch (err) {
     console.error("SEND EMAIL ERROR:", err);
     alert(
-      "Портреты были сгенерированы, но не удалось отправить email. Попробуйте позже или свяжитесь с поддержкой."
+      appState.language === "ru"
+        ? "Портреты были сгенерированы, но не удалось отправить email. Попробуйте позже или свяжитесь с поддержкой."
+        : "Portraits were generated, but email sending failed. Please try again later or contact support."
     );
   }
 }
@@ -1178,7 +1358,6 @@ function resetDemoSession() {
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
     window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
-    // email и согласие оставляем
   } catch (e) {
     console.warn("Cannot clear demo session storage", e);
   }
