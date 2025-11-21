@@ -7,6 +7,7 @@
 // 1) Лицо узнаётся: тот же человек, та же форма лица, глаза, нос, рот.
 // 2) Омоложение/ретушь/улыбка — заметны, но без "другого человека".
 // 3) Стиль, эффекты и поздравление влияют на фон/атмосферу, а не ломают личность.
+// 4) Если фото — скриншот, убрать все надписи, кнопки и элементы интерфейса.
 
 import Replicate from "replicate";
 
@@ -33,6 +34,13 @@ const STYLE_PROMPTS = {
   classic:
     "classic studio portrait, natural colors, soft but clear lighting, timeless photography"
 };
+
+// Подсказка для очистки скриншотов от текста / UI
+const CLEAN_SCREENSHOT_HINT_EN =
+  "remove all text, letters, UI elements, buttons, logos and watermarks from the image, do not show any screenshot frames, crop out interface, clean simple background like a normal studio portrait";
+
+const CLEAN_SCREENSHOT_HINT_RU =
+  "убери все надписи, буквы, элементы интерфейса, кнопки, логотипы и водяные знаки, не показывай рамку скриншота, убери интерфейс, сделай чистый фон как у обычного студийного портрета";
 
 // Поздравительные контексты (фон / атмосфера, не жёсткий текст на картинке)
 function buildGreetingPrompt(greeting, language) {
@@ -145,7 +153,7 @@ function buildEffectsPrompt(effects = [], language) {
   return parts.join(", ");
 }
 
-// Главный промпт: узнаваемость + стиль + эффекты + поздравление
+// Главный промпт: узнаваемость + стиль + эффекты + поздравление + очистка скриншота
 function buildPrompt({ style, effects, greeting, language, extraText }) {
   const lang = language === "en" ? "en" : "ru";
 
@@ -160,7 +168,10 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
   const effectsPart = buildEffectsPrompt(effects, language);
   const greetingPart = buildGreetingPrompt(greeting, language);
 
-  const parts = [baseStyle, identityPart];
+  // Добавляем хинт про очистку скриншотов
+  const cleanHint = `${CLEAN_SCREENSHOT_HINT_EN}, ${CLEAN_SCREENSHOT_HINT_RU}`;
+
+  const parts = [baseStyle, identityPart, cleanHint];
 
   if (effectsPart) parts.push(effectsPart);
   if (greetingPart) parts.push(greetingPart);
@@ -252,7 +263,7 @@ export default async function handler(req, res) {
         prompt_strength: promptStrength,
         go_fast: false,
         guidance: 3.0,
-        num_inference_steps: 28,
+        num_inference_steps: 28
         // можно добавить формат, если нужно строго PNG/JPG:
         // output_format: "png",
         // output_quality: 90
