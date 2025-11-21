@@ -1,9 +1,11 @@
 // assets/js/state.js
-// Всё про состояние приложения, демо-лимит, языки.
+// Состояние приложения, демо-лимит, языки и тексты UI.
 
 export const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
 
-export const DEMO_MODE = false; // боевой режим по умолчанию
+// Сейчас оставим демо включённым, чтобы было удобно тестировать.
+// Когда включим реальные оплаты — поменяем DEMO_MODE на false.
+export const DEMO_MODE = true;
 export const DEMO_SESSION_LIMIT = 5;
 
 export const PACK_SIZES = {
@@ -25,7 +27,7 @@ export const STORAGE_KEYS = {
   SELECTED_PACK: "yourphotoai_selectedPack"
 };
 
-// Тексты UI (как в финальной версии script.js, укорачивать не стал)
+// Основные тексты интерфейса (чтобы не лезть в JS каждый раз)
 export const UI_TEXT = {
   en: {
     subtitle: "Create your unique AI portrait",
@@ -82,7 +84,7 @@ export const UI_TEXT = {
     alertPaymentCreateFailed:
       "Error while creating payment. Please try again.",
     alertStripeMissing:
-      "Stripe.js not found. Please ensure <script src=\"https://js.stripe.com/v3/\"></script> is present in index.html.",
+      'Stripe.js not found. Please ensure <script src="https://js.stripe.com/v3/"></script> is present in index.html.',
     alertEmailMissing: "Please enter your email.",
     alertAgreeMissing: "Please confirm age and consent.",
 
@@ -285,7 +287,8 @@ export const SHEET_TEXT = {
     mimicTitle: "Expression",
     mimicDescription: "Choose the facial expression.",
     greetingTitle: "Greetings",
-    greetingDescription: "We will gently add festive atmosphere to the portrait."
+    greetingDescription:
+      "We will gently add festive atmosphere to the portrait."
   },
   de: {
     styleTitle: "Porträtstil",
