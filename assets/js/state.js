@@ -5,7 +5,7 @@ export const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
 
 // Сейчас оставим демо включённым, чтобы было удобно тестировать.
 // Когда включим реальные оплаты — поменяем DEMO_MODE на false.
-export const DEMO_MODE = true;
+export const DEMO_MODE = false;
 export const DEMO_SESSION_LIMIT = 5;
 
 export const PACK_SIZES = {
