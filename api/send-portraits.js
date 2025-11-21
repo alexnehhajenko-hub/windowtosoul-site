@@ -4,7 +4,7 @@
 // { email, images: string[], total, used, language }
 //
 // Отправляет письмо через Resend с ссылками/картинками портретов.
-// from:   RESEND_FROM_EMAIL или fallback "YourPhotoAI <no-reply@yourphotoai.vip>"
+// from:   RESEND_FROM_EMAIL или fallback "YourPhotoAI <hello@yourphotoai.vip>"
 // reply_to: yourphotoaivip@gmail.com (почта поддержки)
 
 import { Resend } from "resend";
@@ -15,7 +15,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
 
 // Резервный from, если переменная окружения не задана
-const FALLBACK_FROM = "YourPhotoAI <no-reply@yourphotoai.vip>";
+// ВАЖНО: домен в этом адресе должен быть тем, который ты
+// подтвердил в Resend (yourphotoai.vip).
+const FALLBACK_FROM = "YourPhotoAI <hello@yourphotoai.vip>";
 
 export default async function handler(req, res) {
   // CORS
@@ -60,6 +62,7 @@ export default async function handler(req, res) {
     const totalCount = Number.isFinite(total) ? total : images.length;
     const usedCount = Number.isFinite(used) ? used : images.length;
 
+    // FROM: либо из переменной, либо fallback
     const fromAddress = process.env.RESEND_FROM_EMAIL || FALLBACK_FROM;
 
     const subject =
