@@ -1,99 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <title>YourPhotoAI – AI Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- App styles -->
+  <!-- Стили приложения -->
   <link rel="stylesheet" href="/assets/style.css">
 
-  <!-- Stripe.js for payments -->
+  <!-- Stripe.js для оплаты -->
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <div class="app">
-    <!-- Header -->
+    <!-- Шапка -->
     <header class="app-header">
       <div class="app-title">YOURPHOTOAI</div>
-      <div class="app-subtitle">Create your unique AI portrait</div>
-
-      <!-- Language switcher -->
-      <div class="lang-switch">
-        <button id="langEn" class="lang-btn lang-selected">EN</button>
-        <button id="langDe" class="lang-btn">DE</button>
-        <button id="langEs" class="lang-btn">ES</button>
-        <button id="langRu" class="lang-btn">RU</button>
-      </div>
+      <div class="app-subtitle">Создайте свой уникальный AI-портрет</div>
     </header>
 
-    <!-- Portrait preview -->
+    <!-- Превью портрета -->
     <section class="preview-box">
-      <div class="preview-label">PREVIEW</div>
+      <div class="preview-label">ПРЕДПРОСМОТР</div>
 
       <img id="previewImage" class="preview-image" alt="Preview">
 
       <div class="preview-placeholder" id="previewPlaceholder">
-        Add a photo and choose effects.<br>
-        After generation your portrait will appear here.
+        Добавьте фото и выберите эффекты.<br>
+        После генерации сюда попадёт ваш портрет.
       </div>
 
-      <!-- Optional greeting text overlay -->
+      <!-- Поверх изображения можно выводить текст поздравления -->
       <div class="greeting-overlay" id="greetingOverlay"></div>
 
-      <!-- Generation status overlay -->
+      <!-- Оверлей статуса генерации -->
       <div class="generate-status" id="generateStatus">
         <div class="spinner"></div>
-        <div class="generate-status-text">Generating portrait…</div>
+        <div class="generate-status-text">Генерация портрета…</div>
       </div>
     </section>
 
-    <!-- Bottom block: effects + buttons -->
+    <!-- Нижний блок: выбор эффектов + кнопки -->
     <div class="controls" id="controls">
-      <!-- Chips with selected settings -->
+      <!-- Чипы с выбранными настройками -->
       <div class="selection-row" id="selectionRow"></div>
 
-      <!-- Main buttons -->
+      <!-- Главные кнопки -->
       <section class="button-list">
         <button class="btn-main" id="btnStyle">
           <span class="btn-icon">🎨</span>
-          <span>PORTRAIT STYLE</span>
+          <span>СТИЛЬ ПОРТРЕТА</span>
         </button>
 
         <button class="btn-main" id="btnSkin">
           <span class="btn-icon">✨</span>
-          <span>SKIN EFFECT</span>
+          <span>ЭФФЕКТ КОЖИ</span>
         </button>
 
         <button class="btn-main" id="btnMimic">
           <span class="btn-icon">🙂</span>
-          <span>EXPRESSION</span>
+          <span>МИМИКА</span>
         </button>
 
         <button class="btn-main" id="btnGreetings">
           <span class="btn-icon">💌</span>
-          <span>GREETINGS</span>
+          <span>ПОЗДРАВЛЕНИЯ</span>
         </button>
 
         <button class="btn-main btn-secondary" id="btnGenerate">
           <span class="btn-icon">⚡️</span>
-          <span>GENERATE</span>
+          <span>ГЕНЕРИРОВАТЬ</span>
         </button>
 
         <div class="btn-row-split">
           <button class="btn-half" id="btnAddPhoto">
             <span class="btn-icon">📷</span>
-            <span>ADD PHOTO</span>
+            <span>ДОБАВИТЬ ФОТО</span>
           </button>
           <button class="btn-half btn-pay" id="btnPay">
             <span class="btn-icon">💳</span>
-            <span>PACKAGES</span>
+            <span>ПАКЕТЫ</span>
           </button>
         </div>
       </section>
     </div>
 
-    <!-- Download button (visible after generation) -->
+    <!-- Кнопка скачивания (появляется после генерации) -->
     <div class="download-row">
       <a
         id="downloadLink"
@@ -102,63 +94,59 @@
         download="yourphotoai-portrait.png"
         style="display: none;"
       >
-        Download portrait
+        Скачать портрет
       </a>
     </div>
 
-    <!-- Footer -->
+    <!-- Подвал -->
     <footer class="footer">
-      <div>© YourPhotoAI</div>
-      <div class="support-block">
-        Support:
-        <a id="supportEmail"></a>
-      </div>
+      © YourPhotoAI
     </footer>
   </div>
 
-  <!-- Hidden file input -->
+  <!-- Скрытый input для загрузки фото -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Bottom SHEET for style / skin / expression / greetings -->
+  <!-- ВЫЕЗЖАЮЩИЙ ЭКРАН / SHEET ДЛЯ ВЫБОРА СТИЛЕЙ, КОЖИ, МИМИКИ, ПОЗДРАВЛЕНИЙ -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
-        <div class="sheet-title" id="sheetTitle">Choose</div>
+        <div class="sheet-title" id="sheetTitle">Выбор</div>
         <button class="sheet-close" id="sheetCloseBtn">✕</button>
       </div>
       <div class="sheet-description" id="sheetDescription"></div>
 
       <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">
-        Categories
+        Категории
       </div>
       <div class="chip-row" id="sheetCategoryRow" style="display:none;"></div>
 
-      <div class="sheet-section-title" id="sheetOptionsTitle">Options</div>
+      <div class="sheet-section-title" id="sheetOptionsTitle">Варианты</div>
       <div class="chip-row" id="sheetOptionsRow"></div>
     </div>
   </div>
 
-  <!-- MODAL #1: package selection (10 / 20 / 30) -->
+  <!-- МОДАЛКА №1: ВЫБОР ПАКЕТА (10 / 20 / 30) -->
   <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
-        <div class="pay-title">Choose a package</div>
+        <div class="pay-title">Выберите пакет</div>
         <button class="pay-close" id="payCloseBtn">✕</button>
       </div>
 
-      <div class="pay-section-title">Generation packages</div>
+      <div class="pay-section-title">Пакеты генераций</div>
 
       <div class="pay-packages">
         <button class="pay-package" data-package="pack10" id="pkg10">
-          <div class="pay-package-title">10 generations</div>
+          <div class="pay-package-title">10 генераций</div>
           <div class="pay-package-price">€4.99</div>
         </button>
         <button class="pay-package" data-package="pack20" id="pkg20">
-          <div class="pay-package-title">20 generations</div>
+          <div class="pay-package-title">20 генераций</div>
           <div class="pay-package-price">€8.99</div>
         </button>
         <button class="pay-package" data-package="pack30" id="pkg30">
-          <div class="pay-package-title">30 generations</div>
+          <div class="pay-package-title">30 генераций</div>
           <div class="pay-package-price">€11.99</div>
         </button>
       </div>
@@ -166,26 +154,26 @@
       <div class="pay-error" id="payError"></div>
 
       <button class="pay-submit" id="payNextBtn">
-        Continue
+        Далее
       </button>
     </div>
   </div>
 
-  <!-- MODAL #2: consent + email before payment/demo -->
+  <!-- МОДАЛКА №2: СОГЛАСИЕ + EMAIL ПЕРЕД ОПЛАТОЙ -->
   <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
-        <div class="agreement-title">Confirmation</div>
+        <div class="agreement-title">Подтверждение</div>
         <button class="agreement-close" id="agreementCloseBtn">✕</button>
       </div>
 
       <div class="agreement-text">
-        Before payment, please confirm your age and consent.<br><br>
-        <strong>Important:</strong> YourPhotoAI creates AI portraits based on your photo.
-        After the session ends, the final images will be sent to the email you specify.
+        Перед оплатой подтвердите возраст и согласие с условиями.<br><br>
+        <strong>Важно:</strong> сервис YourPhotoAI создаёт AI-портреты по вашему фото.
+        После завершения сессии готовые изображения будут отправлены на указанный email.
       </div>
 
-      <div class="agreement-section-title">Your email</div>
+      <div class="agreement-section-title">Ваш email</div>
       <input
         type="email"
         id="agreeEmail"
@@ -197,7 +185,7 @@
       <label class="agreement-checkbox-row">
         <input type="checkbox" id="agreeCheckbox">
         <span>
-          I am 16+ and I agree with
+          Мне 16+ и я согласен с
           <a href="#">Terms</a>,
           <a href="#">Privacy</a>,
           <a href="#">Refunds</a>.
@@ -207,16 +195,16 @@
       <div class="agreement-error" id="agreeError"></div>
 
       <button class="agreement-submit" id="agreePayBtn">
-        Continue
+        Перейти к оплате
       </button>
 
       <div class="agreement-hint">
-        Payments are processed via Stripe. We do not see or store your card data.
+        Оплата обрабатывается через Stripe. Мы не видим и не храним данные вашей карты.
       </div>
     </div>
   </div>
 
-  <!-- Main JS -->
+  <!-- Основной JS: ВАЖНО, теперь main.js -->
   <script type="module" src="/assets/main.js"></script>
 </body>
 </html>
