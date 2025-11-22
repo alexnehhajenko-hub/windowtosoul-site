@@ -1,253 +1,171 @@
 // api/generate.js
 //
-// YourPhotoAI — генерация портрета через Replicate (стабильная версия)
-// Работает с моделями FLUX / похожими image-to-image.
-//
-// Тело запроса с фронта:
-// { style, text, photo, effects, greeting, language }
-//
-// Возвращает: { image: "https://..." }
+// Режим: АККУРАТНОЕ РЕДАКТИРОВАНИЕ ПОРТРЕТА
+// - всегда тот же человек (тот же пол, форма лица);
+// - меняем свет, кожу, мимику, атмосферу;
+// - НИКАКИХ надписей, рамок, интерфейсов, логотипов.
 
 import Replicate from "replicate";
 
+// Инициализация клиента Replicate
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY,
+  auth: process.env.REPLICATE_API_TOKEN
 });
 
-// Модель можно переопределить через переменную окружения REPLICATE_MODEL_ID.
-// Если её нет — используем flux-dev (как «старую» базовую).
+// Можно вынести в переменную окружения REPLICATE_MODEL_ID,
+// но по умолчанию используем flux-dev (поддерживает редактирование по фото)
 const MODEL_ID =
   process.env.REPLICATE_MODEL_ID || "black-forest-labs/flux-dev";
 
-// --- Конструкторы промптов ---
-
+// ---- Базовые стили ----
 const STYLE_PROMPTS = {
-  beauty:
-    "high-end beauty portrait, realistic photography, soft studio light, shallow depth of field, natural skin texture",
   oil:
-    "oil painting portrait, visible brush strokes, rich painterly texture, vibrant but natural colors",
+    "edit this exact portrait photo, high-end oil painting look, still same person, realistic proportions, no text, no frame, no logos",
   anime:
-    "anime portrait, clean line art, soft shading, expressive eyes, high quality illustration",
+    "edit this exact portrait photo into soft anime style, still same person, same gender and haircut, clean background, no text, no UI elements",
   poster:
-    "cinematic movie poster portrait, dramatic lighting, sharp details, high contrast",
+    "edit this exact portrait photo into cinematic poster style, dramatic but natural lighting, still same person, no title text, no credits, no interface",
   classic:
-    "classic studio portrait, neutral background, soft but clear lighting, timeless photography",
+    "edit this exact portrait photo in old masters painting style, realistic face, same person, warm tones, no text, no border",
+  // запасной вариант
+  default:
+    "edit this exact portrait photo, realistic photo editing, same person, same gender, same face structure, clean background, no text, no frame"
 };
 
-function buildGreetingPrompt(greeting, lang) {
-  if (!greeting) return "";
+// ---- Эффекты кожи и мимики ----
+const EFFECT_PROMPTS = {
+  // кожа
+  "no-wrinkles":
+    "subtle beauty retouch, less visible wrinkles, but keep natural age and identity",
+  younger:
+    "slightly younger look (5-10 years max), healthier skin, but clearly same person",
+  "smooth-skin":
+    "smoother skin and even skin tone, keep all main facial features unchanged",
 
-  const l = lang === "ru" ? "ru" : "en";
+  // мимика
+  "smile-soft": "subtle soft smile, relaxed and friendly expression",
+  "smile-big": "big natural smile, teeth visible, joyful expression",
+  "smile-hollywood":
+    "confident hollywood smile, white teeth, still natural and same person",
+  laugh: "laughing with a bright smile, eyes a bit squinted, joyful",
+  neutral: "neutral calm expression, relaxed face, no strong emotion",
+  serious: "serious focused expression, no smile",
+  "eyes-bigger": "slightly more open eyes, more attentive gaze",
+  "eyes-brighter": "brighter, more vivid eyes, a bit more contrast"
+};
 
-  const map = {
-    "new-year": {
-      ru: "новогодняя атмосфера, огоньки, ёлка, мягкий праздничный фон",
-      en: "New Year atmosphere, warm lights, Christmas tree, soft festive background",
-    },
-    birthday: {
-      ru: "атмосфера дня рождения, шарики или конфетти, праздничные цвета",
-      en: "birthday mood, balloons or confetti, festive colors",
-    },
-    funny: {
-      ru: "весёлое настроение, чуть более яркие и игривые цвета",
-      en: "funny playful mood, slightly brighter and vivid colors",
-    },
-    scary: {
-      ru: "слегка мрачная мистическая атмосфера, кинематографичный хоррор-свет",
-      en: "slightly dark mystical atmosphere, cinematic horror lighting",
-    },
-  };
+// ---- Поздравления (только атмосфера, БЕЗ текста на самой картинке) ----
+const GREETING_PROMPTS = {
+  "new-year":
+    "New Year atmosphere, warm glowing lights, soft bokeh background, maybe snow, but no written text on the image",
+  birthday:
+    "birthday atmosphere, balloons or confetti in the background, festive light, but no written congratulation text on the image",
+  funny:
+    "playful fun atmosphere, brighter colors and background, but no captions, no memes text",
+  scary:
+    "slightly dark dramatic atmosphere, horror-movie lighting, maybe foggy background, but no written text, no titles"
+};
 
-  const obj = map[greeting];
-  return obj ? obj[l] : "";
+// --- Вспомогательные функции построения промпта ---
+
+function buildEffectsPrompt(effects) {
+  if (!Array.isArray(effects) || effects.length === 0) return "";
+  return effects
+    .map((key) => EFFECT_PROMPTS[key])
+    .filter(Boolean)
+    .join(", ");
 }
 
-function buildEffectsPrompt(effects = [], lang) {
-  const l = lang === "ru" ? "ru" : "en";
-  const parts = [];
-
-  const hasYounger =
-    effects.includes("younger") || effects.includes("no-wrinkles");
-  const hasSmooth =
-    effects.includes("smooth-skin") || effects.includes("glow-golden");
-  const hasCinematic = effects.includes("cinematic-light");
-
-  const smileKeys = [
-    "smile-soft",
-    "smile-big",
-    "smile-hollywood",
-    "laugh",
-    "surprised-wow",
-  ];
-  const hasSmile = effects.some((e) => smileKeys.includes(e));
-  const neutral = effects.includes("neutral");
-  const serious = effects.includes("serious");
-
-  if (hasYounger) {
-    parts.push(
-      l === "en"
-        ? "the person looks 5–15 years younger but still clearly the same person"
-        : "человек выглядит на 5–15 лет моложе, но это очевидно тот же человек"
-    );
-  }
-
-  if (hasSmooth) {
-    parts.push(
-      l === "en"
-        ? "smoother healthier skin, reduced wrinkles, fresher and more rested look"
-        : "более гладкая и здоровая кожа, меньше морщин, более свежий и отдохнувший вид"
-    );
-  }
-
-  if (hasCinematic) {
-    parts.push(
-      l === "en"
-        ? "cinematic soft lighting on the face"
-        : "кинематографичный мягкий свет на лице"
-    );
-  }
-
-  if (hasSmile) {
-    parts.push(
-      l === "en"
-        ? "natural friendly smile"
-        : "естественная дружелюбная улыбка"
-    );
-  } else if (neutral) {
-    parts.push(
-      l === "en" ? "neutral calm expression" : "нейтральное спокойное выражение"
-    );
-  } else if (serious) {
-    parts.push(
-      l === "en"
-        ? "serious confident expression"
-        : "серьёзное уверенное выражение лица"
-    );
-  }
-
-  return parts.join(", ");
+function buildGreetingPrompt(greeting) {
+  if (!greeting || !GREETING_PROMPTS[greeting]) return "";
+  return GREETING_PROMPTS[greeting];
 }
 
-function buildPrompt({ style, effects, greeting, language, extraText }) {
-  const lang = language === "ru" ? "ru" : "en";
+function buildFullPrompt({ style, text, effects, greeting }) {
+  const stylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS.default;
+  const userText = (text || "").trim();
 
-  const baseStyle =
-    STYLE_PROMPTS[style || "beauty"] || STYLE_PROMPTS.beauty;
+  const parts = [
+    stylePrompt,
+    // текст пользователя трактуем как пожелания к атмосфере / деталям
+    userText ? `details: ${userText}` : "",
+    buildEffectsPrompt(effects),
+    buildGreetingPrompt(greeting),
+    // жёсткие ограничения в конце
+    "no additional people, no changing gender, keep same identity and clothes as input photo, no text, no subtitles, no watermarks, no UI, no frames"
+  ].filter(Boolean);
 
-  const identityPart =
-    lang === "en"
-      ? "portrait of the same person from the input photo, same face shape, same eyes, nose and mouth, clearly recognizable"
-      : "портрет того же человека с исходного фото, та же форма лица, те же глаза, нос и рот, легко узнаваем";
-
-  const effectsPart = buildEffectsPrompt(effects, lang);
-  const greetingPart = buildGreetingPrompt(greeting, lang);
-
-  const parts = [baseStyle, identityPart];
-
-  if (effectsPart) parts.push(effectsPart);
-  if (greetingPart) parts.push(greetingPart);
-  if (extraText) parts.push(extraText);
-
-  // Чтобы не было кривых надписей/логотипов:
-  parts.push(
-    "no text, no logos, no watermarks, no UI, no instagram layout, plain clean image"
-  );
-
-  return parts.join(", ");
-}
-
-function computeStrength({ effects = [], style, greeting }) {
-  const hasYounger =
-    effects.includes("younger") || effects.includes("no-wrinkles");
-
-  if (hasYounger) return 0.55;
-
-  if (style === "oil" || style === "anime" || style === "poster") return 0.45;
-
-  if (greeting === "scary") return 0.45;
-
-  return 0.38;
+  return parts.join(". ");
 }
 
 // --- HTTP-обработчик ---
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    process.env.ALLOWED_ORIGINS || "*"
-  );
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.status(200).end();
-    return;
-  }
-
   if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    const {
-      style,
-      text,
-      photo,
-      effects,
-      greeting,
-      language,
-    } = req.body || {};
-
-    if (!photo) {
-      return res.status(400).json({ error: "photo is required" });
+    // Разбираем тело запроса
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
     }
 
-    const safeEffects = Array.isArray(effects) ? effects : [];
-    const prompt = buildPrompt({
-      style,
-      effects: safeEffects,
-      greeting,
-      language,
-      extraText: text,
-    });
+    const { style, text, photo, effects, greeting } = body || {};
 
-    const strength = computeStrength({
-      effects: safeEffects,
-      style,
-      greeting,
-    });
+    if (!photo) {
+      return res.status(400).json({
+        error: "Photo is required for portrait editing"
+      });
+    }
 
-    const output = await replicate.run(MODEL_ID, {
-      input: {
-        prompt,
-        image: photo,
-        strength,
-        guidance_scale: 3.5,
-        num_inference_steps: 28,
-      },
-    });
+    const prompt = buildFullPrompt({ style, text, effects, greeting });
 
+    // ВАЖНО: для flux-dev используем параметр image, чтобы модель
+    // реально редактировала загруженный портрет, а не придумывала нового человека
+    const input = {
+      prompt,
+      image: photo,
+      output_format: "jpg"
+    };
+
+    const output = await replicate.run(MODEL_ID, { input });
+
+    // Достаём URL картинки из возможных форматов ответа
     let imageUrl = null;
+
     if (Array.isArray(output)) {
-      imageUrl = output[output.length - 1];
+      imageUrl = output[0];
+    } else if (output?.output) {
+      if (Array.isArray(output.output)) imageUrl = output.output[0];
+      else if (typeof output.output === "string") imageUrl = output.output;
     } else if (typeof output === "string") {
       imageUrl = output;
-    } else if (output && output.image) {
+    } else if (output?.image) {
       imageUrl = output.image;
     }
 
     if (!imageUrl) {
-      throw new Error("No image URL returned from model");
+      return res.status(500).json({
+        error: "No image URL returned from Replicate"
+      });
     }
 
-    res.status(200).json({ image: imageUrl });
+    // На фронт отправляем только URL
+    return res.status(200).json({
+      ok: true,
+      image: imageUrl
+    });
   } catch (err) {
-    console.error("Error in /api/generate:", err);
-    res.status(500).json({
+    console.error("GENERATION ERROR:", err);
+    return res.status(500).json({
       error: "Generation failed",
-      details: err?.message || String(err),
+      details: err?.message || String(err)
     });
   }
 }
