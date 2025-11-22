@@ -6,8 +6,8 @@
 // Цели:
 // 1) Лицо узнаётся: тот же человек, та же форма лица, глаза, нос, рот.
 // 2) Омоложение/ретушь/улыбка — заметны, но без "другого человека".
-// 3) Стиль, эффекты и поздравление влияют на фон/атмосферу, а не ломают личность.
-// 4) Если фото — скриншот, убрать все надписи, кнопки и элементы интерфейса.
+// 3) Стиль, эффекты и поздравление влияют на фон/атмосферу,
+//    а поздравление старается добавить ЧИТАЕМУЮ английскую надпись.
 
 import Replicate from "replicate";
 
@@ -15,9 +15,7 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
 });
 
-// Модель Replicate:
-//  - можно задать REPLICATE_MODEL_ID в env,
-//  - иначе по умолчанию используем FLUX.1 [dev].
+// Модель Replicate
 const MODEL_ID =
   process.env.REPLICATE_MODEL_ID ||
   "black-forest-labs/flux-dev"; // при необходимости замени на свою модель
@@ -26,7 +24,8 @@ const MODEL_ID =
 const STYLE_PROMPTS = {
   beauty:
     "high-end beauty photography, soft studio light, shallow depth of field, realistic skin texture",
-  oil: "oil painting portrait, detailed brush strokes, rich colors, artstation, trending",
+  // Делаем картину маслом заметнее и менее фотографичной
+  oil: "strong oil painting portrait, very visible brush strokes, rich painterly texture, stylized colors, not photo, looks like a real painting hanging in a gallery",
   anime:
     "anime portrait, clean line art, soft shading, detailed expressive eyes, high quality illustration",
   poster:
@@ -35,14 +34,7 @@ const STYLE_PROMPTS = {
     "classic studio portrait, natural colors, soft but clear lighting, timeless photography"
 };
 
-// Подсказка для очистки скриншотов от текста / UI
-const CLEAN_SCREENSHOT_HINT_EN =
-  "remove all text, letters, UI elements, buttons, logos and watermarks from the image, do not show any screenshot frames, crop out interface, clean simple background like a normal studio portrait";
-
-const CLEAN_SCREENSHOT_HINT_RU =
-  "убери все надписи, буквы, элементы интерфейса, кнопки, логотипы и водяные знаки, не показывай рамку скриншота, убери интерфейс, сделай чистый фон как у обычного студийного портрета";
-
-// Поздравительные контексты (фон / атмосфера, не жёсткий текст на картинке)
+// Поздравительные контексты + ЯВНАЯ надпись на картинке
 function buildGreetingPrompt(greeting, language) {
   if (!greeting) return "";
 
@@ -50,20 +42,20 @@ function buildGreetingPrompt(greeting, language) {
 
   const map = {
     "new-year": {
-      ru: "новогодняя атмосфера, огоньки, ёлка, лёгкие праздничные акценты на фоне",
-      en: "New Year atmosphere, warm lights, Christmas tree, gentle festive accents in the background"
+      ru: "новогодняя атмосфера, огоньки, ёлка, праздничный фон, и ЧЁТКАЯ английская надпись на изображении: “Happy New Year!”",
+      en: "New Year atmosphere, warm lights, Christmas tree, festive background, and a CLEAR readable English greeting text on the image: “Happy New Year!”"
     },
     birthday: {
-      ru: "атмосфера дня рождения, мягкие праздничные элементы на фоне, конфетти или шарики",
-      en: "birthday mood, soft festive elements in the background, confetti or balloons"
+      ru: "атмосфера дня рождения, мягкие праздничные элементы на фоне, шарики или конфетти, и ЧЁТКАЯ английская надпись на изображении: “Happy Birthday!”",
+      en: "birthday mood, soft festive elements in the background, balloons or confetti, and a CLEAR readable English greeting text on the image: “Happy Birthday!”"
     },
     funny: {
-      ru: "лёгкое весёлое настроение, немного юмора в деталях, но без карикатуры",
-      en: "light funny mood, a bit of humor in details, but not caricature"
+      ru: "весёлое настроение, немного юмора в деталях, и английская надпись на изображении в стиле открытки: “You are AI-level awesome!”",
+      en: "funny playful mood, a bit of humor in details, and a clear English greeting text on the image like a card: “You are AI-level awesome!”"
     },
     scary: {
-      ru: "слегка мрачная мистическая атмосфера, загадочный фон, но лицо остаётся красивым и узнаваемым",
-      en: "slightly dark, mystical atmosphere, mysterious background, but the face stays beautiful and recognizable"
+      ru: "слегка мрачная мистическая атмосфера, загадочный фон, но лицо остаётся красивым и узнаваемым, и английская надпись на изображении в стиле хоррор-открытки: “Happy Haunting!”",
+      en: "slightly dark, mystical atmosphere, mysterious background, but the face stays beautiful and recognizable, and an English greeting text on the image in a horror card style: “Happy Haunting!”"
     }
   };
 
@@ -153,7 +145,7 @@ function buildEffectsPrompt(effects = [], language) {
   return parts.join(", ");
 }
 
-// Главный промпт: узнаваемость + стиль + эффекты + поздравление + очистка скриншота
+// Главный промпт: узнаваемость + стиль + эффекты + поздравление
 function buildPrompt({ style, effects, greeting, language, extraText }) {
   const lang = language === "en" ? "en" : "ru";
 
@@ -168,10 +160,7 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
   const effectsPart = buildEffectsPrompt(effects, language);
   const greetingPart = buildGreetingPrompt(greeting, language);
 
-  // Добавляем хинт про очистку скриншотов
-  const cleanHint = `${CLEAN_SCREENSHOT_HINT_EN}, ${CLEAN_SCREENSHOT_HINT_RU}`;
-
-  const parts = [baseStyle, identityPart, cleanHint];
+  const parts = [baseStyle, identityPart];
 
   if (effectsPart) parts.push(effectsPart);
   if (greetingPart) parts.push(greetingPart);
@@ -180,24 +169,28 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
   return parts.join(", ");
 }
 
-// Сила влияния промпта (prompt_strength) для режима image-to-image.
-// Чем МЕНЬШЕ, тем ближе к исходному фото.
-function computePromptStrength({ effects = [], style, greeting }) {
+// Сила изменения изображения (strength)
+function computeStrength({ effects = [], style, greeting }) {
   const hasYounger =
     effects.includes("younger") || effects.includes("no-wrinkles");
 
   if (hasYounger) {
-    // Омоложение: заметно, но лицо остаётся очень похожим.
-    return 0.45;
+    // Омоложение должно быть видно, но лицо всё равно узнаваемо
+    return 0.58;
   }
 
-  // Страшные / постерные / аниме стили — чуть сильнее стилизация
+  // Для картины маслом делаем эффект сильнее, чем по умолчанию
+  if (style === "oil") {
+    return 0.52;
+  }
+
+  // Страшные / постерные стили — немного сильнее стилизация
   if (greeting === "scary" || style === "poster" || style === "anime") {
-    return 0.38;
+    return 0.42;
   }
 
-  // По умолчанию — мягкие изменения, максимально похожее лицо
-  return 0.32;
+  // По умолчанию — мягкие изменения
+  return 0.36;
 }
 
 export default async function handler(req, res) {
@@ -243,30 +236,19 @@ export default async function handler(req, res) {
       extraText: text
     });
 
-    const promptStrength = computePromptStrength({
+    const strength = computeStrength({
       effects: safeEffects,
       style,
       greeting
     });
 
-    console.log("GENERATE PROMPT:", prompt);
-    console.log("PROMPT STRENGTH:", promptStrength);
-
-    // Для FLUX.1 [dev]:
-    // - image: исходное фото
-    // - prompt: текст
-    // - prompt_strength: насколько сильно мы отклоняемся от исходного кадра
     const output = await replicate.run(MODEL_ID, {
       input: {
         prompt,
         image: photo,
-        prompt_strength: promptStrength,
-        go_fast: false,
-        guidance: 3.0,
+        strength,
+        guidance_scale: 3.5,
         num_inference_steps: 28
-        // можно добавить формат, если нужно строго PNG/JPG:
-        // output_format: "png",
-        // output_quality: 90
       }
     });
 
