@@ -178,6 +178,7 @@ export function exitResultView(pushHistory = true) {
 }
 
 function registerGeneration(imageUrl) {
+  // Если в демо ещё не был выставлен лимит — выставляем
   if (appState.creditsTotal <= 0) {
     appState.creditsTotal = DEMO_MODE ? DEMO_SESSION_LIMIT : appState.creditsTotal;
   }
@@ -207,7 +208,18 @@ function registerGeneration(imageUrl) {
 
   refreshSelectionChips();
 
-  if (DEMO_MODE && appState.creditsUsed >= appState.creditsTotal) {
+  // ВАЖНО: теперь отправляем email и для DEMO, и для платных пакетов,
+  // как только использованы все доступные генерации.
+  if (
+    appState.creditsTotal > 0 &&
+    appState.creditsUsed >= appState.creditsTotal
+  ) {
+    console.log("[GENERATION] Session finished, sending portraits to email", {
+      email: appState.userEmail,
+      total: appState.creditsTotal,
+      used: appState.creditsUsed,
+      imagesCount: appState.generatedImages.length
+    });
     finishSessionAndSendEmail();
   }
 }
