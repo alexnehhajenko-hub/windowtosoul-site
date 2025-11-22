@@ -1,154 +1,117 @@
 // api/send-portraits.js
 //
-// Принимает POST JSON:
-// { email, images: string[], total, used, language }
-//
-// Отправляет письмо через Resend с ссылками/картинками портретов.
-// from:   RESEND_FROM_EMAIL или fallback "YourPhotoAI <hello@yourphotoai.vip>"
-// reply_to: yourphotoaivip@gmail.com (почта поддержки)
+// Отправка сгенерированных портретов пользователю через Resend.
+// Дополнительно: BCC на e-mail владельца, чтобы контролировать доставку.
 
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Почта поддержки (для reply-to)
-const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
-
-// Резервный from, если переменная окружения не задана
-// ВАЖНО: домен в этом адресе должен быть тем, который ты
-// подтвердил в Resend (yourphotoai.vip).
-const FALLBACK_FROM = "YourPhotoAI <hello@yourphotoai.vip>";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "hello@yourphotoai.vip";
+// сюда можно поставить твой Gmail или другой адрес для копий
+const OWNER_EMAIL =
+  process.env.OWNER_EMAIL || "yourphotoaivip@gmail.com";
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    process.env.ALLOWED_ORIGINS || "*"
-  );
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.status(200).end();
-    return;
-  }
-
+  // Разрешаем только POST
   if (req.method !== "POST") {
-    res.status(405).json({ ok: false, error: "Method not allowed" });
-    return;
-  }
-
-  if (!process.env.RESEND_API_KEY) {
-    res
-      .status(500)
-      .json({ ok: false, error: "RESEND_API_KEY is not configured" });
-    return;
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { email, images, total, used, language } = req.body || {};
-    const lang = language === "en" ? "en" : "ru";
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        body = {};
+      }
+    }
+
+    const { email, images, total, used } = body || {};
 
     if (!email) {
-      return res.status(400).json({ ok: false, error: "email is required" });
+      return res
+        .status(400)
+        .json({ error: "Email is required for sending portraits." });
     }
 
     if (!Array.isArray(images) || images.length === 0) {
       return res
         .status(400)
-        .json({ ok: false, error: "images array is required" });
+        .json({ error: "No images provided to send." });
     }
 
-    const totalCount = Number.isFinite(total) ? total : images.length;
-    const usedCount = Number.isFinite(used) ? used : images.length;
+    if (!FROM_EMAIL) {
+      return res
+        .status(500)
+        .json({ error: "RESEND_FROM_EMAIL is not configured." });
+    }
 
-    // FROM: либо из переменной, либо fallback
-    const fromAddress = process.env.RESEND_FROM_EMAIL || FALLBACK_FROM;
+    // Собираем HTML с мини-галереей картинок
+    const safeTotal = Number.isFinite(total) ? total : images.length;
+    const safeUsed = Number.isFinite(used) ? used : images.length;
 
-    const subject =
-      lang === "en"
-        ? "Your AI portraits from YourPhotoAI"
-        : "Ваши AI-портреты от YourPhotoAI";
-
-    const headerText =
-      lang === "en"
-        ? "Thank you for using YourPhotoAI!"
-        : "Спасибо, что воспользовались YourPhotoAI!";
-
-    const introText =
-      lang === "en"
-        ? `We have generated ${images.length} portrait(s) for you.`
-        : `Мы подготовили для вас ${images.length} портрет(ов).`;
-
-    const sessionInfo =
-      lang === "en"
-        ? `Session: ${usedCount} of ${totalCount} generations used.`
-        : `Сессия: использовано ${usedCount} из ${totalCount} генераций.`;
-
-    const supportLine =
-      lang === "en"
-        ? `If something is wrong or you have questions, just reply to this email or write to ${SUPPORT_EMAIL}.`
-        : `Если что-то пошло не так или есть вопросы — просто ответьте на это письмо или напишите на ${SUPPORT_EMAIL}.`;
-
-    const imagesHtml = images
+    const imageBlocks = images
       .map(
-        (url, index) => `
-          <div style="margin: 16px 0; text-align:center;">
-            <div style="font-size:13px;color:#666;margin-bottom:4px;">
-              ${lang === "en" ? "Portrait" : "Портрет"} #${index + 1}
-            </div>
-            <a href="${url}" target="_blank" rel="noreferrer"
-               style="text-decoration:none;color:#3366ff;">
-              <img src="${url}"
-                   alt="AI portrait #${index + 1}"
-                   style="max-width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);margin-bottom:8px;" />
-              <div>${lang === "en" ? "Open full size" : "Открыть в полном размере"}</div>
-            </a>
-          </div>
-        `
+        (url) =>
+          `<div style="margin-bottom:16px;"><img src="${url}" style="max-width:100%;border-radius:12px;" alt="AI portrait"></div>`
       )
-      .join("\n");
+      .join("");
 
     const html = `
-      <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;padding:24px 16px;background:#0b0c10;color:#f5f5f5;">
-        <h1 style="font-size:22px;margin:0 0 12px;">${headerText}</h1>
-        <p style="margin:0 0 4px;">${introText}</p>
-        <p style="margin:0 0 16px;font-size:13px;color:#aaaaaa;">${sessionInfo}</p>
-        ${imagesHtml}
-        <hr style="border:none;border-top:1px solid #333;margin:24px 0;" />
-        <p style="font-size:12px;color:#aaaaaa;line-height:1.5;">
-          ${supportLine}
+      <div style="font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:#111;">
+        <h1 style="font-size:20px; margin-bottom:12px;">Your AI portraits are ready 🎨</h1>
+
+        <p style="font-size:14px; line-height:1.5;">
+          Thank you for using <strong>YourPhotoAI</strong>.
+          Here are your generated portraits.
         </p>
-        <p style="font-size:11px;color:#555;margin-top:12px;">
-          YourPhotoAI · yourphotoai.vip
+
+        <p style="font-size:13px; color:#555;">
+          Session: <strong>${safeUsed}</strong> of <strong>${safeTotal}</strong> generations used.
+        </p>
+
+        <div style="margin-top:24px;">
+          ${imageBlocks}
+        </div>
+
+        <p style="font-size:12px; color:#777; margin-top:24px;">
+          If the images are not displayed correctly, please make sure that your email client allows loading external images.
         </p>
       </div>
     `;
 
+    const bccList =
+      OWNER_EMAIL && OWNER_EMAIL !== email ? [OWNER_EMAIL] : undefined;
+
+    console.log("SEND-PORTRAITS to:", email, "bcc:", bccList);
+
     const { error } = await resend.emails.send({
-      from: fromAddress,
+      from: FROM_EMAIL,
       to: email,
-      reply_to: SUPPORT_EMAIL,
-      subject,
-      html
+      bcc: bccList,
+      subject: "Your YourPhotoAI portraits",
+      html,
     });
 
     if (error) {
       console.error("Resend email error:", error);
       return res.status(500).json({
         ok: false,
-        error: "Resend send() failed",
-        details: String(error.message || error)
+        error: "Resend email error",
+        details: error,
       });
     }
 
-    res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error("SEND-PORTRAITS ERROR:", err);
-    res.status(500).json({
+    console.error("SEND-PORTRAITS API ERROR:", err);
+    return res.status(500).json({
       ok: false,
-      error: "Unexpected error while sending email",
-      details: err?.message || String(err)
+      error: "Internal server error",
+      details: err?.message || String(err),
     });
   }
 }
