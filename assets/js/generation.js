@@ -1,99 +1,37 @@
 // assets/js/generation.js
-// Загрузка фото, вызов /api/generate, учёт демо, отправка email.
+// Логика генерации портрета + завершение сессии и отправка на email
+// Зависит от глобальных объектов: DEMO_MODE, appState, STORAGE_KEYS, els,
+// а также функций refreshSelectionChips (interface.js), openAgreementModal / openPayModal (events/payment).
 
-import {
-  appState,
-  DEMO_MODE,
-  DEMO_SESSION_LIMIT,
-  STORAGE_KEYS,
-  UI_TEXT
-} from "./state.js";
-import { els, refreshSelectionChips, setLayer, updateGreetingOverlay } from "./interface.js";
-import { openAgreementModal, openPayModal } from "./payment.js";
+// =========================
+// ГЕНЕРАЦИЯ ПОРТРЕТА
+// =========================
 
-export function handleFileSelected(event) {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-
-  appState.originalFile = file;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const resizedDataUrl = resizeImageToMax(img, 1024);
-      appState.photoBase64 = resizedDataUrl;
-
-      if (els.previewImage) {
-        els.previewImage.src = resizedDataUrl;
-        els.previewImage.style.display = "block";
-      }
-      if (els.previewPlaceholder) {
-        els.previewPlaceholder.style.display = "none";
-      }
-      if (els.downloadLink) {
-        els.downloadLink.style.display = "none";
-      }
-      updateGreetingOverlay();
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function resizeImageToMax(img, maxSize) {
-  const canvas = document.createElement("canvas");
-  let { width, height } = img;
-
-  if (width > height && width > maxSize) {
-    height = Math.round((height * maxSize) / width);
-    width = maxSize;
-  } else if (height >= width && height > maxSize) {
-    width = Math.round((width * maxSize) / height);
-    height = maxSize;
-  }
-
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", 0.9);
-}
-
-export async function handleGenerateClick() {
+async function handleGenerateClick() {
   if (appState.isGenerating) return;
 
-  const t = UI_TEXT[appState.language] || UI_TEXT.en;
-
   if (!appState.photoBase64) {
-    alert(t.alertAddPhoto || "Please add a photo first.");
+    alert("First add a photo.");
     return;
   }
 
-  // Проверяем демо / оплату
+  // DEMO: сначала собираем email + согласие
   if (DEMO_MODE) {
     if (!appState.userEmail || !appState.userAgreed) {
-      openAgreementModal();
-      return;
-    }
-    if (
-      appState.creditsTotal > 0 &&
-      appState.creditsUsed >= appState.creditsTotal
-    ) {
-      alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
+      if (typeof openAgreementModal === "function") {
+        openAgreementModal();
+      } else {
+        alert("Please enter your email and confirm consent first.");
+      }
       return;
     }
   } else {
+    // Боевой режим: без оплаченного пакета — показываем окно оплаты
     if (!appState.hasActivePack) {
-      alert(t.alertNoActivePack || UI_TEXT.en.alertNoActivePack);
-      openPayModal();
-      return;
-    }
-    if (
-      appState.creditsTotal > 0 &&
-      appState.creditsUsed >= appState.creditsTotal
-    ) {
-      alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
+      alert("Please buy a package of generations first.");
+      if (typeof openPayModal === "function") {
+        openPayModal();
+      }
       return;
     }
   }
@@ -107,8 +45,7 @@ export async function handleGenerateClick() {
       text: "",
       photo: appState.photoBase64,
       effects: appState.selectedEffects,
-      greeting: appState.selectedGreeting || null,
-      language: appState.language || "en"
+      greeting: appState.selectedGreeting || null
     };
 
     const resp = await fetch("/api/generate", {
@@ -120,57 +57,43 @@ export async function handleGenerateClick() {
     });
 
     if (!resp.ok) {
-      throw new Error("Generation server error");
+      throw new Error("Generation server returned an error.");
     }
 
     const data = await resp.json();
     if (!data || !data.image) {
-      throw new Error("No image URL in response");
+      throw new Error("Generation server did not return an image URL.");
     }
 
+    // Показать результат
     showResultPortrait(data.image);
-    registerGeneration(data.image);
+
+    // Учесть генерацию в демо-счётчике
+    if (DEMO_MODE) {
+      registerGeneration(data.image);
+    }
+
+    // ВАЖНО: после каждой успешной генерации
+    // полностью сбрасываем выбранные эффекты,
+    // чтобы пользователь заново выбирал стиль, кожу, мимику и поздравление
+    resetAllEffects();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
-    alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
+    alert("Could not generate the portrait. Please try again.");
   } finally {
     showGenerating(false);
     appState.isGenerating = false;
   }
 }
 
-export function showGenerating(isOn) {
-  if (!els.generateStatus) return;
-  els.generateStatus.style.display = isOn ? "flex" : "none";
-}
-
-export function showResultPortrait(url) {
-  if (els.previewImage) {
-    els.previewImage.src = url;
-    els.previewImage.style.display = "block";
-  }
-  if (els.previewPlaceholder) {
-    els.previewPlaceholder.style.display = "none";
-  }
-
-  if (els.downloadLink) {
-    els.downloadLink.href = url;
-    els.downloadLink.style.display = "inline-flex";
-  }
-
-  updateGreetingOverlay();
-  document.body.classList.add("result-mode");
-  setLayer("result", true);
-}
-
-export function exitResultView(pushHistory = true) {
-  document.body.classList.remove("result-mode");
-  if (pushHistory) setLayer("home", true);
-}
+// =========================
+// РЕГИСТРАЦИЯ ГЕНЕРАЦИИ (ДЕМО-СЦЕНАРИЙ)
+// =========================
 
 function registerGeneration(imageUrl) {
-  if (appState.creditsTotal <= 0) {
-    appState.creditsTotal = DEMO_MODE ? DEMO_SESSION_LIMIT : appState.creditsTotal;
+  // На всякий случай — если почему-то не инициализировали creditsTotal
+  if (appState.creditsTotal <= 0 && typeof DEMO_SESSION_LIMIT !== "undefined") {
+    appState.creditsTotal = DEMO_SESSION_LIMIT;
   }
 
   appState.creditsUsed += 1;
@@ -193,27 +116,94 @@ function registerGeneration(imageUrl) {
       JSON.stringify(appState.generatedImages)
     );
   } catch (e) {
-    console.warn("Cannot store credits/images", e);
+    console.warn("Cannot store demo credits/images", e);
   }
 
-  refreshSelectionChips();
+  if (typeof refreshSelectionChips === "function") {
+    refreshSelectionChips();
+  }
 
-  if (DEMO_MODE && appState.creditsUsed >= appState.creditsTotal) {
+  if (appState.creditsUsed >= appState.creditsTotal) {
     finishSessionAndSendEmail();
   }
 }
 
-async function finishSessionAndSendEmail() {
-  const t = UI_TEXT[appState.language] || UI_TEXT.en;
+// =========================
+// ВСПОМОГАТЕЛЬНОЕ: СБРОС ВСЕХ ЭФФЕКТОВ
+// =========================
 
+function resetAllEffects() {
+  // Обнуляем выбранный стиль, эффекты и поздравление
+  appState.selectedStyle = null;
+  appState.selectedEffects = [];
+  appState.selectedGreeting = null;
+
+  // Чистим текст поверх картинки (если будем использовать)
+  if (window.els && els.greetingOverlay) {
+    els.greetingOverlay.textContent = "";
+    els.greetingOverlay.style.display = "none";
+  }
+
+  // Обновляем чипы под превью
+  if (typeof refreshSelectionChips === "function") {
+    refreshSelectionChips();
+  }
+}
+
+// =========================
+// UI: СОСТОЯНИЕ "ГЕНЕРАЦИЯ ИДЁТ"
+// =========================
+
+function showGenerating(isOn) {
+  if (!els.generateStatus) return;
+  els.generateStatus.style.display = isOn ? "flex" : "none";
+}
+
+// =========================
+// ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА / СКАЧИВАНИЕ
+// =========================
+
+function showResultPortrait(url) {
+  if (els.previewImage) {
+    els.previewImage.src = url;
+    els.previewImage.style.display = "block";
+  }
+  if (els.previewPlaceholder) {
+    els.previewPlaceholder.style.display = "none";
+  }
+
+  if (els.downloadLink) {
+    els.downloadLink.href = url;
+    els.downloadLink.style.display = "inline-flex";
+  }
+
+  document.body.classList.add("result-mode");
+  if (typeof setLayer === "function") {
+    setLayer("result", true);
+  }
+}
+
+function exitResultView(pushHistory = true) {
+  document.body.classList.remove("result-mode");
+  if (typeof setLayer === "function" && pushHistory) {
+    setLayer("home", true);
+  }
+}
+
+// =========================
+// ЗАВЕРШЕНИЕ СЕССИИ И ОТПРАВКА НА EMAIL
+// =========================
+
+async function finishSessionAndSendEmail() {
   const email = appState.userEmail;
+
   if (!email) {
     alert("Email not found. Cannot send portraits.");
     return;
   }
 
   if (!appState.generatedImages || appState.generatedImages.length === 0) {
-    alert("No generated portraits to send.");
+    alert("There are no generated portraits to send.");
     return;
   }
 
@@ -232,7 +222,7 @@ async function finishSessionAndSendEmail() {
     });
 
     if (!resp.ok) {
-      throw new Error("Email server error");
+      throw new Error("Email server returned an error.");
     }
 
     const data = await resp.json();
@@ -248,7 +238,7 @@ async function finishSessionAndSendEmail() {
   } catch (err) {
     console.error("SEND EMAIL ERROR:", err);
     alert(
-      "Portraits have been generated, but email could not be sent. Please try later."
+      "Portraits were generated, but we could not send the email. Please try again later or contact support."
     );
   }
 }
@@ -262,9 +252,12 @@ function resetDemoSession() {
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
     window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
     window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
+    // email и согласие оставляем
   } catch (e) {
     console.warn("Cannot clear demo session storage", e);
   }
 
-  refreshSelectionChips();
+  if (typeof refreshSelectionChips === "function") {
+    refreshSelectionChips();
+  }
 }
