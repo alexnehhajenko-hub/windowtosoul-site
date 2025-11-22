@@ -52,7 +52,9 @@ function setupBackButtonLogic() {
     window.history.replaceState({ layer: "home" }, "", window.location.href);
   }
 
-  window.addEventListener("popstate", () => {
+  window.addEvent
+  
+  Listener("popstate", () => {
     const layer = appState.layer;
     switch (layer) {
       case "sheet":
