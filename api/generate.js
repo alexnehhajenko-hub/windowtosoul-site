@@ -31,7 +31,7 @@ const EFFECT_PROMPTS = {
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Поздравления — только описание стиля + факт надписи, без жёстких русских фраз
+// Поздравления — без жёстких русских фраз, только стиль + факт русской надписи
 const GREETING_PROMPTS = {
   "new-year":
     "festive New Year greeting portrait, glowing warm lights, snow, elegant russian handwritten greeting text on the image",
