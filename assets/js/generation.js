@@ -8,7 +8,12 @@ import {
   STORAGE_KEYS,
   UI_TEXT
 } from "./state.js";
-import { els, refreshSelectionChips, setLayer, updateGreetingOverlay } from "./interface.js";
+import {
+  els,
+  refreshSelectionChips,
+  setLayer,
+  updateGreetingOverlay
+} from "./interface.js";
 import { openAgreementModal, openPayModal } from "./payment.js";
 
 export function handleFileSelected(event) {
@@ -128,8 +133,12 @@ export async function handleGenerateClick() {
       throw new Error("No image URL in response");
     }
 
+    // Показываем результат
     showResultPortrait(data.image);
+    // Учитываем генерацию (кредиты, список картинок)
     registerGeneration(data.image);
+    // <<< НОВОЕ: сбрасываем выбранные эффекты и поздравление >>>
+    clearEffectsSelection();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
@@ -201,6 +210,18 @@ function registerGeneration(imageUrl) {
   if (DEMO_MODE && appState.creditsUsed >= appState.creditsTotal) {
     finishSessionAndSendEmail();
   }
+}
+
+// <<< НОВАЯ ФУНКЦИЯ: полный сброс эффектов и поздравления >>>
+function clearEffectsSelection() {
+  // Сбрасываем выбранные эффекты кожи/мимики
+  appState.selectedEffects = [];
+  // Сбрасываем выбранное поздравление
+  appState.selectedGreeting = null;
+
+  // Обновляем UI – чипы под фото и слой-подсказку для поздравлений
+  refreshSelectionChips();
+  updateGreetingOverlay();
 }
 
 async function finishSessionAndSendEmail() {
