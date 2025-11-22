@@ -18,6 +18,8 @@ import {
 } from "./js/payment.js";
 import { exitResultView } from "./js/generation.js";
 
+console.log("MAIN JS LOADED");
+
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Находим все DOM-элементы
   bindElements();
