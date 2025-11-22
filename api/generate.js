@@ -15,12 +15,9 @@ const STYLE_PREFIX = {
 // Эффекты обработки кожи + мимика
 const EFFECT_PROMPTS = {
   // кожа
-  "no-wrinkles":
-    "reduced wrinkles, gentle beauty retouch, keep natural skin texture",
-  younger:
-    "slightly younger look, fresher and healthier skin, but clearly the same person",
-  "smooth-skin":
-    "smoother even skin tone, soft beauty retouch, no plastic look",
+  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
+  younger: "looks 20 years younger, fresh and healthy skin, lively eyes",
+  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting",
 
   // мимика
   "smile-soft": "subtle soft smile, calm and relaxed expression",
@@ -34,22 +31,17 @@ const EFFECT_PROMPTS = {
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Поздравления — ТОЛЬКО антураж, БЕЗ текста на картинке
+// Поздравления — только описание стиля + факт надписи, без жёстких русских фраз
 const GREETING_PROMPTS = {
   "new-year":
-    "subtle New Year atmosphere, warm glowing lights, soft winter background, festive mood, but no text on the image",
+    "festive New Year greeting portrait, glowing warm lights, snow, elegant russian handwritten greeting text on the image",
   birthday:
-    "birthday mood, balloons or confetti in the background, soft festive colors, but no text on the image",
+    "birthday greeting portrait, balloons, confetti, festive composition, elegant russian handwritten birthday greeting text on the image",
   funny:
-    "playful humorous atmosphere, bright colors, fun composition, but no text on the image",
+    "playful humorous greeting portrait, bright colors, fun composition, creative russian handwritten funny greeting text on the image",
   scary:
-    "dark cinematic horror atmosphere, spooky lighting, eerie background, but no text on the image"
+    "dark horror themed greeting portrait, spooky lighting, eerie atmosphere, creepy russian handwritten horror greeting text on the image"
 };
-
-// Общий кусок, чтобы модель держала того же человека и не рисовала надписи
-const IDENTITY_AND_NO_TEXT =
-  "portrait of the SAME person from the input photo, same face shape, same gender, same main facial features, clearly recognizable, " +
-  "do not turn into a different person. no text, no logos, no watermarks, no ui elements, no instagram layout, no frames, no captions";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -90,14 +82,15 @@ export default async function handler(req, res) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
-    // 5. Итоговый prompt (остаётся только на сервере)
-    const promptParts = [stylePrefix, IDENTITY_AND_NO_TEXT];
+    // 5. Итоговый prompt (остаётся только на сервере, пользователю не отдаём)
+    const promptParts = [stylePrefix];
     if (userPrompt) promptParts.push(userPrompt);
     if (effectsPrompt) promptParts.push(effectsPrompt);
     if (greetingPrompt) promptParts.push(greetingPrompt);
 
     const prompt = promptParts.join(". ").trim();
 
+    // 6. Вход для Replicate
     const input = {
       prompt,
       output_format: "jpg"
@@ -113,7 +106,7 @@ export default async function handler(req, res) {
     });
 
     const output = await replicate.run(
-      process.env.REPLICATE_MODEL_ID || "black-forest-labs/flux-kontext-pro",
+      "black-forest-labs/flux-kontext-pro",
       { input }
     );
 
@@ -141,7 +134,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // prompt НЕ отдаём на фронт
+    // ВАЖНО: prompt не отдаём на фронт
     return res.status(200).json({
       ok: true,
       image: imageUrl
