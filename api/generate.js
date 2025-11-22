@@ -4,10 +4,9 @@
 // Возвращает: { image: "https://..." }
 //
 // Цели:
-// 1) Лицо узнаётся: тот же человек, та же форма лица, глаза, нос, рот.
-// 2) Омоложение/ретушь/улыбка — заметны, но без "другого человека".
-// 3) Стиль, эффекты и поздравление влияют на фон/атмосферу,
-//    а поздравление старается добавить ЧИТАЕМУЮ английскую надпись.
+// 1) Лицо остаётся тем же человеком, максимум узнаваемости.
+// 2) Стиль/эффекты/атмосфера меняются, но не превращают в другое лицо.
+// 3) МОДЕЛИ ЯВНО ЗАПРЕЩЕНО РИСОВАТЬ ЛЮБОЙ ТЕКСТ, ПОДПИСИ, ЛОГО, ВОДЯНЫЕ ЗНАКИ.
 
 import Replicate from "replicate";
 
@@ -15,26 +14,29 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
 });
 
-// Модель Replicate
+// Модель Replicate (можешь переопределить через переменную окружения)
 const MODEL_ID =
-  process.env.REPLICATE_MODEL_ID ||
-  "black-forest-labs/flux-dev"; // при необходимости замени на свою модель
+  process.env.REPLICATE_MODEL_ID || "black-forest-labs/flux-dev";
 
 // Базовые стили
 const STYLE_PROMPTS = {
   beauty:
     "high-end beauty photography, soft studio light, shallow depth of field, realistic skin texture",
-  // Делаем картину маслом заметнее и менее фотографичной
-  oil: "strong oil painting portrait, very visible brush strokes, rich painterly texture, stylized colors, not photo, looks like a real painting hanging in a gallery",
+  oil:
+    "oil painting portrait style, visible brush strokes, painterly texture, rich but natural colors, looks like a painting of the same person",
   anime:
     "anime portrait, clean line art, soft shading, detailed expressive eyes, high quality illustration",
   poster:
-    "cinematic movie poster portrait, dramatic lighting, sharp details, high contrast",
+    "cinematic movie poster portrait, dramatic lighting, sharp details, slightly stylized contrast",
   classic:
     "classic studio portrait, natural colors, soft but clear lighting, timeless photography"
 };
 
-// Поздравительные контексты + ЯВНАЯ надпись на картинке
+// Общий запрет на текст/подписи/логотипы
+const NO_TEXT_CLAUSE =
+  "no text, no captions, no UI elements, no logo, no watermark, no signature, no instagram layout, no social media frame";
+
+// Поздравительная атмосфера (ТОЛЬКО фон/цвета, БЕЗ текста)
 function buildGreetingPrompt(greeting, language) {
   if (!greeting) return "";
 
@@ -42,20 +44,20 @@ function buildGreetingPrompt(greeting, language) {
 
   const map = {
     "new-year": {
-      ru: "новогодняя атмосфера, огоньки, ёлка, праздничный фон, и ЧЁТКАЯ английская надпись на изображении: “Happy New Year!”",
-      en: "New Year atmosphere, warm lights, Christmas tree, festive background, and a CLEAR readable English greeting text on the image: “Happy New Year!”"
+      ru: "новогодняя атмосфера, огоньки, ёлка, мягкий праздничный фон, но без любых надписей",
+      en: "New Year atmosphere, warm lights, Christmas tree, soft festive background, but without any text"
     },
     birthday: {
-      ru: "атмосфера дня рождения, мягкие праздничные элементы на фоне, шарики или конфетти, и ЧЁТКАЯ английская надпись на изображении: “Happy Birthday!”",
-      en: "birthday mood, soft festive elements in the background, balloons or confetti, and a CLEAR readable English greeting text on the image: “Happy Birthday!”"
+      ru: "атмосфера дня рождения, шарики или конфетти на фоне, мягкие праздничные цвета, но никаких надписей",
+      en: "birthday mood, balloons or confetti in the background, soft festive colors, but no text"
     },
     funny: {
-      ru: "весёлое настроение, немного юмора в деталях, и английская надпись на изображении в стиле открытки: “You are AI-level awesome!”",
-      en: "funny playful mood, a bit of humor in details, and a clear English greeting text on the image like a card: “You are AI-level awesome!”"
+      ru: "весёлое игривое настроение, немного юмора в деталях, но без надписей",
+      en: "funny playful mood, a bit of humor in details, but no text"
     },
     scary: {
-      ru: "слегка мрачная мистическая атмосфера, загадочный фон, но лицо остаётся красивым и узнаваемым, и английская надпись на изображении в стиле хоррор-открытки: “Happy Haunting!”",
-      en: "slightly dark, mystical atmosphere, mysterious background, but the face stays beautiful and recognizable, and an English greeting text on the image in a horror card style: “Happy Haunting!”"
+      ru: "слегка мрачная мистическая атмосфера, загадочный фон, лёгкий хоррор-антуряж, но без надписей",
+      en: "slightly dark mystical atmosphere, mysterious background, light horror ambience, but no text"
     }
   };
 
@@ -102,8 +104,8 @@ function buildEffectsPrompt(effects = [], language) {
   if (hasSmooth) {
     parts.push(
       lang === "en"
-        ? "significantly smoother and healthier skin, reduced wrinkles, fresher and more rested look, but still natural skin texture"
-        : "заметно более гладкая и здоровая кожа, меньше морщин, более свежий и отдохнувший вид, при этом сохраняется естественная текстура кожи"
+        ? "smoother and healthier skin, reduced wrinkles, fresher and more rested look, but still natural skin texture"
+        : "более гладкая и здоровая кожа, меньше морщин, более свежий и отдохнувший вид, при этом сохраняется естественная текстура кожи"
     );
   }
 
@@ -145,7 +147,7 @@ function buildEffectsPrompt(effects = [], language) {
   return parts.join(", ");
 }
 
-// Главный промпт: узнаваемость + стиль + эффекты + поздравление
+// Главный промпт: узнаваемость + стиль + эффекты + атмосфера + запрет текста
 function buildPrompt({ style, effects, greeting, language, extraText }) {
   const lang = language === "en" ? "en" : "ru";
 
@@ -154,8 +156,8 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
 
   const identityPart =
     lang === "en"
-      ? "highly realistic portrait of the SAME person from the input photo, same face shape, same eyes, same nose and mouth, very high resemblance, do not change their identity"
-      : "очень реалистичный портрет ТОГО ЖЕ человека с исходного фото, та же форма лица, те же глаза, нос и рот, высокая узнаваемость, не менять личность человека";
+      ? "highly realistic portrait of the SAME person from the input photo, same face shape, same eyes, same nose and mouth, very high resemblance, do not change their identity, do not change gender or ethnicity"
+      : "очень реалистичный портрет ТОГО ЖЕ человека с исходного фото, та же форма лица, те же глаза, нос и рот, высокая узнаваемость, не менять личность, пол или этничность человека";
 
   const effectsPart = buildEffectsPrompt(effects, language);
   const greetingPart = buildGreetingPrompt(greeting, language);
@@ -166,31 +168,36 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
   if (greetingPart) parts.push(greetingPart);
   if (extraText) parts.push(extraText);
 
+  // Всегда добавляем запрет текста на картинке на английском,
+  // чтобы модель точно поняла.
+  parts.push(NO_TEXT_CLAUSE);
+
   return parts.join(", ");
 }
 
 // Сила изменения изображения (strength)
+// Делаем её помягче, чтобы лицо сильно не ломалось.
 function computeStrength({ effects = [], style, greeting }) {
   const hasYounger =
     effects.includes("younger") || effects.includes("no-wrinkles");
 
   if (hasYounger) {
-    // Омоложение должно быть видно, но лицо всё равно узнаваемо
-    return 0.58;
+    // Омоложение должно быть видно, но без "другого лица"
+    return 0.5;
   }
 
-  // Для картины маслом делаем эффект сильнее, чем по умолчанию
+  // Картина маслом — заметный, но всё ещё аккуратный стиль
   if (style === "oil") {
-    return 0.52;
+    return 0.45;
   }
 
-  // Страшные / постерные стили — немного сильнее стилизация
+  // Страшные / постерные стили — чуть сильнее стилизация, но не больше 0.42
   if (greeting === "scary" || style === "poster" || style === "anime") {
-    return 0.42;
+    return 0.4;
   }
 
   // По умолчанию — мягкие изменения
-  return 0.36;
+  return 0.34;
 }
 
 export default async function handler(req, res) {
@@ -223,7 +230,6 @@ export default async function handler(req, res) {
     } = req.body || {};
 
     if (!photo) {
-      // Сейчас поддерживаем только режим "по фото", без чисто текстовых генераций.
       return res.status(400).json({ error: "photo is required" });
     }
 
