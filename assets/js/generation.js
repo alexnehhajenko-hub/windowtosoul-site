@@ -137,7 +137,7 @@ export async function handleGenerateClick() {
     showResultPortrait(data.image);
     // Учитываем генерацию (кредиты, список картинок)
     registerGeneration(data.image);
-    // <<< НОВОЕ: сбрасываем выбранные эффекты и поздравление >>>
+    // Сбрасываем выбранные эффекты и поздравление после успешной генерации
     clearEffectsSelection();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
@@ -212,14 +212,14 @@ function registerGeneration(imageUrl) {
   }
 }
 
-// <<< НОВАЯ ФУНКЦИЯ: полный сброс эффектов и поздравления >>>
+// Сброс эффектов и поздравления после генерации
 function clearEffectsSelection() {
-  // Сбрасываем выбранные эффекты кожи/мимики
+  // очистить выбранные эффекты кожи и мимики
   appState.selectedEffects = [];
-  // Сбрасываем выбранное поздравление
+  // очистить поздравление
   appState.selectedGreeting = null;
 
-  // Обновляем UI – чипы под фото и слой-подсказку для поздравлений
+  // обновить UI (чипы и надпись на картинке)
   refreshSelectionChips();
   updateGreetingOverlay();
 }
