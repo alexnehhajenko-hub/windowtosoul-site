@@ -1,12 +1,9 @@
 // api/generate.js
 //
-// Принимает: { style, text, photo, effects, greeting, language }
-// Возвращает: { image: "https://..." }
-//
-// Цели:
-// 1) Лицо остаётся тем же человеком, максимум узнаваемости.
-// 2) Стиль/эффекты/атмосфера меняются, но не превращают в другое лицо.
-// 3) МОДЕЛИ ЯВНО ЗАПРЕЩЕНО РИСОВАТЬ ЛЮБОЙ ТЕКСТ, ПОДПИСИ, ЛОГО, ВОДЯНЫЕ ЗНАКИ.
+// Режим: АККУРАТНОЕ РЕДАКТИРОВАНИЕ ФОТО
+// - всегда тот же человек, тот же пол;
+// - меняем свет, кожу, мимику, атмосферу;
+// - БЕЗ надписей, рамок, UI, логотипов и т.п.
 
 import Replicate from "replicate";
 
@@ -14,29 +11,29 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY
 });
 
-// Модель Replicate (можешь переопределить через переменную окружения)
+// Модель Replicate
 const MODEL_ID =
   process.env.REPLICATE_MODEL_ID || "black-forest-labs/flux-dev";
 
-// Базовые стили
+// Базовые стили — делаем их описанием настроения, а не полной перерисовкой
 const STYLE_PROMPTS = {
   beauty:
-    "high-end beauty photography, soft studio light, shallow depth of field, realistic skin texture",
+    "edit this exact portrait photo, realistic high-end beauty photography, soft studio light, shallow depth of field, natural skin texture, subtle enhancement only",
   oil:
-    "oil painting portrait style, visible brush strokes, painterly texture, rich but natural colors, looks like a painting of the same person",
+    "edit this exact portrait photo into a gentle oil painting style of the same person, visible brush strokes but same face and proportions, same composition",
   anime:
-    "anime portrait, clean line art, soft shading, detailed expressive eyes, high quality illustration",
+    "edit this exact portrait photo into a soft anime-style illustration of the same person, same face proportions and pose, not chibi, natural colors",
   poster:
-    "cinematic movie poster portrait, dramatic lighting, sharp details, slightly stylized contrast",
+    "edit this exact portrait photo into a cinematic movie poster look, same person and composition, slightly stronger contrast and dramatic lighting",
   classic:
-    "classic studio portrait, natural colors, soft but clear lighting, timeless photography"
+    "edit this exact portrait photo, classic studio portrait, natural colors, soft but clear lighting, timeless photography"
 };
 
-// Общий запрет на текст/подписи/логотипы
-const NO_TEXT_CLAUSE =
-  "no text, no captions, no UI elements, no logo, no watermark, no signature, no instagram layout, no social media frame";
+// Жёсткий запрет на любой текст/рамки/UI
+const NO_TEXT_OR_UI =
+  "plain clean image, no text, no captions, no subtitles, no UI elements, no borders, no frames, no instagram layout, no social media layout, no app UI, no screenshot look, no watermarks, no logo, no signature, no camera icons, no cropping handles";
 
-// Поздравительная атмосфера (ТОЛЬКО фон/цвета, БЕЗ текста)
+// Атмосфера поздравления — только фон/цвета, БЕЗ текста
 function buildGreetingPrompt(greeting, language) {
   if (!greeting) return "";
 
@@ -44,20 +41,20 @@ function buildGreetingPrompt(greeting, language) {
 
   const map = {
     "new-year": {
-      ru: "новогодняя атмосфера, огоньки, ёлка, мягкий праздничный фон, но без любых надписей",
-      en: "New Year atmosphere, warm lights, Christmas tree, soft festive background, but without any text"
+      ru: "лёгкая новогодняя атмосфера на фоне, огоньки, тёплые цвета, но без любых надписей или логотипов",
+      en: "subtle New Year atmosphere in the background, lights and warm colors, but without any text or logos"
     },
     birthday: {
-      ru: "атмосфера дня рождения, шарики или конфетти на фоне, мягкие праздничные цвета, но никаких надписей",
-      en: "birthday mood, balloons or confetti in the background, soft festive colors, but no text"
+      ru: "атмосфера дня рождения на фоне, мягкие праздничные цвета, возможно шарики или конфетти, но без надписей",
+      en: "birthday mood in the background, soft festive colors, maybe balloons or confetti, but no text"
     },
     funny: {
-      ru: "весёлое игривое настроение, немного юмора в деталях, но без надписей",
-      en: "funny playful mood, a bit of humor in details, but no text"
+      ru: "чуть более яркие и весёлые цвета, лёгкий юмор в деталях, но без надписей и рамок",
+      en: "slightly brighter and playful colors, a bit of fun in details, but no text or frames"
     },
     scary: {
-      ru: "слегка мрачная мистическая атмосфера, загадочный фон, лёгкий хоррор-антуряж, но без надписей",
-      en: "slightly dark mystical atmosphere, mysterious background, light horror ambience, but no text"
+      ru: "слегка более тёмная и мистическая атмосфера, лёгкий хоррор-спецэффект на фоне, но без надписей и кровавых логотипов",
+      en: "slightly darker and mystical atmosphere, light horror-style background, but no text or bloody logos"
     }
   };
 
@@ -86,68 +83,66 @@ function buildEffectsPrompt(effects = [], language) {
   const neutral = effects.includes("neutral");
   const serious = effects.includes("serious");
 
-  // Возраст/морщины/омоложение
   if (hasYounger) {
     parts.push(
       lang === "en"
-        ? "the person looks clearly younger, about 10–20 years younger, but still unmistakably the same person, no change of identity"
-        : "человек выглядит заметно моложе, примерно на 10–20 лет, но это однозначно тот же человек, без смены личности"
+        ? "make the person look clearly younger, around 10–15 years younger, but still obviously the same person with the same face structure, gender and ethnicity"
+        : "сделать человека заметно моложе, примерно на 10–15 лет, но это однозначно тот же человек с той же формой лица, тем же полом и этничностью"
     );
   } else {
     parts.push(
       lang === "en"
-        ? "subtle natural retouching"
-        : "лёгкая натуральная ретушь"
+        ? "very subtle natural retouching only"
+        : "очень лёгкая натуральная ретушь"
     );
   }
 
   if (hasSmooth) {
     parts.push(
       lang === "en"
-        ? "smoother and healthier skin, reduced wrinkles, fresher and more rested look, but still natural skin texture"
-        : "более гладкая и здоровая кожа, меньше морщин, более свежий и отдохнувший вид, при этом сохраняется естественная текстура кожи"
+        ? "smoother healthier skin, reduced wrinkles, fresher and more rested look, but still natural skin texture"
+        : "более гладкая и здоровая кожа, меньше морщин, более свежий и отдохнувший вид, при этом естественная текстура кожи сохраняется"
     );
   }
 
   if (hasCinematic) {
     parts.push(
       lang === "en"
-        ? "cinematic soft lighting on the face"
-        : "кинематографичный мягкий свет на лице"
+        ? "slightly more cinematic soft lighting on the face"
+        : "слегка более кинематографичный мягкий свет на лице"
     );
   }
 
-  // Мимика
   if (hasSmile) {
     parts.push(
       lang === "en"
-        ? "a gentle, natural and friendly smile"
-        : "мягкая естественная дружелюбная улыбка"
+        ? "add a gentle, natural and friendly smile without changing the face shape"
+        : "добавить мягкую естественную дружелюбную улыбку без изменения формы лица"
     );
   } else if (neutral) {
     parts.push(
       lang === "en"
-        ? "neutral calm expression"
-        : "нейтральное спокойное выражение лица"
+        ? "keep a neutral calm expression"
+        : "сохранить нейтральное спокойное выражение лица"
     );
   } else if (serious) {
     parts.push(
       lang === "en"
-        ? "serious confident expression"
-        : "серьёзное уверенное выражение лица"
+        ? "keep a serious confident expression"
+        : "сохранить серьёзное уверенное выражение лица"
     );
   } else {
     parts.push(
       lang === "en"
-        ? "slightly relaxed and pleasant expression"
-        : "слегка расслабленное приятное выражение лица"
+        ? "keep a slightly relaxed and pleasant expression"
+        : "сохранить слегка расслабленное приятное выражение лица"
     );
   }
 
   return parts.join(", ");
 }
 
-// Главный промпт: узнаваемость + стиль + эффекты + атмосфера + запрет текста
+// Главный промпт: редактирование, тот же человек, без текста/UI
 function buildPrompt({ style, effects, greeting, language, extraText }) {
   const lang = language === "en" ? "en" : "ru";
 
@@ -156,8 +151,8 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
 
   const identityPart =
     lang === "en"
-      ? "highly realistic portrait of the SAME person from the input photo, same face shape, same eyes, same nose and mouth, very high resemblance, do not change their identity, do not change gender or ethnicity"
-      : "очень реалистичный портрет ТОГО ЖЕ человека с исходного фото, та же форма лица, те же глаза, нос и рот, высокая узнаваемость, не менять личность, пол или этничность человека";
+      ? "EDIT this exact input photo of one person only, keep the SAME person, SAME gender, SAME ethnicity, SAME face shape, SAME eyes, nose and mouth, extremely high resemblance, do not turn into another person, do not change gender"
+      : "РЕДАКТИРОВАТЬ именно это исходное фото одного человека, оставить ТОГО ЖЕ человека, ТОТ ЖЕ пол, ТОТ ЖЕ тип лица и этничность, те же глаза, нос и рот, очень высокая узнаваемость, не превращать в другого человека, не менять пол";
 
   const effectsPart = buildEffectsPrompt(effects, language);
   const greetingPart = buildGreetingPrompt(greeting, language);
@@ -168,36 +163,34 @@ function buildPrompt({ style, effects, greeting, language, extraText }) {
   if (greetingPart) parts.push(greetingPart);
   if (extraText) parts.push(extraText);
 
-  // Всегда добавляем запрет текста на картинке на английском,
-  // чтобы модель точно поняла.
-  parts.push(NO_TEXT_CLAUSE);
+  // Запрет на любой текст / UI в картинке
+  parts.push(NO_TEXT_OR_UI);
 
   return parts.join(", ");
 }
 
-// Сила изменения изображения (strength)
-// Делаем её помягче, чтобы лицо сильно не ломалось.
+// Сила изменения — ещё мягче, приоритет сохранения лица
 function computeStrength({ effects = [], style, greeting }) {
   const hasYounger =
     effects.includes("younger") || effects.includes("no-wrinkles");
 
+  // Омоложение — чуть сильнее, но всё равно аккуратно
   if (hasYounger) {
-    // Омоложение должно быть видно, но без "другого лица"
-    return 0.5;
+    return 0.38;
   }
 
-  // Картина маслом — заметный, но всё ещё аккуратный стиль
-  if (style === "oil") {
-    return 0.45;
+  // Масло / аниме / постер — аккуратная стилизация
+  if (style === "oil" || style === "anime" || style === "poster") {
+    return 0.34;
   }
 
-  // Страшные / постерные стили — чуть сильнее стилизация, но не больше 0.42
-  if (greeting === "scary" || style === "poster" || style === "anime") {
-    return 0.4;
+  // Страшные поздравления — не даём улетать в другой образ
+  if (greeting === "scary") {
+    return 0.34;
   }
 
-  // По умолчанию — мягкие изменения
-  return 0.34;
+  // По умолчанию минимум изменений
+  return 0.3;
 }
 
 export default async function handler(req, res) {
@@ -253,8 +246,8 @@ export default async function handler(req, res) {
         prompt,
         image: photo,
         strength,
-        guidance_scale: 3.5,
-        num_inference_steps: 28
+        guidance_scale: 3.2, // чуть мягче, чтобы не улетать
+        num_inference_steps: 24
       }
     });
 
