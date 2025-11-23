@@ -1,90 +1,47 @@
-// api/generate.js — Replicate FLUX-Kontext-Pro
-// Фото / эффекты кожи / мимика / поздравления / язык интерфейса
-// Prompt остаётся только на сервере, на фронт НЕ отдаём.
+// api/generate.js — FLUX-Kontext-Pro (Replicate)
+// Фото / текст / эффекты кожи / мимика / поздравления
+// Без возврата prompt на фронт
 
 import Replicate from "replicate";
 
 const STYLE_PREFIX = {
-  beauty:
-    "highly realistic beauty portrait photography, soft studio light, flattering but natural look",
-  oil: "oil painting portrait, detailed, soft warm light, artistic, painterly brush strokes",
-  anime: "anime style portrait, clean lines, soft cel shading, detailed eyes",
-  poster:
-    "cinematic movie poster style portrait, dramatic lighting, high contrast, shallow depth of field",
-  classic:
-    "classical old master oil painting portrait, realism, warm tones, detailed skin and lighting",
-  default:
-    "highly detailed realistic portrait, soft studio lighting, photography"
+  oil: "oil painting portrait, detailed, soft warm light, artistic",
+  anime: "anime style portrait, clean lines, soft pastel shading",
+  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
+  classic: "classical old master portrait, realism, warm tones, detailed skin",
+  default: "realistic portrait, detailed face, soft studio lighting"
 };
 
-// Эффекты кожи / мимики — аккуратные, без сильного изменения лица
+// Эффекты обработки кожи + мимика
 const EFFECT_PROMPTS = {
   // кожа
-  "no-wrinkles":
-    "subtle beauty retouch, slightly reduced wrinkles, smoother skin but same face",
-  younger:
-    "looks about 10–15 years younger, fresher skin, same identity and facial structure",
-  "smooth-skin":
-    "smooth even skin tone, soft beauty lighting, same face, no plastic look",
-  "glow-golden":
-    "soft golden glow on the skin, warm highlights, cinematic look, same person",
-  "cinematic-light":
-    "cinematic portrait lighting, soft contrast, focused on the face, same identity",
+  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
+  younger: "looks 20 years younger, fresh and healthy skin, lively eyes",
+  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting",
 
   // мимика
-  "smile-soft":
-    "gentle soft smile, relaxed and natural expression, same person, no deformation",
-  "smile-big":
-    "big warm smile, visible teeth but realistic, same face and identity",
+  "smile-soft": "subtle soft smile, calm and relaxed expression",
+  "smile-big": "big warm smile, expressive and friendly face",
   "smile-hollywood":
-    "confident hollywood smile, bright teeth, still natural and similar face",
-  laugh:
-    "laughing with a bright smile, joyful and natural, do not distort facial features",
-  "surprised-wow":
-    "subtle wow-surprised expression, slightly raised brows, same identity",
-  neutral: "neutral relaxed facial expression, calm, same identity",
-  serious: "slightly serious focused look, no smile, same face",
-  "eyes-bigger":
-    "very slightly larger eyes, more open, but keep realistic proportions",
-  "eyes-brighter":
-    "brighter, more vivid eyes with reflections, same eye shape and face"
+    "wide hollywood smile, visible white teeth, confident look",
+  laugh: "laughing with a bright smile, joyful and natural expression",
+  neutral: "neutral face expression, relaxed, no visible strong emotion",
+  serious: "serious face, no smile, focused expression",
+  "eyes-bigger": "slightly bigger eyes, more open and attentive look",
+  "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Поздравления — особенно для EN просим явную надпись на картинке
-function buildGreetingPrompt(greeting, language) {
-  if (!greeting) return "";
-
-  const lang = language === "ru" ? "ru" : "en";
-
-  const map = {
-    "new-year": {
-      ru: "новогодняя атмосфера, гирлянды и огоньки, немного снега, аккуратная русская рукописная поздравительная надпись на открытке",
-      en: "festive New Year greeting portrait, warm lights and snow, clear english handwritten text 'Happy New Year' on the image, big decorative lettering near the edges of the frame, do NOT cover the face"
-    },
-    birthday: {
-      ru: "атмосфера дня рождения, воздушные шары, конфетти, аккуратная русская рукописная поздравительная надпись на открытке",
-      en: "birthday greeting card style portrait, balloons and confetti, clear english text 'Happy Birthday' on the image, nice decorative lettering at the top or bottom, the face stays clean and visible"
-    },
-    funny: {
-      ru: "весёлое яркое поздравление, забавная русская надпись на открытке",
-      en: "playful funny greeting portrait, bright colors, small english humorous caption like 'You look amazing!' on the image, short text in a corner, does not cover the face"
-    },
-    scary: {
-      ru: "мрачная хоррор-атмосфера, немного тумана, аккуратная страшная русская надпись на открытке",
-      en: "dark horror themed greeting portrait, spooky atmosphere, english horror text like 'Happy Halloween' or a creepy phrase on the image, horror-style lettering, but NOT over the eyes or main facial features"
-    }
-  };
-
-  return map[greeting]?.[lang] || "";
-}
-
-function buildEffectsPrompt(effects) {
-  if (!Array.isArray(effects) || effects.length === 0) return "";
-  return effects
-    .map((key) => EFFECT_PROMPTS[key])
-    .filter(Boolean)
-    .join(", ");
-}
+// Поздравления — английский текст + антураж
+const GREETING_PROMPTS = {
+  "new-year":
+    "festive winter New Year atmosphere, warm lights and snow in the background, cozy decorations, small elegant English handwritten text 'Happy New Year' on the image, placed near a corner and not covering the face",
+  birthday:
+    "birthday celebration atmosphere, balloons and confetti in the background, soft studio light, small elegant English handwritten text 'Happy Birthday' on the image, placed near a corner and not covering the face",
+  funny:
+    "playful colorful atmosphere, fun composition, sticker style graphic, small bold English text like 'look amazing!' or 'so cool!' inside a speech bubble near the edge of the image, not hiding the face",
+  scary:
+    "dark cinematic horror atmosphere, spooky lighting and subtle fog, small eerie English handwritten text like 'Spooky vibes' or 'Happy Halloween' on the image, placed away from the face"
+};
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -92,6 +49,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Парсим тело
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -101,66 +59,53 @@ export default async function handler(req, res) {
       }
     }
 
-    const {
-      style,
-      text,
-      photo,
-      effects,
-      greeting,
-      language: uiLanguage
-    } = body || {};
-
-    const lang = uiLanguage || "en";
+    const { style, text, photo, effects, greeting } = body || {};
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // 2. Пользовательский кастом-текст (на будущее)
+    // 2. Пользовательский текст (если будем использовать позже)
     const userPrompt = (text || "").trim();
 
-    // 3. Эффекты
-    const effectsPrompt = buildEffectsPrompt(effects);
-
-    // 4. Поздравление
-    const greetingPrompt = buildGreetingPrompt(greeting,   
-    }    // 5. Базовое требование: сохранить человека
-    const identityPrompt =
-      "edit this exact portrait photo of the SAME person from the input image, keep the same gender, face shape, skin tone, and identity. Do not generate new people, do not change gender or age drastically. Only adjust style, effects, or add greeting text.";
-
-    // 6. Итоговый prompt — остаётся только на сервере
-    const promptParts = [
-      stylePrefix,
-      identityPrompt,
-      effectsPrompt,
-      greetingPrompt
-    ];
-
-    if (userPrompt) {
-      promptParts.push(userPrompt);
+    // 3. Эффекты → в prompt
+    let effectsPrompt = "";
+    if (Array.isArray(effects) && effects.length > 0) {
+      effectsPrompt = effects
+        .map((k) => EFFECT_PROMPTS[k])
+        .filter(Boolean)
+        .join(", ");
     }
 
-    const safetyTail =
-      "no random faces, no body changes, no extra people, no text unless described, no distortion, realistic lighting";
+    // 4. Поздравление → антураж + английская надпись
+    let greetingPrompt = "";
+    if (greeting && GREETING_PROMPTS[greeting]) {
+      greetingPrompt = GREETING_PROMPTS[greeting];
+    }
 
+    // 5. Базовое требование: сохранить человека
+    const identityPrompt =
+      "edit this exact portrait photo of the SAME person from the input image, keep the same gender, approximate age, face shape and skin tone. Do not create a new person, do not change gender, keep one single person in the image";
+
+    // 6. Хвост безопасности — без лишних извращений
+    const safetyTail =
+      "realistic high quality portrait, natural proportions, no random faces, no extra bodies, no heavy distortion";
+
+    // 7. Итоговый prompt (остаётся только на сервере)
+    const promptParts = [stylePrefix, identityPrompt];
+    if (effectsPrompt) promptParts.push(effectsPrompt);
+    if (greetingPrompt) promptParts.push(greetingPrompt);
+    if (userPrompt) promptParts.push(userPrompt);
     promptParts.push(safetyTail);
 
-    // Чуть жёстче ограничим лишний текст и мусор
-    const safetyTail =
-      "no extra people, no heavy distortion, no watermarks, no random logos, only the greeting text described above";
+    const prompt = promptParts.join(". ").trim();
 
-    promptParts.push(safetyTail);
-
-    const prompt = promptParts
-      .filter((p) => typeof p === "string" && p.trim().length > 0)
-      .join(". ")
-      .trim();
-
-    // 7. Вход для Replicate
+    // 8. Вход в модель Replicate
     const input = {
       prompt,
       output_format: "jpg"
     };
 
+    // Фото добавляем только если есть
     if (photo) {
       input.input_image = photo;
     }
@@ -174,7 +119,7 @@ export default async function handler(req, res) {
       { input }
     );
 
-    // 8. Достаём URL картинки
+    // Поиск URL
     let imageUrl = null;
 
     if (Array.isArray(output)) {
@@ -193,13 +138,13 @@ export default async function handler(req, res) {
     }
 
     if (!imageUrl) {
-      console.error("GENERATION ERROR: no image URL in output", output);
       return res.status(500).json({
-        error: "No image URL returned"
+        error: "No image URL returned",
+        raw: output
       });
     }
 
-    // 9. На фронт отдаём только URL
+    // ВАЖНО: prompt не отдаём на фронт
     return res.status(200).json({
       ok: true,
       image: imageUrl
