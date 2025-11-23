@@ -1,40 +1,76 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Фото / текст / эффекты кожи / мимика
+// Фото / текст / эффекты кожи / мимика / поздравления (EN-надписи)
 
 import Replicate from "replicate";
 
+// Базовые стили
 const STYLE_PREFIX = {
-  oil: "oil painting portrait, detailed, soft warm light, artistic",
-  anime: "anime style portrait, clean lines, soft pastel shading",
-  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
-  classic: "classical old master portrait, realism, warm tones, detailed skin",
+  beauty:
+    "high-end beauty portrait, realistic photo, soft studio light, clean background",
+  oil: "oil painting portrait, detailed, soft warm light, artistic brush strokes",
+  anime: "anime style portrait, clean line art, soft pastel shading, big expressive eyes",
+  poster:
+    "cinematic movie poster portrait, dramatic lighting, high contrast, shallow depth of field",
+  classic:
+    "classical old master portrait, realism, warm tones, detailed skin, subtle vignette",
   default: "realistic portrait, detailed face, soft studio lighting"
 };
 
 // Эффекты обработки кожи + мимика
+// (ключи совпадают с EFFECT_CHIP_LABELS_EN из state.js)
 const EFFECT_PROMPTS = {
   // кожа
-  "no-wrinkles": "no wrinkles, reduced skin texture, gentle beauty retouch",
-  younger: "looks 20 years younger, fresh and healthy skin, lively eyes",
-  "smooth-skin": "smooth flawless skin, even skin tone, subtle beauty lighting",
+  "no-wrinkles":
+    "no wrinkles, slightly reduced skin texture, gentle beauty retouch, still natural",
+  younger:
+    "looks 10–15 years younger, fresher skin, less tired look, but still the same person",
+  "smooth-skin":
+    "smooth and even skin, reduced blemishes, preserved pores, very natural retouch",
+  "glow-golden":
+    "soft golden glow on the skin, warm highlights, healthy radiant look",
+  "cinematic-light":
+    "cinematic beauty lighting on the face, soft key light and gentle rim light",
 
   // мимика
   "smile-soft": "subtle soft smile, calm and relaxed expression",
   "smile-big": "big warm smile, expressive and friendly face",
-  "smile-hollywood": "wide hollywood smile, visible white teeth, confident look",
+  "smile-hollywood":
+    "wide hollywood smile, visible white teeth but still natural, confident look",
   laugh: "laughing with a bright smile, joyful and natural expression",
-  neutral: "neutral face expression, relaxed, no visible strong emotion",
-  serious: "serious face, no smile, focused expression",
+  "surprised-wow": "wow surprised expression, eyes a bit wider, eyebrows raised",
+  neutral: "neutral face expression, relaxed, no strong visible emotion",
+  serious: "serious face, no smile, focused thoughtful expression",
   "eyes-bigger": "slightly bigger eyes, more open and attentive look",
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
-// Хвост, который заставляет модель выбросить рамки/кнопки/текст
-const CLEANUP_TAIL =
-  "focus only on the main person from the input image, crop to the face and upper body if needed, " +
-  "remove and do NOT reproduce any frames, borders, website interface, buttons, badges, stickers, " +
-  "logos, watermarks or text from the input image";
+// Поздравления — английский текст + антураж
+const GREETING_PROMPTS = {
+  "new-year":
+    "festive New Year portrait, cozy winter atmosphere, soft lights and bokeh, elegant handwritten English text 'Happy New Year' on the image",
+  birthday:
+    "birthday celebration portrait, balloons and confetti in the background, warm party lights, elegant handwritten English text 'Happy Birthday' on the image",
+  funny:
+    "playful fun portrait, bright colors, dynamic background shapes, bold handwritten English text like 'You look amazing!' on the image",
+  scary:
+    "dark horror themed portrait, moody lighting, subtle spooky background, creepy handwritten English text 'Happy Halloween' on the image"
+};
 
+// Сохраняем одного и того же человека
+const IDENTITY_PROMPT =
+  "edit this exact portrait photo of the SAME person from the input image, keep the same gender, face shape and skin tone, do not generate a different person";
+
+// Убираем мусор из скриншотов (UI, кнопки и т.п.)
+const UI_CLEANUP_TAIL =
+  "ignore and remove any frames, borders, website interface, buttons, badges, stickers, logos, watermarks or text from the input image that are not part of the portrait";
+
+// Безопасность / анти-NSFW, чтобы Replicate не ругался
+const SAFETY_TAIL =
+  "portrait from the shoulders up, person is fully clothed, no nudity, no explicit cleavage, no sexual content, no extra people, no distorted anatomy";
+
+/**
+ * API handler
+ */
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -51,33 +87,43 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects } = body || {};
+    const { style, text, photo, effects, greeting, language } = body || {};
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // 2. Пользовательский текст
+    // 2. Пользовательский текст (на будущее, сейчас пустой)
     const userPrompt = (text || "").trim();
 
     // 3. Эффекты → в prompt
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
-        .map((k) => EFFECT_PROMPTS[k])
+        .map((key) => EFFECT_PROMPTS[key])
         .filter(Boolean)
         .join(", ");
     }
 
-    // 4. Итоговый prompt
-    const promptParts = [stylePrefix];
-    if (userPrompt) promptParts.push(userPrompt);
+    // 4. Поздравление
+    let greetingPrompt = "";
+    if (greeting && GREETING_PROMPTS[greeting]) {
+      greetingPrompt = GREETING_PROMPTS[greeting];
+    }
+
+    // 5. Итоговый prompt — остаётся только на сервере
+    const promptParts = [stylePrefix, IDENTITY_PROMPT];
+
     if (effectsPrompt) promptParts.push(effectsPrompt);
-    // добавляем очистку UI/надписей
-    promptParts.push(CLEANUP_TAIL);
+    if (greetingPrompt) promptParts.push(greetingPrompt);
+    if (userPrompt) promptParts.push(userPrompt);
+
+    // "хвосты" — очистка UI и безопасность
+    promptParts.push(UI_CLEANUP_TAIL);
+    promptParts.push(SAFETY_TAIL);
 
     const prompt = promptParts.join(". ").trim();
 
-    // 5. Вход в модель Replicate
+    // 6. Вход в модель Replicate
     const input = {
       prompt,
       output_format: "jpg"
@@ -92,9 +138,10 @@ export default async function handler(req, res) {
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
-      input
-    });
+    const output = await replicate.run(
+      "black-forest-labs/flux-kontext-pro",
+      { input }
+    );
 
     // Поиск URL
     let imageUrl = null;
@@ -121,7 +168,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // На фронт отдаем только OK + ссылку
+    // На фронт prompt не отдаём
     return res.status(200).json({
       ok: true,
       image: imageUrl
