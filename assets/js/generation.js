@@ -1,12 +1,13 @@
 // assets/js/generation.js
-// Загрузка фото, вызов /api/generate, учёт демо, отправка email.
+// Загрузка фото, вызов /api/generate, учёт демо/пакетов, отправка email.
 
 import {
   appState,
   DEMO_MODE,
   DEMO_SESSION_LIMIT,
   STORAGE_KEYS,
-  UI_TEXT
+  UI_TEXT,
+  PACK_SIZES
 } from "./state.js";
 import {
   els,
@@ -178,9 +179,14 @@ export function exitResultView(pushHistory = true) {
 }
 
 function registerGeneration(imageUrl) {
-  // Если в демо ещё не был выставлен лимит — выставляем
+  // Инициализируем общее количество генераций,
+  // если ещё не установлено.
   if (appState.creditsTotal <= 0) {
-    appState.creditsTotal = DEMO_MODE ? DEMO_SESSION_LIMIT : appState.creditsTotal;
+    if (DEMO_MODE) {
+      appState.creditsTotal = DEMO_SESSION_LIMIT;
+    } else if (appState.selectedPack && PACK_SIZES[appState.selectedPack]) {
+      appState.creditsTotal = PACK_SIZES[appState.selectedPack];
+    }
   }
 
   appState.creditsUsed += 1;
@@ -208,30 +214,16 @@ function registerGeneration(imageUrl) {
 
   refreshSelectionChips();
 
-  // ВАЖНО: теперь отправляем email и для DEMO, и для платных пакетов,
-  // как только использованы все доступные генерации.
-  if (
-    appState.creditsTotal > 0 &&
-    appState.creditsUsed >= appState.creditsTotal
-  ) {
-    console.log("[GENERATION] Session finished, sending portraits to email", {
-      email: appState.userEmail,
-      total: appState.creditsTotal,
-      used: appState.creditsUsed,
-      imagesCount: appState.generatedImages.length
-    });
+  if (DEMO_MODE && appState.creditsUsed >= appState.creditsTotal) {
     finishSessionAndSendEmail();
   }
 }
 
 // Сброс эффектов и поздравления после генерации
 function clearEffectsSelection() {
-  // очистить выбранные эффекты кожи и мимики
   appState.selectedEffects = [];
-  // очистить поздравление
   appState.selectedGreeting = null;
 
-  // обновить UI (чипы и надпись на картинке)
   refreshSelectionChips();
   updateGreetingOverlay();
 }
