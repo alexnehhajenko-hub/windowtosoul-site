@@ -32,27 +32,26 @@ export default async function handler(req, res) {
     if (!email || !Array.isArray(images) || images.length === 0) {
       return res.status(400).json({
         ok: false,
-        error: "Invalid payload: email or images missing"
+        error: "Invalid payload: email or images missing",
       });
     }
 
-    // Логируем, чтобы в Vercel было видно, что отправка вообще происходила
     console.log("[SEND-PORTRAITS] request", {
       to: email,
       imagesCount: images.length,
       total,
-      used
+      used,
     });
 
     const html = buildEmailHtml({ email, images, total, used });
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
-      to: [email],                 // пользователь
-      bcc: [SUPPORT_EMAIL],        // скрытая копия тебе
+      to: [email],
+      bcc: [SUPPORT_EMAIL],
       subject: "Your AI portraits from YourPhotoAI",
       html,
-      reply_to: [SUPPORT_EMAIL]    // если ответят — придёт тебе
+      reply_to: [SUPPORT_EMAIL],
     });
 
     if (error) {
@@ -60,13 +59,13 @@ export default async function handler(req, res) {
       return res.status(500).json({
         ok: false,
         error: "Resend API error",
-        details: error?.message || String(error)
+        details: error?.message || String(error),
       });
     }
 
     console.log("[SEND-PORTRAITS] sent successfully", {
       to: email,
-      id: data?.id
+      id: data?.id,
     });
 
     return res.status(200).json({ ok: true });
@@ -75,7 +74,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       ok: false,
       error: "Unhandled server error",
-      details: err?.message || String(err)
+      details: err?.message || String(err),
     });
   }
 }
