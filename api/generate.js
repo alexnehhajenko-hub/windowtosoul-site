@@ -29,6 +29,12 @@ const EFFECT_PROMPTS = {
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
 };
 
+// Хвост, который заставляет модель выбросить рамки/кнопки/текст
+const CLEANUP_TAIL =
+  "focus only on the main person from the input image, crop to the face and upper body if needed, " +
+  "remove and do NOT reproduce any frames, borders, website interface, buttons, badges, stickers, " +
+  "logos, watermarks or text from the input image";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -63,32 +69,17 @@ export default async function handler(req, res) {
     }
 
     // 4. Итоговый prompt
-    const promptParts = [];
-
-    // базовый стиль
-    promptParts.push(stylePrefix);
-
-    // коротко фиксируем, что нужен тот же человек с фото
-    promptParts.push(
-      "high quality portrait of the same person as in the input photo"
-    );
-
-    // просим убрать надписи/интерфейс/логотипы (для скриншотов)
-    promptParts.push(
-      "clean image with no text, no watermarks, no logos, no UI elements, no buttons or stickers"
-    );
-
-    if (effectsPrompt) promptParts.push(effectsPrompt);
+    const promptParts = [stylePrefix];
     if (userPrompt) promptParts.push(userPrompt);
+    if (effectsPrompt) promptParts.push(effectsPrompt);
+    // добавляем очистку UI/надписей
+    promptParts.push(CLEANUP_TAIL);
 
     const prompt = promptParts.join(". ").trim();
 
     // 5. Вход в модель Replicate
     const input = {
       prompt,
-      // дополнительно давим текст/логотипы через negative_prompt
-      negative_prompt:
-        "text, watermark, logo, interface, buttons, frame, badge, sticker, emoji, caption, subtitles",
       output_format: "jpg"
     };
 
@@ -101,10 +92,9 @@ export default async function handler(req, res) {
       auth: process.env.REPLICATE_API_TOKEN
     });
 
-    const output = await replicate.run(
-      "black-forest-labs/flux-kontext-pro",
-      { input }
-    );
+    const output = await replicate.run("black-forest-labs/flux-kontext-pro", {
+      input
+    });
 
     // Поиск URL
     let imageUrl = null;
@@ -131,10 +121,10 @@ export default async function handler(req, res) {
       });
     }
 
+    // На фронт отдаем только OK + ссылку
     return res.status(200).json({
       ok: true,
-      image: imageUrl,
-      prompt
+      image: imageUrl
     });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
