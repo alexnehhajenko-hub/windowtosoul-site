@@ -1,6 +1,5 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Фото / текст / эффекты кожи / мимика / поздравления
-// Без возврата prompt на фронт
+// Фото / текст / эффекты кожи / мимика
 
 import Replicate from "replicate";
 
@@ -22,25 +21,12 @@ const EFFECT_PROMPTS = {
   // мимика
   "smile-soft": "subtle soft smile, calm and relaxed expression",
   "smile-big": "big warm smile, expressive and friendly face",
-  "smile-hollywood":
-    "wide hollywood smile, visible white teeth, confident look",
+  "smile-hollywood": "wide hollywood smile, visible white teeth, confident look",
   laugh: "laughing with a bright smile, joyful and natural expression",
   neutral: "neutral face expression, relaxed, no visible strong emotion",
   serious: "serious face, no smile, focused expression",
   "eyes-bigger": "slightly bigger eyes, more open and attentive look",
   "eyes-brighter": "brighter eyes, more vivid and expressive gaze"
-};
-
-// Поздравления — английский текст + антураж
-const GREETING_PROMPTS = {
-  "new-year":
-    "festive winter New Year atmosphere, warm lights and snow in the background, cozy decorations, small elegant English handwritten text 'Happy New Year' on the image, placed near a corner and not covering the face",
-  birthday:
-    "birthday celebration atmosphere, balloons and confetti in the background, soft studio light, small elegant English handwritten text 'Happy Birthday' on the image, placed near a corner and not covering the face",
-  funny:
-    "playful colorful atmosphere, fun composition, sticker style graphic, small bold English text like 'look amazing!' or 'so cool!' inside a speech bubble near the edge of the image, not hiding the face",
-  scary:
-    "dark cinematic horror atmosphere, spooky lighting and subtle fog, small eerie English handwritten text like 'Spooky vibes' or 'Happy Halloween' on the image, placed away from the face"
 };
 
 export default async function handler(req, res) {
@@ -59,12 +45,12 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects, greeting } = body || {};
+    const { style, text, photo, effects } = body || {};
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // 2. Пользовательский текст (если будем использовать позже)
+    // 2. Пользовательский текст
     const userPrompt = (text || "").trim();
 
     // 3. Эффекты → в prompt
@@ -76,32 +62,33 @@ export default async function handler(req, res) {
         .join(", ");
     }
 
-    // 4. Поздравление → антураж + английская надпись
-    let greetingPrompt = "";
-    if (greeting && GREETING_PROMPTS[greeting]) {
-      greetingPrompt = GREETING_PROMPTS[greeting];
-    }
+    // 4. Итоговый prompt
+    const promptParts = [];
 
-    // 5. Базовое требование: сохранить человека
-    const identityPrompt =
-      "edit this exact portrait photo of the SAME person from the input image, keep the same gender, approximate age, face shape and skin tone. Do not create a new person, do not change gender, keep one single person in the image";
+    // базовый стиль
+    promptParts.push(stylePrefix);
 
-    // 6. Хвост безопасности — без лишних извращений
-    const safetyTail =
-      "realistic high quality portrait, natural proportions, no random faces, no extra bodies, no heavy distortion";
+    // коротко фиксируем, что нужен тот же человек с фото
+    promptParts.push(
+      "high quality portrait of the same person as in the input photo"
+    );
 
-    // 7. Итоговый prompt (остаётся только на сервере)
-    const promptParts = [stylePrefix, identityPrompt];
+    // просим убрать надписи/интерфейс/логотипы (для скриншотов)
+    promptParts.push(
+      "clean image with no text, no watermarks, no logos, no UI elements, no buttons or stickers"
+    );
+
     if (effectsPrompt) promptParts.push(effectsPrompt);
-    if (greetingPrompt) promptParts.push(greetingPrompt);
     if (userPrompt) promptParts.push(userPrompt);
-    promptParts.push(safetyTail);
 
     const prompt = promptParts.join(". ").trim();
 
-    // 8. Вход в модель Replicate
+    // 5. Вход в модель Replicate
     const input = {
       prompt,
+      // дополнительно давим текст/логотипы через negative_prompt
+      negative_prompt:
+        "text, watermark, logo, interface, buttons, frame, badge, sticker, emoji, caption, subtitles",
       output_format: "jpg"
     };
 
@@ -144,10 +131,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // ВАЖНО: prompt не отдаём на фронт
     return res.status(200).json({
       ok: true,
-      image: imageUrl
+      image: imageUrl,
+      prompt
     });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
