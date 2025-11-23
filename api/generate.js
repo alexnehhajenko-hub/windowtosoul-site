@@ -122,11 +122,10 @@ export default async function handler(req, res) {
     const effectsPrompt = buildEffectsPrompt(effects);
 
     // 4. Поздравление
-    const greetingPrompt = buildGreetingPrompt(greeting, lang);
-
-    // 5. Базовое требование: сохранить человека
+    const greetingPrompt = buildGreetingPrompt(greeting,   
+    }    // 5. Базовое требование: сохранить человека
     const identityPrompt =
-      "portrait of the SAME person as on the input photo, keep the same gender, skin tone and facial structure, keep identity easily recognizable, no random different faces";
+      "edit this exact portrait photo of the SAME person from the input image, keep the same gender, face shape, skin tone, and identity. Do not generate new people, do not change gender or age drastically. Only adjust style, effects, or add greeting text.";
 
     // 6. Итоговый prompt — остаётся только на сервере
     const promptParts = [
@@ -139,6 +138,11 @@ export default async function handler(req, res) {
     if (userPrompt) {
       promptParts.push(userPrompt);
     }
+
+    const safetyTail =
+      "no random faces, no body changes, no extra people, no text unless described, no distortion, realistic lighting";
+
+    promptParts.push(safetyTail);
 
     // Чуть жёстче ограничим лишний текст и мусор
     const safetyTail =
