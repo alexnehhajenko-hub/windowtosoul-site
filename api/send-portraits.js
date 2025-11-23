@@ -3,7 +3,7 @@
 // Также отправляем скрытую копию (BCC) на почту владельца, чтобы можно было
 // найти и переслать письмо, если пользователь его потерял.
 
-import { Resend } from "resend";
+const { Resend } = require("resend");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -12,72 +12,78 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "hello@yourphotoai.vip";
 // Твой адрес для поддержки и BCC
 const SUPPORT_EMAIL = "yourphotoaivip@gmail.com";
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+    res.status(405).json({ ok: false, error: "Method Not Allowed" });
+    return;
   }
 
   try {
-    let body = req.body;
-    if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        body = {};
-      }
-    }
+    const { email, images, total, used } = req.body || {};
 
-    const { email, images, total, used } = body || {};
+    // Мини-фильтр, чтобы не слать мусорные data:image и пустые строки
+    const cleanImages = Array.isArray(images)
+      ? images.filter(
+          (url) => typeof url === "string" && url.startsWith("http")
+        )
+      : [];
 
-    if (!email || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
+    if (!email || cleanImages.length === 0) {
+      res.status(400).json({
         ok: false,
         error: "Invalid payload: email or images missing",
       });
+      return;
     }
 
     console.log("[SEND-PORTRAITS] request", {
       to: email,
-      imagesCount: images.length,
+      imagesCount: cleanImages.length,
       total,
       used,
     });
 
-    const html = buildEmailHtml({ email, images, total, used });
+    const html = buildEmailHtml({
+      email,
+      images: cleanImages,
+      total,
+      used,
+    });
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
-      to: [email],
-      bcc: [SUPPORT_EMAIL],
+      to: [email], // пользователь
+      bcc: [SUPPORT_EMAIL], // скрытая копия тебе
       subject: "Your AI portraits from YourPhotoAI",
       html,
-      reply_to: [SUPPORT_EMAIL],
+      reply_to: [SUPPORT_EMAIL], // если ответят — придёт тебе
     });
 
     if (error) {
       console.error("[SEND-PORTRAITS] Resend error", error);
-      return res.status(500).json({
+      res.status(500).json({
         ok: false,
         error: "Resend API error",
-        details: error?.message || String(error),
+        details: error.message || String(error),
       });
+      return;
     }
 
     console.log("[SEND-PORTRAITS] sent successfully", {
       to: email,
-      id: data?.id,
+      id: data && data.id,
     });
 
-    return res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true });
   } catch (err) {
     console.error("[SEND-PORTRAITS] handler error", err);
-    return res.status(500).json({
+    res.status(500).json({
       ok: false,
       error: "Unhandled server error",
-      details: err?.message || String(err),
+      details: err.message || String(err),
     });
   }
-}
+};
 
 function buildEmailHtml({ email, images, total, used }) {
   const safeTotal = typeof total === "number" ? total : images.length;
