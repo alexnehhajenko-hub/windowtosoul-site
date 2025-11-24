@@ -7,7 +7,8 @@ import {
   hideOverlaysOnStart,
   setLanguage,
   refreshSelectionChips,
-  closeSheet
+  closeSheet,
+  updateGreetingOverlay
 } from "./js/interface.js";
 import { appState, loadStateFromStorage } from "./js/state.js";
 import { attachMainHandlers } from "./js/events.js";
@@ -42,10 +43,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // 7. Логика кнопки "назад"
   setupBackButtonLogic();
 
-  // 8. Статус Stripe (?status=success/cancel)
+  // 🔹 8. Кнопка очистки эффектов
+  setupClearEffectsButton();
+
+  // 9. Статус Stripe (?status=success/cancel)
   handleStripeStatusFromUrl();
 
-  // 9. Обновляем чипы под фото
+  // 10. Обновляем чипы под фото
   refreshSelectionChips();
 });
 
@@ -73,5 +77,28 @@ function setupBackButtonLogic() {
         return;
     }
     appState.layer = "home";
+  });
+}
+
+// 🔹 Кнопка "CLEAR EFFECTS" — стирает кожу, мимику и поздравление
+function setupClearEffectsButton() {
+  const btn = document.getElementById("btnClearEffects");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    // Убираем все выбранные эффекты (кожа + мимика)
+    appState.selectedEffects = [];
+    // Убираем поздравление
+    appState.selectedGreeting = null;
+
+    // При желании можно было бы сбросить стиль, но пока оставляем,
+    // чтобы не ломать текущую логику:
+    // appState.selectedStyle = "beauty" или null — если захочешь, добавим потом.
+
+    // Обновляем чипы и убираем текст-поздравление с превью
+    refreshSelectionChips();
+    updateGreetingOverlay();
+    // Если вдруг была открыта шторка — закрываем
+    closeSheet();
   });
 }
