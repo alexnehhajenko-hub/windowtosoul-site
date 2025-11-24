@@ -8,7 +8,8 @@ const STYLE_PREFIX = {
   beauty:
     "high-end beauty portrait, realistic photo, soft studio light, clean background",
   oil: "oil painting portrait, detailed, soft warm light, artistic brush strokes",
-  anime: "anime style portrait, clean line art, soft pastel shading, big expressive eyes",
+  anime:
+    "anime style portrait, clean line art, soft pastel shading, big expressive eyes",
   poster:
     "cinematic movie poster portrait, dramatic lighting, high contrast, shallow depth of field",
   classic:
@@ -23,7 +24,7 @@ const EFFECT_PROMPTS = {
   "beauty-one-touch":
     "natural beauty retouch on the whole face, even skin tone, remove acne and pimples, reduce dark spots and dark circles, soften fine wrinkles and lines, keep realistic skin texture and pores, keep the same person",
 
-  // кожа (старые эффекты тоже остаются, можно использовать вместе или по отдельности)
+  // кожа (старые эффекты, если захочешь — можно использовать тоже)
   "no-wrinkles":
     "no wrinkles, slightly reduced skin texture, gentle beauty retouch, still natural",
   younger:
@@ -41,7 +42,8 @@ const EFFECT_PROMPTS = {
   "smile-hollywood":
     "wide hollywood smile, visible white teeth but still natural, confident look",
   laugh: "laughing with a bright smile, joyful and natural expression",
-  "surprised-wow": "wow surprised expression, eyes a bit wider, eyebrows raised",
+  "surprised-wow":
+    "wow surprised expression, eyes a bit wider, eyebrows raised",
   neutral: "neutral face expression, relaxed, no strong visible emotion",
   serious: "serious face, no smile, focused thoughtful expression",
   "eyes-bigger": "slightly bigger eyes, more open and attentive look",
