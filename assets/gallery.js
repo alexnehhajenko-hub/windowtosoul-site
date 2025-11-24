@@ -121,7 +121,7 @@ async function sendAllToEmail() {
     return;
   }
 
-  const imagesToSend = portraits.slice(-30); // на всякий случай максимум 30
+  const imagesToSend = portraits.slice(-30); // максимум 30, на всякий случай
 
   gallerySendBtn.disabled = true;
   gallerySendBtn.textContent = "Sending…";
@@ -130,14 +130,14 @@ async function sendAllToEmail() {
     const res = await fetch("/api/send-portraits", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         email,
         images: imagesToSend,
         total: imagesToSend.length,
-        used: imagesToSend.length,
-      }),
+        used: imagesToSend.length
+      })
     });
 
     let data = null;
