@@ -20,13 +20,13 @@ const STYLE_PREFIX = {
 // Эффекты обработки кожи + мимика
 // (ключи совпадают с EFFECT_CHIP_LABELS_EN из state.js)
 const EFFECT_PROMPTS = {
-  // 🔹 один эффект "одной кнопкой":
+  // один эффект "одной кнопкой":
   // НЕ делаем человека красивее, НЕ меняем лицо,
   // только убираем морщины/прыщи и выравниваем кожу.
   "beauty-one-touch":
     "keep exactly the same person and the same face. do not make the person more beautiful, do not stylize the face, do not change attractiveness. only reduce the visibility of wrinkles and fine lines, gently smooth and even the skin texture, remove acne and small blemishes, keep natural pores and realistic skin, keep the same gender and facial structure",
 
-  // кожа — переформулировано мягко, без слова 'beauty'
+  // кожа
   "no-wrinkles":
     "same person with slightly reduced visibility of wrinkles, a bit softer skin texture, still natural and realistic, keep the same face and gender",
   younger:
@@ -38,7 +38,7 @@ const EFFECT_PROMPTS = {
   "cinematic-light":
     "cinematic soft light on the same face, better contrast and shading, no changes to identity or gender",
 
-  // мимика — усиливаем 'same person'
+  // мимика
   "smile-soft":
     "same person with a subtle soft smile, calm and relaxed expression, no change to face structure or gender",
   "smile-big":
@@ -80,11 +80,13 @@ const IDENTITY_PROMPT =
   "Do NOT replace the face with a different model or a different more beautiful person. " +
   "Do NOT change the attractiveness level, only apply the requested skin and expression corrections.";
 
-// Убираем мусор из скриншотов (UI, кнопки и т.п.)
+// Убираем мусор из скриншотов (UI, кнопки и т.п.) — усилено
 const UI_CLEANUP_TAIL =
-  "ignore and remove any frames, borders, website interface, buttons, badges, stickers, logos, watermarks or text from the input image that are not part of the portrait";
+  "if the input looks like a screenshot of a website, completely remove and repaint all interface elements, grey panels, captions and buttons around or below the face. " +
+  "Do NOT reproduce any UI text such as 'You can download your portrait immediately or send it to your email', prices, menus or language buttons. " +
+  "Generate only a clean portrait of the person on a simple background, with no text, no frames, no logos, no watermarks and no interface elements at all.";
 
-// Безопасность / анти-NSFW, чтобы Replicate не ругался
+// Безопасность / анти-NSFW
 const SAFETY_TAIL =
   "portrait from the shoulders up, person is fully clothed, no nudity, no explicit cleavage, no sexual content, no extra people, no distorted anatomy";
 
@@ -107,12 +109,12 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects, greeting, language } = body || {};
+    const { style, text, photo, effects, greeting } = body || {};
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // 2. Пользовательский текст (на будущее, сейчас пустой)
+    // 2. Пользовательский текст (пока не используется)
     const userPrompt = (text || "").trim();
 
     // 3. Эффекты → в prompt
@@ -130,7 +132,7 @@ export default async function handler(req, res) {
       greetingPrompt = GREETING_PROMPTS[greeting];
     }
 
-    // 5. Итоговый prompt — остаётся только на сервере
+    // 5. Итоговый prompt
     const promptParts = [
       stylePrefix,
       effectsPrompt,
@@ -149,7 +151,6 @@ export default async function handler(req, res) {
       output_format: "jpg"
     };
 
-    // Фото добавляем только если есть
     if (photo) {
       input.input_image = photo;
     }
@@ -188,7 +189,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // На фронт prompt не отдаём
     return res.status(200).json({
       ok: true,
       image: imageUrl
