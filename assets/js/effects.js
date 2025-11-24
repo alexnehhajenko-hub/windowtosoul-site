@@ -23,8 +23,10 @@ export function toggleEffect(value) {
   }
 }
 
+// убираем ВСЕ skin-эффекты, чтобы в один момент был только один
 export function removeSkinEffects() {
   const skinKeys = [
+    "beauty-one-touch", // 🔹 наш новый общий эффект
     "no-wrinkles",
     "younger",
     "smooth-skin",
@@ -82,6 +84,11 @@ export function openSkinSheet() {
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
 
   const optionsConfig = [
+    // 🔹 наш новый эффект «одной кнопкой»
+    {
+      value: "beauty-one-touch",
+      label: "One-touch beauty (smooth skin, no acne)"
+    },
     { value: "no-wrinkles", label: "No wrinkles" },
     { value: "younger", label: "Younger by 10–20 years" },
     { value: "smooth-skin", label: "Smooth skin" },
@@ -96,6 +103,7 @@ export function openSkinSheet() {
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
+        // всегда только один эффект кожи
         removeSkinEffects();
         toggleEffect(value);
         refreshSelectionChips();
