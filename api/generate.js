@@ -20,11 +20,11 @@ const STYLE_PREFIX = {
 // Эффекты обработки кожи + мимика
 // (ключи совпадают с EFFECT_CHIP_LABELS_EN из state.js)
 const EFFECT_PROMPTS = {
-  // 🔹 один общий эффект "улучшить кожу": цвет, прыщи, мелкие морщины
+  // 🔹 общий эффект "одной кнопкой" — улучшить кожу (тон, прыщи, мелкие морщины)
   "beauty-one-touch":
     "natural beauty retouch on the whole face, even skin tone, remove acne and pimples, reduce dark spots and dark circles, soften fine wrinkles and lines, keep realistic skin texture and pores, keep the same person",
 
-  // кожа (старые эффекты, если захочешь — можно использовать тоже)
+  // кожа (твои исходные эффекты)
   "no-wrinkles":
     "no wrinkles, slightly reduced skin texture, gentle beauty retouch, still natural",
   younger:
