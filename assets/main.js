@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 7. Логика кнопки "назад"
   setupBackButtonLogic();
 
-  // 🔹 8. Кнопка очистки эффектов
+  // 8. Логика кнопки очистки эффектов
   setupClearEffectsButton();
 
   // 9. Статус Stripe (?status=success/cancel)
@@ -80,25 +80,25 @@ function setupBackButtonLogic() {
   });
 }
 
-// 🔹 Кнопка "CLEAR EFFECTS" — стирает кожу, мимику и поздравление
+// Кнопка "CLEAR EFFECTS":
+// — очищает эффекты кожи и мимику
+// — убирает поздравление
+// — снимает ЛЮБОЙ стиль (selectedStyle = null)
 function setupClearEffectsButton() {
   const btn = document.getElementById("btnClearEffects");
   if (!btn) return;
 
   btn.addEventListener("click", () => {
-    // Убираем все выбранные эффекты (кожа + мимика)
+    // 1) убираем все выбранные эффекты (кожа + мимика)
     appState.selectedEffects = [];
-    // Убираем поздравление
+    // 2) убираем поздравление
     appState.selectedGreeting = null;
+    // 3) полностью убираем стиль — НИЧЕГО не выбрано
+    appState.selectedStyle = null;
 
-    // При желании можно было бы сбросить стиль, но пока оставляем,
-    // чтобы не ломать текущую логику:
-    // appState.selectedStyle = "beauty" или null — если захочешь, добавим потом.
-
-    // Обновляем чипы и убираем текст-поздравление с превью
+    // Обновляем интерфейс
     refreshSelectionChips();
     updateGreetingOverlay();
-    // Если вдруг была открыта шторка — закрываем
     closeSheet();
   });
 }
