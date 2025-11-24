@@ -1,5 +1,7 @@
 // assets/gallery.js
 // Сбор всех сгенерированных портретов текущей сессии и отправка всех на email.
+// Теперь портреты также сохраняются в localStorage, чтобы не пропадали
+// при перезагрузке страницы / блокировке телефона.
 
 const previewImage = document.getElementById("previewImage");
 const galleryButton = document.getElementById("galleryButton");
@@ -14,6 +16,9 @@ const galleryStatus = document.getElementById("galleryStatus");
 const emailInput = document.getElementById("emailInput");
 const agreeEmail = document.getElementById("agreeEmail");
 
+// 🔹 ключ для localStorage
+const LS_KEY = "yourphotoai_session_portraits";
+
 let portraits = [];
 let lastPreviewUrl = null;
 
@@ -21,6 +26,35 @@ function hasPreview() {
   if (!previewImage) return false;
   const src = previewImage.src || "";
   return src.startsWith("http");
+}
+
+// 🔹 загрузка портретов из localStorage при старте
+function loadPortraitsFromStorage() {
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw) {
+      portraits = [];
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      portraits = parsed.filter((url) => typeof url === "string");
+    } else {
+      portraits = [];
+    }
+  } catch (e) {
+    console.warn("[GALLERY] Failed to load from localStorage", e);
+    portraits = [];
+  }
+}
+
+// 🔹 сохранение портретов в localStorage
+function savePortraitsToStorage() {
+  try {
+    window.localStorage.setItem(LS_KEY, JSON.stringify(portraits));
+  } catch (e) {
+    console.warn("[GALLERY] Failed to save to localStorage", e);
+  }
 }
 
 // Отслеживаем смену preview и добавляем новые портреты в массив
@@ -33,6 +67,7 @@ function capturePreviewIfNeeded() {
 
   if (!portraits.includes(src)) {
     portraits.push(src);
+    savePortraitsToStorage(); // 🔹 сохраняем после каждого нового портрета
     updateGalleryButton();
   }
 }
@@ -121,7 +156,8 @@ async function sendAllToEmail() {
     return;
   }
 
-  const imagesToSend = portraits.slice(-30); // максимум 30, на всякий случай
+  // 🔹 максимум 30, чтобы не перегружать письмо
+  const imagesToSend = portraits.slice(-30);
 
   gallerySendBtn.disabled = true;
   gallerySendBtn.textContent = "Sending…";
@@ -163,9 +199,15 @@ async function sendAllToEmail() {
   }
 }
 
-// Интервальный захват превью
-capturePreviewIfNeeded();
+// 🔹 ИНИЦИАЛИЗАЦИЯ
+
+// 1) Загружаем список портретов из localStorage
+loadPortraitsFromStorage();
+// 2) Обновляем кнопку "My portraits (N)" по загруженным данным
 updateGalleryButton();
+// 3) Сразу один раз пытаемся захватить превью (если оно уже есть)
+capturePreviewIfNeeded();
+// 4) И далее каждые 1 сек проверяем — не появился ли новый портрет
 setInterval(capturePreviewIfNeeded, 1000);
 
 // Обработчики
