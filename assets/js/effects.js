@@ -14,7 +14,43 @@ import {
   updateGreetingOverlay
 } from "./interface.js";
 
-// 🔹 Локализованные названия эффектов кожи
+// ───────────────────────── СТИЛИ ─────────────────────────
+
+// Локализованные названия стилей
+const STYLE_LABELS = {
+  en: {
+    beauty: "Beauty",
+    oil: "Oil painting",
+    anime: "Anime",
+    poster: "Poster",
+    classic: "Classic portrait"
+  },
+  ru: {
+    beauty: "Красивый портрет",
+    oil: "Картина маслом",
+    anime: "Аниме",
+    poster: "Постер",
+    classic: "Классический портрет"
+  },
+  de: {
+    beauty: "Beauty-Porträt",
+    oil: "Ölgemälde",
+    anime: "Anime",
+    poster: "Poster",
+    classic: "Klassisches Porträt"
+  },
+  es: {
+    beauty: "Retrato beauty",
+    oil: "Óleo",
+    anime: "Anime",
+    poster: "Póster",
+    classic: "Retrato clásico"
+  }
+};
+
+// ──────────────────────── ЭФФЕКТЫ КОЖИ ────────────────────────
+
+// Локализованные названия эффектов кожи
 const SKIN_LABELS = {
   en: {
     "beauty-one-touch": "One-touch beauty (smooth skin, no acne)",
@@ -50,7 +86,9 @@ const SKIN_LABELS = {
   }
 };
 
-// 🔹 Локализованные названия мимики
+// ───────────────────────── МИМИКА ─────────────────────────
+
+// Локализованные названия мимики
 const MIMIC_LABELS = {
   en: {
     "smile-soft": "Soft smile 🙂",
@@ -98,6 +136,8 @@ const MIMIC_LABELS = {
   }
 };
 
+// ───────────────────────── ВСПОМОГАТЕЛЬНОЕ ─────────────────────────
+
 export function toggleEffect(value) {
   const idx = appState.selectedEffects.indexOf(value);
   if (idx >= 0) {
@@ -139,15 +179,18 @@ export function removeAllMimicEffects() {
   );
 }
 
+// ───────────────────────── ШТОРКА СТИЛЕЙ ─────────────────────────
+
 export function openStyleSheet() {
-  const lang = appState.language;
+  const lang = appState.language || "en";
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+  const labels = STYLE_LABELS[lang] || STYLE_LABELS.en;
 
   const optionsConfig = ["beauty", "oil", "anime", "poster", "classic"];
 
   const options = optionsConfig.map((value) => ({
     value,
-    label: STYLE_LABELS_EN[value] || value,
+    label: labels[value] || STYLE_LABELS_EN[value] || value,
     selected: appState.selectedStyle === value,
     onClick: (val) => {
       appState.selectedStyle = val;
@@ -162,6 +205,8 @@ export function openStyleSheet() {
     options
   });
 }
+
+// ───────────────────────── ШТОРКА КОЖИ ─────────────────────────
 
 export function openSkinSheet() {
   const lang = appState.language || "en";
@@ -197,6 +242,8 @@ export function openSkinSheet() {
     }))
   });
 }
+
+// ───────────────────────── ШТОРКА МИМИКИ ─────────────────────────
 
 export function openMimicSheet() {
   const lang = appState.language || "en";
@@ -235,6 +282,8 @@ export function openMimicSheet() {
     }))
   });
 }
+
+// ───────────────────────── ШТОРКА ПОЗДРАВЛЕНИЙ ─────────────────────────
 
 export function openGreetingSheet() {
   const lang = appState.language;
