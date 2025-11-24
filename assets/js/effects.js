@@ -14,6 +14,90 @@ import {
   updateGreetingOverlay
 } from "./interface.js";
 
+// 🔹 Локализованные названия эффектов кожи
+const SKIN_LABELS = {
+  en: {
+    "beauty-one-touch": "One-touch beauty (smooth skin, no acne)",
+    "no-wrinkles": "Less wrinkles",
+    younger: "Look a bit younger",
+    "smooth-skin": "Smooth skin",
+    "glow-golden": "Golden glow ✨",
+    "cinematic-light": "Cinematic light 🎬"
+  },
+  ru: {
+    "beauty-one-touch": "Ровная кожа, без прыщей",
+    "no-wrinkles": "Меньше морщин",
+    younger: "Моложе на 10–15 лет",
+    "smooth-skin": "Гладкая кожа",
+    "glow-golden": "Золотистое свечение ✨",
+    "cinematic-light": "Кино-свет 🎬"
+  },
+  de: {
+    "beauty-one-touch": "Sanfte Haut, ohne Akne",
+    "no-wrinkles": "Weniger Falten",
+    younger: "Etwas jünger aussehen",
+    "smooth-skin": "Glatte Haut",
+    "glow-golden": "Goldener Glow ✨",
+    "cinematic-light": "Kinematisches Licht 🎬"
+  },
+  es: {
+    "beauty-one-touch": "Piel uniforme, sin acné",
+    "no-wrinkles": "Menos arrugas",
+    younger: "Un poco más joven",
+    "smooth-skin": "Piel suave",
+    "glow-golden": "Brillo dorado ✨",
+    "cinematic-light": "Luz cinematográfica 🎬"
+  }
+};
+
+// 🔹 Локализованные названия мимики
+const MIMIC_LABELS = {
+  en: {
+    "smile-soft": "Soft smile 🙂",
+    "smile-big": "Big smile 😄",
+    "smile-hollywood": "Wide smile 😁",
+    laugh: "Laugh 😂",
+    "surprised-wow": "Wow surprise 😲",
+    "eyes-bigger": "Slightly bigger eyes 👁",
+    "eyes-brighter": "Brighter eyes ✨",
+    neutral: "Neutral face",
+    serious: "Serious look"
+  },
+  ru: {
+    "smile-soft": "Лёгкая улыбка 🙂",
+    "smile-big": "Большая улыбка 😄",
+    "smile-hollywood": "Широкая улыбка 😁",
+    laugh: "Смех 😂",
+    "surprised-wow": "Удивление «вау» 😲",
+    "eyes-bigger": "Глаза чуть больше 👁",
+    "eyes-brighter": "Более яркие глаза ✨",
+    neutral: "Нейтральное лицо",
+    serious: "Серьёзный взгляд"
+  },
+  de: {
+    "smile-soft": "Sanftes Lächeln 🙂",
+    "smile-big": "Großes Lächeln 😄",
+    "smile-hollywood": "Breites Lächeln 😁",
+    laugh: "Lachen 😂",
+    "surprised-wow": "Überrascht «wow» 😲",
+    "eyes-bigger": "Etwas größere Augen 👁",
+    "eyes-brighter": "Hellere Augen ✨",
+    neutral: "Neutrales Gesicht",
+    serious: "Ernster Blick"
+  },
+  es: {
+    "smile-soft": "Sonrisa suave 🙂",
+    "smile-big": "Gran sonrisa 😄",
+    "smile-hollywood": "Sonrisa amplia 😁",
+    laugh: "Risa 😂",
+    "surprised-wow": "Sorpresa «wow» 😲",
+    "eyes-bigger": "Ojos un poco más grandes 👁",
+    "eyes-brighter": "Ojos más brillantes ✨",
+    neutral: "Rostro neutro",
+    serious: "Mirada seria"
+  }
+};
+
 export function toggleEffect(value) {
   const idx = appState.selectedEffects.indexOf(value);
   if (idx >= 0) {
@@ -26,7 +110,7 @@ export function toggleEffect(value) {
 // убираем ВСЕ skin-эффекты, чтобы в один момент был только один
 export function removeSkinEffects() {
   const skinKeys = [
-    "beauty-one-touch", // 🔹 наш общий эффект
+    "beauty-one-touch",
     "no-wrinkles",
     "younger",
     "smooth-skin",
@@ -80,20 +164,23 @@ export function openStyleSheet() {
 }
 
 export function openSkinSheet() {
-  const lang = appState.language;
+  const lang = appState.language || "en";
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+  const labels = SKIN_LABELS[lang] || SKIN_LABELS.en;
 
-  const optionsConfig = [
-    {
-      value: "beauty-one-touch",
-      label: "One-touch beauty (smooth skin, no acne)"
-    },
-    { value: "no-wrinkles", label: "No wrinkles" },
-    { value: "younger", label: "Younger by 10–20 years" },
-    { value: "smooth-skin", label: "Smooth skin" },
-    { value: "glow-golden", label: "Golden glow ✨" },
-    { value: "cinematic-light", label: "Cinematic light 🎬" }
+  const values = [
+    "beauty-one-touch",
+    "no-wrinkles",
+    "younger",
+    "smooth-skin",
+    "glow-golden",
+    "cinematic-light"
   ];
+
+  const optionsConfig = values.map((value) => ({
+    value,
+    label: labels[value] || value
+  }));
 
   openSheet({
     title: sheet.skinTitle,
@@ -102,7 +189,7 @@ export function openSkinSheet() {
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
-        removeSkinEffects();     // всегда только один skin-эффект
+        removeSkinEffects();
         toggleEffect(value);
         refreshSelectionChips();
         closeSheet();
@@ -112,20 +199,26 @@ export function openSkinSheet() {
 }
 
 export function openMimicSheet() {
-  const lang = appState.language;
+  const lang = appState.language || "en";
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
+  const labels = MIMIC_LABELS[lang] || MIMIC_LABELS.en;
 
-  const optionsConfig = [
-    { value: "smile-soft", label: "Soft smile 🙂" },
-    { value: "smile-big", label: "Big smile 😄" },
-    { value: "smile-hollywood", label: "Hollywood smile 😁" },
-    { value: "laugh", label: "Laugh 😂" },
-    { value: "surprised-wow", label: "Wow surprise 😲" },
-    { value: "eyes-bigger", label: "Slightly bigger eyes 👁" },
-    { value: "eyes-brighter", label: "Brighter eyes ✨" },
-    { value: "neutral", label: "Neutral face" },
-    { value: "serious", label: "Serious look" }
+  const values = [
+    "smile-soft",
+    "smile-big",
+    "smile-hollywood",
+    "laugh",
+    "surprised-wow",
+    "eyes-bigger",
+    "eyes-brighter",
+    "neutral",
+    "serious"
   ];
+
+  const optionsConfig = values.map((value) => ({
+    value,
+    label: labels[value] || value
+  }));
 
   openSheet({
     title: sheet.mimicTitle,
