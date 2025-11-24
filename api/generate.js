@@ -6,7 +6,7 @@ import Replicate from "replicate";
 // Базовые стили
 const STYLE_PREFIX = {
   beauty:
-    "high-end beauty portrait, realistic photo, soft studio light, clean background",
+    "high-end portrait, realistic photo, soft studio light, clean background",
   oil: "oil painting portrait, detailed, soft warm light, artistic brush strokes",
   anime:
     "anime style portrait, clean line art, soft pastel shading, big expressive eyes",
@@ -20,39 +20,41 @@ const STYLE_PREFIX = {
 // Эффекты обработки кожи + мимика
 // (ключи совпадают с EFFECT_CHIP_LABELS_EN из state.js)
 const EFFECT_PROMPTS = {
-  // 🔹 общий эффект "одной кнопкой" — улучшить кожу (тон, прыщи, мелкие морщины)
+  // 🔹 один эффект "одной кнопкой":
+  // НЕ делаем человека красивее, НЕ меняем лицо,
+  // только убираем морщины/прыщи и выравниваем кожу.
   "beauty-one-touch":
-    "subtle natural beauty retouch on the same face, even skin tone, remove acne and pimples, reduce dark spots and dark circles, soften fine wrinkles and lines, keep realistic skin texture and pores, do not change the facial structure, keep exactly the same person",
+    "keep exactly the same person and the same face. do not make the person more beautiful, do not stylize the face, do not change attractiveness. only reduce the visibility of wrinkles and fine lines, gently smooth and even the skin texture, remove acne and small blemishes, keep natural pores and realistic skin, keep the same gender and facial structure",
 
-  // кожа — все эффекты теперь явно привязаны к тому же лицу
+  // кожа — переформулировано мягко, без слова 'beauty'
   "no-wrinkles":
-    "same person with fewer visible wrinkles, slightly reduced skin texture, gentle beauty retouch, still natural, do not change facial structure or gender",
+    "same person with slightly reduced visibility of wrinkles, a bit softer skin texture, still natural and realistic, keep the same face and gender",
   younger:
-    "same person looking 10–15 years younger with fresher skin and less tired look, but clearly the same face, do not change gender, ethnicity or main facial features",
+    "same person looking slightly more rested and a bit younger, with fresher skin, but clearly the same face and gender, no replacement with a different model",
   "smooth-skin":
-    "smooth and even skin on the same face, reduced blemishes, preserved pores, very natural retouch, do not replace the person with a different model face",
+    "same person with smoother and more even skin, reduced blemishes, preserved pores, realistic texture, no change to facial features or gender",
   "glow-golden":
-    "soft golden glow on the skin of the same person, warm highlights, healthy radiant look, without changing face shape or gender",
+    "soft warm golden light on the same face, healthy look, without changing face shape, age or gender",
   "cinematic-light":
-    "cinematic beauty lighting on the same face, soft key light and gentle rim light, no change to identity or gender",
+    "cinematic soft light on the same face, better contrast and shading, no changes to identity or gender",
 
-  // мимика (тоже чуть усилим «same person»)
+  // мимика — усиливаем 'same person'
   "smile-soft":
     "same person with a subtle soft smile, calm and relaxed expression, no change to face structure or gender",
   "smile-big":
     "same person with a big warm smile, expressive and friendly face, keep all main facial features",
   "smile-hollywood":
-    "same person with a wide hollywood smile, visible white teeth but still natural, confident look, do not change identity",
+    "same person with a wide smile, visible teeth but still natural, confident look, do not change identity",
   laugh:
     "same person laughing with a bright smile, joyful and natural expression, no replacement with a different person",
   "surprised-wow":
-    "same person with a wow surprised expression, eyes a bit wider, eyebrows raised, keep the same facial features",
+    "same person with a surprised wow expression, eyes a bit wider, eyebrows raised, same facial features",
   neutral:
     "same person with a neutral face expression, relaxed, no strong visible emotion",
   serious:
-    "same person with a serious face, no smile, focused thoughtful expression, no change to gender or identity",
+    "same person with a serious face, no smile, focused thoughtful expression, same gender and identity",
   "eyes-bigger":
-    "same person with slightly bigger, more open eyes, keep the same eye shape and identity",
+    "same person with slightly more open and attentive eyes, keep the same eye shape and identity",
   "eyes-brighter":
     "same person with brighter, more vivid and expressive gaze, no change to facial structure"
 };
@@ -69,13 +71,14 @@ const GREETING_PROMPTS = {
     "dark horror themed portrait, moody lighting, subtle spooky background, creepy handwritten English text 'Happy Halloween' on the image"
 };
 
-// Сохраняем одного и того же человека — усилили очень жёстко
+// Сохраняем одного и того же человека — жёсткий запрет менять лицо/пол
 const IDENTITY_PROMPT =
   "STRICTLY edit this exact portrait photo of the SAME person from the input image only. " +
-  "The final result MUST be clearly recognizable as the same person, at least 80% similar to the input face. " +
+  "The final result MUST be clearly recognizable as the same person, at least 80 percent similar to the input face. " +
   "Keep the same gender, age range, face shape and main facial features. " +
-  "Do NOT change gender, do NOT feminize or masculinize the person, do NOT turn a man into a woman or a woman into a man. " +
-  "Do NOT replace the face with a different model or a different person, even if the beauty effect is strong.";
+  "Do NOT change gender, do NOT turn a man into a woman and do NOT turn a woman into a man. " +
+  "Do NOT replace the face with a different model or a different more beautiful person. " +
+  "Do NOT change the attractiveness level, only apply the requested skin and expression corrections.";
 
 // Убираем мусор из скриншотов (UI, кнопки и т.п.)
 const UI_CLEANUP_TAIL =
