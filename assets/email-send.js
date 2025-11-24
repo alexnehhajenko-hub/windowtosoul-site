@@ -46,14 +46,14 @@ if (emailButton && emailInput && emailStatus) {
       const res = await fetch("/api/send-portraits", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           email,
           images: [previewImage.src], // ТОЛЬКО текущий нормальный портрет
           total: 1,
-          used: 1,
-        }),
+          used: 1
+        })
       });
 
       let data = null;
