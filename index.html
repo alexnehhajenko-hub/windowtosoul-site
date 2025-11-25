@@ -5,6 +5,13 @@
   <title>YourPhotoAI – AI Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <!-- SEO meta -->
+  <meta
+    name="description"
+    content="YourPhotoAI – online AI portrait lab. Upload your photo and get AI-generated portraits in different styles with skin effects, expressions and greetings. Pay once, use your package of generations during the session."
+  >
+  <link rel="canonical" href="https://yourphotoai.vip/">
+
   <!-- App styles -->
   <link rel="stylesheet" href="/assets/style.css">
 
@@ -15,7 +22,7 @@
   <div class="app">
     <!-- Header -->
     <header class="app-header">
-      <div class="app-title">YOURPHOTOAI</div>
+      <h1 class="app-title">YOURPHOTOAI</h1>
       <div class="app-subtitle">Create your unique AI portrait</div>
 
       <!-- Language switcher -->
@@ -25,48 +32,23 @@
         <button id="langEs" class="lang-btn">ES</button>
         <button id="langRu" class="lang-btn">RU</button>
       </div>
-    </header>
 
-    <!-- EXAMPLES GALLERY (10 static photos) -->
-    <section class="examples-section">
-      <h2 class="examples-title">Examples of AI portraits</h2>
-      <p class="examples-subtitle">
-        Real examples of how YourPhotoAI can gently improve skin and keep the same person.
-      </p>
-
-      <div class="examples-grid">
-        <div class="example-item">
-          <img src="/gallery-1.jpg.jpg" alt="AI portrait example 1" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-2.jpg.jpg" alt="AI portrait example 2" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-3.jpg.jpg" alt="AI portrait example 3" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-4.jpg.jpg" alt="AI portrait example 4" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-5.jpg.jpg" alt="AI portrait example 5" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-6.jpg.jpg" alt="AI portrait example 6" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-7.jpg.jpg" alt="AI portrait example 7" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-8.jpg.jpg" alt="AI portrait example 8" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-9.jpg.jpg" alt="AI portrait example 9" class="example-img">
-        </div>
-        <div class="example-item">
-          <img src="/gallery-10.jpg.jpg" alt="AI portrait example 10" class="example-img">
-        </div>
+      <!-- 🔹 Кнопка "посмотреть галерею" -->
+      <div style="margin-top:12px; display:flex; justify-content:center;">
+        <a
+          href="#examplesGallery"
+          class="btn-main btn-secondary"
+          style="
+            padding: 8px 18px;
+            font-size: 14px;
+            max-width: 260px;
+            text-align: center;
+          "
+        >
+          View example gallery
+        </a>
       </div>
-    </section>
+    </header>
 
     <!-- Portrait preview -->
     <section class="preview-box">
@@ -188,7 +170,7 @@
           <span>GREETINGS</span>
         </button>
 
-        <!-- CLEAR EFFECTS -->
+        <!-- 🔹 Новая кнопка: стереть все эффекты -->
         <button class="btn-main" id="btnClearEffects">
           <span class="btn-icon">🧹</span>
           <span>CLEAR EFFECTS</span>
@@ -242,6 +224,116 @@
         My portraits (0)
       </button>
     </div>
+
+    <!-- 🔹 Статическая галерея примеров -->
+    <section
+      id="examplesGallery"
+      style="
+        margin: 32px auto 24px;
+        max-width: 900px;
+        padding: 0 16px;
+      "
+    >
+      <h2
+        style="
+          font-size: 20px;
+          font-weight: 600;
+          margin-bottom: 8px;
+          text-align: center;
+        "
+      >
+        Example portraits
+      </h2>
+      <p
+        style="
+          font-size: 14px;
+          color: rgba(255,255,255,0.7);
+          margin-bottom: 16px;
+          text-align: center;
+        "
+      >
+        Real transformations created with YourPhotoAI.
+      </p>
+
+      <div
+        style="
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 12px;
+        "
+      >
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-1.jpg.jpg"
+            alt="AI portrait example 1"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-2.jpg.jpg"
+            alt="AI portrait example 2"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-3.jpg.jpg"
+            alt="AI portrait example 3"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-4.jpg.jpg"
+            alt="AI portrait example 4"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-5.jpg.jpg"
+            alt="AI portrait example 5"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-6.jpg.jpg"
+            alt="AI portrait example 6"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-7.jpg.jpg"
+            alt="AI portrait example 7"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-8.jpg.jpg"
+            alt="AI portrait example 8"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-9.jpg.jpg"
+            alt="AI portrait example 9"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+        <figure style="margin:0;">
+          <img
+            src="/assets/gallery-10.jpg.jpg"
+            alt="AI portrait example 10"
+            style="width:100%; border-radius:12px; display:block;"
+          >
+        </figure>
+      </div>
+    </section>
 
     <!-- Gallery modal: все портреты сессии + отправка всех на email -->
     <div
@@ -433,7 +525,7 @@
     <div class="agreement-modal">
       <div class="agreement-header">
         <div class="agreement-title">Confirmation</div>
-        <button class="agreementCloseBtn" id="agreementCloseBtn">✕</button>
+        <button class="agreement-close" id="agreementCloseBtn">✕</button>
       </div>
 
       <div class="agreement-text">
