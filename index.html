@@ -8,7 +8,7 @@
   <!-- SEO meta -->
   <meta
     name="description"
-    content="YourPhotoAI – online AI portrait lab. Upload your photo and get AI-generated portraits in different styles with skin effects, expressions and greetings. Pay once, use your package of generations during the session."
+    content="YourPhotoAI – online AI portrait lab. Upload your photo and get AI-generated portraits in different styles with skin effects, expressions and greetings. Pay once, download or receive them by email."
   >
   <link rel="canonical" href="https://yourphotoai.vip/">
 
@@ -53,6 +53,437 @@
         <div class="spinner"></div>
         <div class="generate-status-text">Generating portrait…</div>
       </div>
+    </section>
+
+    <!-- 🔹 DEMO GALLERY: 10 слотов для примеров (только визуально, без сохранения на сервер) -->
+    <section
+      id="exampleGallery"
+      style="
+        max-width: 960px;
+        margin: 24px auto 0;
+        padding: 16px 16px 8px;
+      "
+    >
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          margin-bottom:8px;
+          gap:8px;
+        "
+      >
+        <div
+          style="
+            font-size:16px;
+            font-weight:600;
+            color:#ffffff;
+          "
+        >
+          Example gallery (10 slots)
+        </div>
+        <div
+          style="
+            font-size:11px;
+            color:rgba(255,255,255,0.6);
+            text-align:right;
+          "
+        >
+          Tap a slot to choose a photo from your phone.<br>
+          Images are not saved on the server.
+        </div>
+      </div>
+
+      <div
+        id="exampleGalleryGrid"
+        style="
+          display:grid;
+          grid-template-columns:repeat(2, minmax(0, 1fr));
+          gap:8px;
+        "
+      >
+        <!-- 10 слотов -->
+        <!-- slot 1..10 -->
+        <!-- каждый слот = кнопка, по клику выбирается фото -->
+        <!-- можно поменять подписи, если хочешь -->
+        <!-- 1 -->
+        <button
+          class="example-slot"
+          data-slot="0"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 2 -->
+        <button
+          class="example-slot"
+          data-slot="1"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 3 -->
+        <button
+          class="example-slot"
+          data-slot="2"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 4 -->
+        <button
+          class="example-slot"
+          data-slot="3"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 5 -->
+        <button
+          class="example-slot"
+          data-slot="4"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 6 -->
+        <button
+          class="example-slot"
+          data-slot="5"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 7 -->
+        <button
+          class="example-slot"
+          data-slot="6"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 8 -->
+        <button
+          class="example-slot"
+          data-slot="7"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 9 -->
+        <button
+          class="example-slot"
+          data-slot="8"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+
+        <!-- 10 -->
+        <button
+          class="example-slot"
+          data-slot="9"
+          type="button"
+          style="
+            position:relative;
+            border:none;
+            padding:0;
+            border-radius:16px;
+            overflow:hidden;
+            background:rgba(255,255,255,0.05);
+            border:1px dashed rgba(255,255,255,0.25);
+            min-height:140px;
+            cursor:pointer;
+          "
+        >
+          <div
+            class="example-slot-inner"
+            style="
+              position:absolute;
+              inset:0;
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              gap:4px;
+              pointer-events:none;
+            "
+          >
+            <div style="font-size:20px;">＋</div>
+            <div class="example-slot-label" style="font-size:12px;color:rgba(255,255,255,0.75);">
+              Tap to add example
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <!-- скрытый input для выбора файлов -->
+      <input
+        type="file"
+        id="exampleGalleryFileInput"
+        accept="image/*"
+        style="display:none"
+      >
     </section>
 
     <!-- Email send block: можно отправить текущий портрет в любой момент -->
@@ -154,7 +585,7 @@
           <span>GREETINGS</span>
         </button>
 
-        <!-- 🔹 Новая кнопка: стереть все эффекты -->
+        <!-- 🔹 Кнопка: стереть все эффекты -->
         <button class="btn-main" id="btnClearEffects">
           <span class="btn-icon">🧹</span>
           <span>CLEAR EFFECTS</span>
@@ -445,5 +876,58 @@
   <script type="module" src="/assets/email-send.js"></script>
   <!-- Gallery + send all -->
   <script type="module" src="/assets/gallery.js"></script>
+
+  <!-- 🔹 JS для демо-галереи (выбор фото из телефона в 10 слотов) -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const slots = Array.from(document.querySelectorAll(".example-slot"));
+      const fileInput = document.getElementById("exampleGalleryFileInput");
+      let currentSlot = null;
+
+      if (!slots.length || !fileInput) return;
+
+      slots.forEach((slot) => {
+        slot.addEventListener("click", () => {
+          currentSlot = slot;
+          fileInput.click();
+        });
+      });
+
+      fileInput.addEventListener("change", (event) => {
+        const files = event.target.files;
+        if (!currentSlot || !files || !files[0]) {
+          currentSlot = null;
+          return;
+        }
+
+        const file = files[0];
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+          const dataUrl = e.target.result;
+
+          let img = currentSlot.querySelector("img");
+          if (!img) {
+            img = document.createElement("img");
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "cover";
+            img.style.display = "block";
+            currentSlot.insertBefore(img, currentSlot.firstChild);
+          }
+          img.src = dataUrl;
+
+          const label = currentSlot.querySelector(".example-slot-label");
+          if (label) {
+            label.textContent = "Change photo";
+          }
+        };
+
+        reader.readAsDataURL(file);
+        // сбрасываем input, чтобы можно было выбрать тот же файл снова
+        event.target.value = "";
+      });
+    });
+  </script>
 </body>
 </html>
