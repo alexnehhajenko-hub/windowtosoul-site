@@ -23,28 +23,45 @@ const STYLE_LABELS = {
     oil: "Oil painting",
     anime: "Anime",
     poster: "Poster",
-    classic: "Classic portrait"
+    classic: "Classic portrait",
+
+    // 🔹 НОВЫЕ СТИЛИ
+    "old-photo": "Vintage torn photo",
+    "old-painting": "Antique painting",
+    "dark-demon": "Dark demon style"
   },
   ru: {
     beauty: "Красивый портрет",
     oil: "Картина маслом",
     anime: "Аниме",
     poster: "Постер",
-    classic: "Классический портрет"
+    classic: "Классический портрет",
+
+    "old-photo": "Старинное фото (порванное)",
+    "old-painting": "Старинная картина",
+    "dark-demon": "Тёмный дьявольский стиль"
   },
   de: {
     beauty: "Beauty-Porträt",
     oil: "Ölgemälde",
     anime: "Anime",
     poster: "Poster",
-    classic: "Klassisches Porträt"
+    classic: "Klassisches Porträt",
+
+    "old-photo": "Altes Foto (beschädigt)",
+    "old-painting": "Antikes Gemälde",
+    "dark-demon": "Dunkler Dämonenstil"
   },
   es: {
     beauty: "Retrato beauty",
     oil: "Óleo",
     anime: "Anime",
     poster: "Póster",
-    classic: "Retrato clásico"
+    classic: "Retrato clásico",
+
+    "old-photo": "Foto antigua rota",
+    "old-painting": "Cuadro antiguo",
+    "dark-demon": "Estilo demonio oscuro"
   }
 };
 
@@ -186,7 +203,16 @@ export function openStyleSheet() {
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
   const labels = STYLE_LABELS[lang] || STYLE_LABELS.en;
 
-  const optionsConfig = ["beauty", "oil", "anime", "poster", "classic"];
+  const optionsConfig = [
+    "beauty",
+    "oil",
+    "anime",
+    "poster",
+    "classic",
+    "old-photo",
+    "old-painting",
+    "dark-demon"
+  ];
 
   const options = optionsConfig.map((value) => ({
     value,
