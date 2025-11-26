@@ -1,98 +1,70 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Фото / текст / эффекты кожи / мимика / поздравления (EN-надписи)
+// Фото / текст / эффекты кожи / мимика / старинные стили
 
 import Replicate from "replicate";
 
-// Базовые стили
+// ───────────── СТИЛИ ─────────────
 const STYLE_PREFIX = {
-  beauty:
-    "high-end portrait, realistic photo, soft studio light, clean background",
-  oil: "oil painting portrait, detailed, soft warm light, artistic brush strokes",
-  anime:
-    "anime style portrait, clean line art, soft pastel shading, big expressive eyes",
-  poster:
-    "cinematic movie poster portrait, dramatic lighting, high contrast, shallow depth of field",
-  classic:
-    "classical old master portrait, realism, warm tones, detailed skin, subtle vignette",
+  oil: "oil painting portrait, detailed, soft warm light, artistic",
+  anime: "anime style portrait, clean lines, soft pastel shading",
+  poster: "cinematic movie poster portrait, dramatic lighting, high contrast",
+  classic: "classical old master portrait, realism, warm tones, detailed skin",
+
+  // 🔹 Новые стили
+  "old-photo":
+    "vintage damaged photograph, sepia faded tones, slight scratches, torn paper texture, looks like an old family portrait from early 1900s",
+  "old-painting":
+    "antique old master oil painting portrait, cracked paint texture, aged canvas, muted vintage colors, dramatic chiaroscuro lighting",
+  "dark-demon":
+    "dark gothic horror portrait, eerie lighting, cold desaturated colors, subtle demonic aesthetic like an old engraving, no blood, no gore",
+
   default: "realistic portrait, detailed face, soft studio lighting"
 };
 
-// Эффекты обработки кожи + мимика
-// (ключи совпадают с EFFECT_CHIP_LABELS_EN из state.js)
+// ───────────── ЭФФЕКТЫ КОЖИ И МИМИКА ─────────────
 const EFFECT_PROMPTS = {
-  // один эффект "одной кнопкой":
-  // НЕ делаем человека красивее, НЕ меняем лицо,
-  // только убираем морщины/прыщи и выравниваем кожу.
-  "beauty-one-touch":
-    "keep exactly the same person and the same face. do not make the person more beautiful, do not stylize the face, do not change attractiveness. only reduce the visibility of wrinkles and fine lines, gently smooth and even the skin texture, remove acne and small blemishes, keep natural pores and realistic skin, keep the same gender and facial structure",
-
   // кожа
   "no-wrinkles":
-    "same person with slightly reduced visibility of wrinkles, a bit softer skin texture, still natural and realistic, keep the same face and gender",
+    "same person, less visible wrinkles, gentle retouch, keep natural pores and skin texture",
   younger:
-    "same person looking slightly more rested and a bit younger, with fresher skin, but clearly the same face and gender, no replacement with a different model",
+    "same person, looks slightly younger and more rested, fresher skin but clearly the same face",
   "smooth-skin":
-    "same person with smoother and more even skin, reduced blemishes, preserved pores, realistic texture, no change to facial features or gender",
-  "glow-golden":
-    "soft warm golden light on the same face, healthy look, without changing face shape, age or gender",
-  "cinematic-light":
-    "cinematic soft light on the same face, better contrast and shading, no changes to identity or gender",
+    "same person, smooth even skin, reduced blemishes, realistic texture, no changes to facial features",
 
   // мимика
   "smile-soft":
-    "same person with a subtle soft smile, calm and relaxed expression, no change to face structure or gender",
+    "same person with a subtle soft smile, calm and relaxed expression",
   "smile-big":
-    "same person with a big warm smile, expressive and friendly face, keep all main facial features",
+    "same person with a big warm smile, expressive and friendly face",
   "smile-hollywood":
-    "same person with a wide smile, visible teeth but still natural, confident look, do not change identity",
+    "same person with a wide smile, visible teeth but still natural, confident look",
   laugh:
-    "same person laughing with a bright smile, joyful and natural expression, no replacement with a different person",
-  "surprised-wow":
-    "same person with a surprised wow expression, eyes a bit wider, eyebrows raised, same facial features",
+    "same person laughing joyfully, natural happy expression, no replacement of face",
   neutral:
     "same person with a neutral face expression, relaxed, no strong visible emotion",
   serious:
-    "same person with a serious face, no smile, focused thoughtful expression, same gender and identity",
+    "same person with a serious focused look, no smile, same facial structure",
   "eyes-bigger":
-    "same person with slightly more open and attentive eyes, keep the same eye shape and identity",
+    "same person with slightly bigger attentive eyes, no face shape change",
   "eyes-brighter":
-    "same person with brighter, more vivid and expressive gaze, no change to facial structure"
+    "same person with brighter vivid gaze, same face and features"
 };
 
-// Поздравления — английский текст + антураж
-const GREETING_PROMPTS = {
-  "new-year":
-    "festive New Year portrait, cozy winter atmosphere, soft lights and bokeh, elegant handwritten English text 'Happy New Year' on the image",
-  birthday:
-    "birthday celebration portrait, balloons and confetti in the background, warm party lights, elegant handwritten English text 'Happy Birthday' on the image",
-  funny:
-    "playful fun portrait, bright colors, dynamic background shapes, bold handwritten English text like 'You look amazing!' on the image",
-  scary:
-    "dark horror themed portrait, moody lighting, subtle spooky background, creepy handwritten English text 'Happy Halloween' on the image"
-};
+// ───────────── ДОПОЛНИТЕЛЬНЫЕ ХВОСТЫ PROMPT ─────────────
 
-// Сохраняем одного и того же человека — жёсткий запрет менять лицо/пол
-const IDENTITY_PROMPT =
-  "STRICTLY edit this exact portrait photo of the SAME person from the input image only. " +
-  "The final result MUST be clearly recognizable as the same person, at least 80 percent similar to the input face. " +
-  "Keep the same gender, age range, face shape and main facial features. " +
-  "Do NOT change gender, do NOT turn a man into a woman and do NOT turn a woman into a man. " +
-  "Do NOT replace the face with a different model or a different more beautiful person. " +
-  "Do NOT change the attractiveness level, only apply the requested skin and expression corrections.";
+// Запрет на подмену лица / пола
+const IDENTITY_TAIL =
+  "STRICTLY edit the SAME person from the input image. Do not change gender, face shape, age category, or attractiveness. Keep at least 80% facial similarity to the input.";
 
-// Убираем мусор из скриншотов (UI, кнопки и т.п.) — усилено
-const UI_CLEANUP_TAIL =
-  "if the input looks like a screenshot of a website, completely remove and repaint all interface elements, grey panels, captions and buttons around or below the face. " +
-  "Do NOT reproduce any UI text such as 'You can download your portrait immediately or send it to your email', prices, menus or language buttons. " +
-  "Generate only a clean portrait of the person on a simple background, with no text, no frames, no logos, no watermarks and no interface elements at all.";
+// Убираем мусор (UI, кнопки и подписи)
+const CLEANUP_TAIL =
+  "remove all interface elements, buttons, captions, gray panels, and text if the image looks like a screenshot. Output only a clean portrait with no text, no borders, no watermarks, and a plain background.";
 
-// Безопасность / анти-NSFW
+// Безопасность
 const SAFETY_TAIL =
-  "portrait from the shoulders up, person is fully clothed, no nudity, no explicit cleavage, no sexual content, no extra people, no distorted anatomy";
+  "portrait from the shoulders up, person is fully clothed, no nudity, no explicit content, no distorted anatomy";
 
-/**
- * API handler
- */
+// ───────────── HANDLER ─────────────
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -109,43 +81,36 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects, greeting } = body || {};
+    const { style, text, photo, effects } = body || {};
 
     // 1. Стиль
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
 
-    // 2. Пользовательский текст (пока не используется)
+    // 2. Пользовательский текст
     const userPrompt = (text || "").trim();
 
-    // 3. Эффекты → в prompt
+    // 3. Эффекты
     let effectsPrompt = "";
     if (Array.isArray(effects) && effects.length > 0) {
       effectsPrompt = effects
-        .map((key) => EFFECT_PROMPTS[key])
+        .map((k) => EFFECT_PROMPTS[k])
         .filter(Boolean)
         .join(", ");
     }
 
-    // 4. Поздравление
-    let greetingPrompt = "";
-    if (greeting && GREETING_PROMPTS[greeting]) {
-      greetingPrompt = GREETING_PROMPTS[greeting];
-    }
-
-    // 5. Итоговый prompt
+    // 4. Итоговый prompt
     const promptParts = [
       stylePrefix,
       effectsPrompt,
-      greetingPrompt,
       userPrompt,
-      IDENTITY_PROMPT,
-      UI_CLEANUP_TAIL,
+      IDENTITY_TAIL,
+      CLEANUP_TAIL,
       SAFETY_TAIL
     ].filter(Boolean);
 
     const prompt = promptParts.join(". ").trim();
 
-    // 6. Вход в модель Replicate
+    // 5. Вход в модель Replicate
     const input = {
       prompt,
       output_format: "jpg"
@@ -164,22 +129,17 @@ export default async function handler(req, res) {
       { input }
     );
 
-    // Поиск URL
+    // 6. Поиск URL результата
     let imageUrl = null;
-
-    if (Array.isArray(output)) {
-      imageUrl = output[0];
-    } else if (output?.output) {
+    if (Array.isArray(output)) imageUrl = output[0];
+    else if (output?.output) {
       if (Array.isArray(output.output)) imageUrl = output.output[0];
       else if (typeof output.output === "string") imageUrl = output.output;
-    } else if (typeof output === "string") {
-      imageUrl = output;
-    } else if (output?.url) {
+    } else if (typeof output === "string") imageUrl = output;
+    else if (output?.url) {
       try {
         imageUrl = output.url();
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
 
     if (!imageUrl) {
@@ -191,7 +151,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      image: imageUrl
+      image: imageUrl,
+      prompt
     });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
