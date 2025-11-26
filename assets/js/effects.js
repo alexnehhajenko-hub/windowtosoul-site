@@ -19,55 +19,73 @@ import {
 // Локализованные названия стилей
 const STYLE_LABELS = {
   en: {
-    beauty: "Beauty",
+    beauty: "Beauty retouch",
     oil: "Oil painting",
     anime: "Anime",
-    poster: "Poster",
+    poster: "Movie poster",
     classic: "Classic portrait",
-
-    // 🔹 НОВЫЕ СТИЛИ
-    "old-photo": "Vintage torn photo",
-    "old-painting": "Antique painting",
-    "dark-demon": "Dark demon style"
+    royal_old: "Old royal painting",
+    neon: "Neon cyberpunk",
+    devil: "Demon / Devil",
+    angel: "Angel light",
+    vampire: "Vampire",
+    ghost: "Ghost / Horror",
+    comic: "Comic / Pop art",
+    fire: "Fire & energy",
+    god_light: "God of light"
   },
   ru: {
     beauty: "Красивый портрет",
     oil: "Картина маслом",
     anime: "Аниме",
-    poster: "Постер",
+    poster: "Кино-постер",
     classic: "Классический портрет",
-
-    "old-photo": "Старинное фото (порванное)",
-    "old-painting": "Старинная картина",
-    "dark-demon": "Тёмный дьявольский стиль"
+    royal_old: "Старинный королевский портрет",
+    neon: "Неоновый киберпанк",
+    devil: "Демон / дьявол",
+    angel: "Ангельский свет",
+    vampire: "Вампир",
+    ghost: "Призрак / хоррор",
+    comic: "Комикс / поп-арт",
+    fire: "Огонь и энергия",
+    god_light: "Бог света"
   },
   de: {
     beauty: "Beauty-Porträt",
     oil: "Ölgemälde",
     anime: "Anime",
-    poster: "Poster",
+    poster: "Filmplakat",
     classic: "Klassisches Porträt",
-
-    "old-photo": "Altes Foto (beschädigt)",
-    "old-painting": "Antikes Gemälde",
-    "dark-demon": "Dunkler Dämonenstil"
+    royal_old: "Altes königliches Gemälde",
+    neon: "Neon-Cyberpunk",
+    devil: "Dämon / Teufel",
+    angel: "Engel-Licht",
+    vampire: "Vampir",
+    ghost: "Geist / Horror",
+    comic: "Comic / Pop-Art",
+    fire: "Feuer und Energie",
+    god_light: "Lichtgott"
   },
   es: {
     beauty: "Retrato beauty",
     oil: "Óleo",
     anime: "Anime",
-    poster: "Póster",
+    poster: "Póster de cine",
     classic: "Retrato clásico",
-
-    "old-photo": "Foto antigua rota",
-    "old-painting": "Cuadro antiguo",
-    "dark-demon": "Estilo demonio oscuro"
+    royal_old: "Retrato real antiguo",
+    neon: "Neón cyberpunk",
+    devil: "Demonio",
+    angel: "Luz de ángel",
+    vampire: "Vampiro",
+    ghost: "Fantasma / terror",
+    comic: "Cómic / pop art",
+    fire: "Fuego y energía",
+    god_light: "Dios de la luz"
   }
 };
 
 // ──────────────────────── ЭФФЕКТЫ КОЖИ ────────────────────────
 
-// Локализованные названия эффектов кожи
 const SKIN_LABELS = {
   en: {
     "beauty-one-touch": "One-touch beauty (smooth skin, no acne)",
@@ -80,7 +98,7 @@ const SKIN_LABELS = {
   ru: {
     "beauty-one-touch": "Ровная кожа, без прыщей",
     "no-wrinkles": "Меньше морщин",
-    younger: "Моложе на 10–15 лет",
+    younger: "Моложе и свежий вид",
     "smooth-skin": "Гладкая кожа",
     "glow-golden": "Золотистое свечение ✨",
     "cinematic-light": "Кино-свет 🎬"
@@ -105,7 +123,6 @@ const SKIN_LABELS = {
 
 // ───────────────────────── МИМИКА ─────────────────────────
 
-// Локализованные названия мимики
 const MIMIC_LABELS = {
   en: {
     "smile-soft": "Soft smile 🙂",
@@ -206,12 +223,18 @@ export function openStyleSheet() {
   const optionsConfig = [
     "beauty",
     "oil",
+    "classic",
     "anime",
     "poster",
-    "classic",
-    "old-photo",
-    "old-painting",
-    "dark-demon"
+    "royal_old",
+    "neon",
+    "devil",
+    "angel",
+    "vampire",
+    "ghost",
+    "comic",
+    "fire",
+    "god_light"
   ];
 
   const options = optionsConfig.map((value) => ({
