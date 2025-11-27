@@ -6,11 +6,6 @@ import Replicate from "replicate";
 // ───────────── СТИЛИ ─────────────
 const STYLE_PREFIX = {
   oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep original background unless it looks like a screenshot",
-
-  // 🔶 ВИНТАЖНЫЙ СТАРИННЫЙ ПОРТРЕТ
-  "old-painting":
-    "vintage old master oil painting portrait, aged and slightly cracked canvas texture, warm sepia and brown tones, lower saturation, soft brush strokes, subtle vignette, 19th century classical style, artistic background",
-
   anime:
     "anime style portrait, clean line art, soft pastel shading, big expressive eyes, colorful background, keep the same person",
   poster:
@@ -18,9 +13,13 @@ const STYLE_PREFIX = {
   classic:
     "classical old master portrait, realism, warm tones, detailed skin, soft vignette, subtle textured background",
 
-  // 🔥 тёмный демон
+  // 🔹 ВИНТАЖ / СТАРОЕ ФОТО
+  "old-photo":
+    "vintage old photo portrait, slightly faded colors, soft warm tone, subtle film grain, gentle vignette, keep the same person and keep the original background and clothes, do not erase the background",
+
+  // 🔥 ТЁМНЫЙ ДЕМОН
   "dark-demon":
-    "dark fantasy horror portrait, dramatic moody lighting, strong contrast, glowing eyes or dark aura, subtle demonic details like small horns or shadows behind, highly detailed realistic face, cinematic horror atmosphere, no blood, no gore, same person",
+    "dark fantasy horror portrait of the same person, dramatic moody lighting, strong contrast, subtle demonic elements like glowing eyes, dark aura or small horns, highly detailed realistic face, cinematic horror atmosphere. keep the head and shoulders and keep a slightly visible dark background or smoke, not solid pure black, no blood, no gore",
 
   // по умолчанию — обычный реалистичный портрет
   default:
@@ -28,8 +27,6 @@ const STYLE_PREFIX = {
 };
 
 // ───────── ЭФФЕКТЫ КОЖИ + МИМИКА ─────────
-// поддерживаем и «старые», и «новые» ключи,
-// чтобы всё работало, что бы ни стояло в фронтенде
 const EFFECT_PROMPTS = {
   // кожа — «старые»
   "no-wrinkles":
@@ -71,11 +68,11 @@ const EFFECT_PROMPTS = {
 // ───────── ПОЗДРАВЛЕНИЯ ─────────
 const GREETING_PROMPTS = {
   "new-year":
-    "very festive bright New Year portrait, cozy winter atmosphere, colorful garlands, Christmas tree lights and bokeh, maybe fireworks in the distance, vivid contrast, elegant handwritten English text 'Happy New Year' on the image",
+    "festive bright New Year portrait, cozy winter atmosphere, colorful lights and bokeh, fireworks in the distance, vivid contrast, elegant handwritten English text 'Happy New Year' on the image",
   birthday:
     "colorful birthday celebration portrait, balloons and confetti, party lights, bright and happy mood, elegant handwritten English text 'Happy Birthday' on the image",
   funny:
-    "playful fun portrait, very bright neon colors, dynamic shapes, comic-style details, bold handwritten English text like 'You look amazing!' on the image",
+    "playful fun portrait, very bright colors, dynamic neon shapes, comic-style details, bold handwritten English English text like 'You look amazing!' on the image",
   scary:
     "dark spooky horror-style portrait, cold dramatic lighting, subtle fog and scary background details, creepy but readable handwritten English text 'Happy Halloween' on the image"
 };
