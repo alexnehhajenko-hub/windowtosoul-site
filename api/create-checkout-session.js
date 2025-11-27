@@ -40,11 +40,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "pack is required" });
     }
 
-    // Настройка пакетов
+    // 🔹 Новые цены (в центах):
+    // 10 генераций — 2.99 €
+    // 20 генераций — 4.99 €
+    // 30 генераций — 6.99 €
     const packs = {
-      pack10: { credits: 10, amount: 499 },   // €4.99
-      pack20: { credits: 20, amount: 899 },   // €8.99
-      pack30: { credits: 30, amount: 1199 }   // €11.99
+      pack10: { credits: 10, amount: 299 },  // €2.99
+      pack20: { credits: 20, amount: 499 },  // €4.99
+      pack30: { credits: 30, amount: 699 }   // €6.99
     };
 
     const packConfig = packs[pack];
