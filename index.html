@@ -4,16 +4,6 @@
   <meta charset="utf-8">
   <title>YourPhotoAI – AI Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-KQVWHVN6BT"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-KQVWHVN6BT');
-</script>
- 
 
   <!-- SEO meta -->
   <meta
@@ -21,6 +11,15 @@
     content="YourPhotoAI – online AI portrait lab. Upload your photo and get AI-generated portraits in different styles with skin effects, expressions and greetings. Pay once, use your package of generations during the session."
   >
   <link rel="canonical" href="https://yourphotoai.vip/">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KQVWHVN6BT"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-KQVWHVN6BT');
+  </script>
 
   <!-- App styles -->
   <link rel="stylesheet" href="/assets/style.css">
@@ -139,7 +138,7 @@
       "
     ></div>
 
-    <!-- Подсказка -->
+    <!-- Hint -->
     <div
       style="
         margin: 8px auto 0;
@@ -155,8 +154,10 @@
 
     <!-- Bottom block: effects + buttons -->
     <div class="controls" id="controls">
+      <!-- Chips with selected settings -->
       <div class="selection-row" id="selectionRow"></div>
 
+      <!-- Main buttons -->
       <section class="button-list">
         <button class="btn-main" id="btnStyle">
           <span class="btn-icon">🎨</span>
@@ -178,6 +179,7 @@
           <span>GREETINGS</span>
         </button>
 
+        <!-- Clear all effects -->
         <button class="btn-main" id="btnClearEffects">
           <span class="btn-icon">🧹</span>
           <span>CLEAR EFFECTS</span>
@@ -232,7 +234,7 @@
       </button>
     </div>
 
-    <!-- Статическая галерея примеров -->
+    <!-- Static gallery with examples -->
     <section
       id="examplesGallery"
       style="
@@ -312,7 +314,7 @@
       </div>
     </section>
 
-    <!-- Gallery modal -->
+    <!-- Session gallery modal -->
     <div
       class="gallery-backdrop"
       id="galleryBackdrop"
@@ -445,7 +447,7 @@
   <!-- Hidden file input -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Bottom SHEET -->
+  <!-- Bottom SHEET for style / skin / expression / greetings -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
@@ -476,16 +478,16 @@
 
       <div class="pay-packages">
         <button class="pay-package" data-package="pack10" id="pkg10">
-          <div class="pay-package-title">10 generations</div>
-          <div class="pay-package-price">€4.99</div>
+          <div class="pay-package-title">Starter · 10 generations</div>
+          <div class="pay-package-price">€2.99</div>
         </button>
         <button class="pay-package" data-package="pack20" id="pkg20">
-          <div class="pay-package-title">20 generations</div>
-          <div class="pay-package-price">€8.99</div>
+          <div class="pay-package-title">Standard · 20 generations</div>
+          <div class="pay-package-price">€4.99</div>
         </button>
         <button class="pay-package" data-package="pack30" id="pkg30">
-          <div class="pay-package-title">30 generations</div>
-          <div class="pay-package-price">€11.99</div>
+          <div class="pay-package-title">Pro · 30 generations</div>
+          <div class="pay-package-price">€6.99</div>
         </button>
       </div>
 
@@ -497,7 +499,7 @@
     </div>
   </div>
 
-  <!-- MODAL #2: consent + email -->
+  <!-- MODAL #2: consent + email before payment -->
   <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
@@ -544,7 +546,9 @@
 
   <!-- Main JS -->
   <script type="module" src="/assets/main.js"></script>
+  <!-- Single-portrait email -->
   <script type="module" src="/assets/email-send.js"></script>
+  <!-- Gallery + send all -->
   <script type="module" src="/assets/gallery.js"></script>
 </body>
 </html>
