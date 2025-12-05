@@ -34,47 +34,14 @@
       <h1 class="app-title">YOURPHOTOAI</h1>
       <div class="app-subtitle">Create your unique AI portrait</div>
 
-      <!-- Language switcher -->
+      <!-- Language switcher (RU removed) -->
       <div class="lang-switch">
         <button id="langEn" class="lang-btn lang-selected">EN</button>
         <button id="langDe" class="lang-btn">DE</button>
         <button id="langEs" class="lang-btn">ES</button>
-        <button id="langRu" class="lang-btn">RU</button>
       </div>
 
-      <!-- 🔔 Christmas / Holiday sale banner (EN) -->
-      <div
-        style="
-          margin-top: 10px;
-          display: flex;
-          justify-content: center;
-        "
-      >
-        <div
-          style="
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #ff4b6a, #ffb54b);
-            color: #fff;
-            font-size: 11px;
-            text-align: center;
-            box-shadow: 0 8px 18px rgba(0,0,0,0.65);
-          "
-        >
-          <div style="font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;">
-            Christmas special offer 🎄
-          </div>
-          <div style="opacity: 0.95;">
-            10 AI portraits now <strong>€2.99</strong> (was <span style="text-decoration: line-through;">€4.99</span>)
-          </div>
-        </div>
-      </div>
-
-      <!-- Button: view static example gallery -->
+      <!-- Button "view gallery" -->
       <div style="margin-top:12px; display:flex; justify-content:center;">
         <a
           href="#examplesGallery"
@@ -88,6 +55,21 @@
         >
           View example gallery
         </a>
+      </div>
+
+      <!-- Simple sale banner (EN only) -->
+      <div
+        style="
+          margin-top: 10px;
+          padding: 8px 12px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.06);
+          font-size: 13px;
+          line-height: 1.4;
+        "
+      >
+        <strong>Christmas sale:</strong> starter pack now <strong>€2.99</strong>
+        (was €4.99). Limited-time holiday price.
       </div>
     </header>
 
@@ -498,83 +480,85 @@
     </div>
   </div>
 
-  <!-- MODAL #1: package selection -->
-  <div class="pay-backdrop" id="payBackdrop">
-    <div class="pay-modal">
-      <div class="pay-header">
-        <div class="pay-title">Choose a package</div>
-        <button class="pay-close" id="payCloseBtn">✕</button>
-      </div>
+    <!-- MODAL #1: package selection -->
+    <div class="pay-backdrop" id="payBackdrop">
+      <div class="pay-modal">
+        <div class="pay-header">
+          <div class="pay-title">Choose a package</div>
+          <button class="pay-close" id="payCloseBtn">✕</button>
+        </div>
 
-      <div class="pay-section-title">Generation packages</div>
+        <div class="pay-section-title">Generation packages</div>
 
-      <div class="pay-packages">
-        <button class="pay-package" data-package="pack10" id="pkg10">
-          <div class="pay-package-title">Starter · 10 generations</div>
-          <div class="pay-package-price">€2.99</div>
+        <div class="pay-packages">
+          <button class="pay-package" data-package="pack10" id="pkg10">
+            <div class="pay-package-title">Starter · 10 generations</div>
+            <div class="pay-package-price">€2.99</div>
+          </button>
+          <button class="pay-package" data-package="pack20" id="pkg20">
+            <div class="pay-package-title">Standard · 20 generations</div>
+            <div class="pay-package-price">€4.99</div>
+          </button>
+          <button class="pay-package" data-package="pack30" id="pkg30">
+            <div class="pay-package-title">Pro · 30 generations</div>
+            <div class="pay-package-price">€6.99</div>
+          </button>
+        </div>
+
+        <div class="pay-error" id="payError"></div>
+
+        <button class="pay-submit" id="payNextBtn">
+          Continue
         </button>
-        <button class="pay-package" data-package="pack20" id="pkg20">
-          <div class="pay-package-title">Standard · 20 generations</div>
-          <div class="pay-package-price">€4.99</div>
-        </button>
-        <button class="pay-package" data-package="pack30" id="pkg30">
-          <div class="pay-package-title">Pro · 30 generations</div>
-          <div class="pay-package-price">€6.99</div>
-        </button>
-      </div>
-
-      <div class="pay-error" id="payError"></div>
-
-      <button class="pay-submit" id="payNextBtn">
-        Continue
-      </button>
-    </div>
-  </div>
-
-  <!-- MODAL #2: consent + email before payment -->
-  <div class="agreement-backdrop" id="agreementBackdrop">
-    <div class="agreement-modal">
-      <div class="agreement-header">
-        <div class="agreement-title">Confirmation</div>
-        <button class="agreement-close" id="agreementCloseBtn">✕</button>
-      </div>
-
-      <div class="agreement-text">
-        Before payment, please confirm your age and consent.<br><br>
-        <strong>Important:</strong> YourPhotoAI creates AI portraits based on your photo.
-        After the session ends, the final images will be sent to the email you specify.
-      </div>
-
-      <div class="agreement-section-title">Your email</div>
-      <input
-        type="email"
-        id="agreeEmail"
-        class="agreement-input"
-        placeholder="you@example.com"
-        autocomplete="email"
-      />
-
-      <label class="agreement-checkbox-row">
-        <input type="checkbox" id="agreeCheckbox">
-        <span>
-          I am 16+ and I agree with
-          <a href="#">Terms</a>,
-          <a href="#">Privacy</a>,
-          <a href="#">Refunds</a>.
-        </span>
-      </label>
-
-      <div class="agreement-error" id="agreeError"></div>
-
-      <button class="agreement-submit" id="agreePayBtn">
-        Continue
-      </button>
-
-      <div class="agreement-hint">
-        Payments are processed via Stripe. We do not see or store your card data.
       </div>
     </div>
-  </div>
+
+    <!-- MODAL #2: consent + email before payment -->
+    <div class="agreement-backdrop" id="agreementBackdrop">
+      <div class="agreement-modal">
+        <div class="agreement-header">
+          <div class="agreement-title">Confirmation</div>
+          <button class="agreement-close" id="agreementCloseBtn">✕</button>
+        </div>
+
+        <div class="agreement-text">
+          Before payment, please confirm your age and consent.<br><br>
+          <strong>Important:</strong> YourPhotoAI creates AI portraits based on your photo.
+          During the session you can download every portrait you like.<br>
+          After the session ends, the final images will be sent to the email you specify.
+          Please save and store any portraits you want to keep.
+        </div>
+
+        <div class="agreement-section-title">Your email</div>
+        <input
+          type="email"
+          id="agreeEmail"
+          class="agreement-input"
+          placeholder="you@example.com"
+          autocomplete="email"
+        />
+
+        <label class="agreement-checkbox-row">
+          <input type="checkbox" id="agreeCheckbox">
+          <span>
+            I am 16+ and I agree with
+            <a href="#">Terms</a>,
+            <a href="#">Privacy</a>,
+            <a href="#">Refunds</a>.
+          </span>
+        </label>
+
+        <div class="agreement-error" id="agreeError"></div>
+
+        <button class="agreement-submit" id="agreePayBtn">
+          Continue
+        </button>
+
+        <div class="agreement-hint">
+          Payments are processed via Stripe. We do not see or store your card data.
+        </div>
+      </div>
+    </div>
 
   <!-- Main JS -->
   <script type="module" src="/assets/main.js"></script>
