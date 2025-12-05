@@ -9,6 +9,22 @@
 // Когда будешь готов брать деньги — поставишь true.
 const PAYMENTS_ENABLED = false;
 
+/**
+ * Отправка события конверсии в Google Ads.
+ * Здесь уже стоит твой ID: AW-17777757449
+ */
+function trackGoogleAdsConversion() {
+  try {
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "conversion", {
+        send_to: "AW-17777757449",
+      });
+    }
+  } catch (e) {
+    console.warn("Google Ads conversion tracking error:", e);
+  }
+}
+
 async function createCheckoutSession() {
   const emailInput = document.getElementById("user-email");
   const email = emailInput ? emailInput.value.trim() : "";
@@ -51,7 +67,10 @@ async function createCheckoutSession() {
       throw new Error(msg);
     }
 
-    // Всё ок — отправляем пользователя на Stripe Checkout
+    // Всё ок — считаем это началом конверсии из Google Ads
+    trackGoogleAdsConversion();
+
+    // Отправляем пользователя на Stripe Checkout
     window.location.href = data.url;
   } catch (err) {
     console.error(err);
