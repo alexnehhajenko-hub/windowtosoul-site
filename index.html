@@ -53,23 +53,34 @@
             text-align: center;
           "
         >
-          View example gallery
+          VIEW EXAMPLE GALLERY
         </a>
       </div>
 
-      <!-- Simple sale banner (EN only) -->
+      <!-- 🎄 Christmas sale banner (more festive) -->
       <div
         style="
-          margin-top: 10px;
-          padding: 8px 12px;
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.06);
+          margin-top: 12px;
+          padding: 10px 14px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(180,120,255,0.18));
           font-size: 13px;
           line-height: 1.4;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.6);
+          border: 1px solid rgba(255,255,255,0.16);
         "
       >
-        <strong>Christmas sale:</strong> starter pack now <strong>€2.99</strong>
-        (was €4.99). Limited-time holiday price.
+        <div style="font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;">
+          🎄 Christmas Portrait Sale 🎁
+        </div>
+        <div style="margin-top: 4px;">
+          <span style="opacity:0.9;">Starter pack now</span>
+          <strong>€2.99</strong>
+          <span style="opacity:0.8;">(was €4.99).</span>
+        </div>
+        <div style="margin-top: 2px; opacity: 0.8;">
+          Limited-time holiday price – perfect for festive profile photos ✨
+        </div>
       </div>
     </header>
 
@@ -449,7 +460,7 @@
     </div>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class=".footer">
       <div>© YourPhotoAI</div>
       <div class="support-block">
         Support:
@@ -480,85 +491,85 @@
     </div>
   </div>
 
-    <!-- MODAL #1: package selection -->
-    <div class="pay-backdrop" id="payBackdrop">
-      <div class="pay-modal">
-        <div class="pay-header">
-          <div class="pay-title">Choose a package</div>
-          <button class="pay-close" id="payCloseBtn">✕</button>
-        </div>
+  <!-- MODAL #1: package selection -->
+  <div class="pay-backdrop" id="payBackdrop">
+    <div class="pay-modal">
+      <div class="pay-header">
+        <div class="pay-title">Choose a package</div>
+        <button class="pay-close" id="payCloseBtn">✕</button>
+      </div>
 
-        <div class="pay-section-title">Generation packages</div>
+      <div class="pay-section-title">Generation packages</div>
 
-        <div class="pay-packages">
-          <button class="pay-package" data-package="pack10" id="pkg10">
-            <div class="pay-package-title">Starter · 10 generations</div>
-            <div class="pay-package-price">€2.99</div>
-          </button>
-          <button class="pay-package" data-package="pack20" id="pkg20">
-            <div class="pay-package-title">Standard · 20 generations</div>
-            <div class="pay-package-price">€4.99</div>
-          </button>
-          <button class="pay-package" data-package="pack30" id="pkg30">
-            <div class="pay-package-title">Pro · 30 generations</div>
-            <div class="pay-package-price">€6.99</div>
-          </button>
-        </div>
-
-        <div class="pay-error" id="payError"></div>
-
-        <button class="pay-submit" id="payNextBtn">
-          Continue
+      <div class="pay-packages">
+        <button class="pay-package" data-package="pack10" id="pkg10">
+          <div class="pay-package-title">Starter · 10 generations</div>
+          <div class="pay-package-price">€2.99</div>
+        </button>
+        <button class="pay-package" data-package="pack20" id="pkg20">
+          <div class="pay-package-title">Standard · 20 generations</div>
+          <div class="pay-package-price">€4.99</div>
+        </button>
+        <button class="pay-package" data-package="pack30" id="pkg30">
+          <div class="pay-package-title">Pro · 30 generations</div>
+          <div class="pay-package-price">€6.99</div>
         </button>
       </div>
+
+      <div class="pay-error" id="payError"></div>
+
+      <button class="pay-submit" id="payNextBtn">
+        Continue
+      </button>
     </div>
+  </div>
 
-    <!-- MODAL #2: consent + email before payment -->
-    <div class="agreement-backdrop" id="agreementBackdrop">
-      <div class="agreement-modal">
-        <div class="agreement-header">
-          <div class="agreement-title">Confirmation</div>
-          <button class="agreement-close" id="agreementCloseBtn">✕</button>
-        </div>
+  <!-- MODAL #2: consent + email before payment -->
+  <div class="agreement-backdrop" id="agreementBackdrop">
+    <div class="agreement-modal">
+      <div class="agreement-header">
+        <div class="agreement-title">Confirmation</div>
+        <button class="agreement-close" id="agreementCloseBtn">✕</button>
+      </div>
 
-        <div class="agreement-text">
-          Before payment, please confirm your age and consent.<br><br>
-          <strong>Important:</strong> YourPhotoAI creates AI portraits based on your photo.
-          During the session you can download every portrait you like.<br>
-          After the session ends, the final images will be sent to the email you specify.
-          Please save and store any portraits you want to keep.
-        </div>
+      <div class="agreement-text">
+        Before payment, please confirm your age and consent.<br><br>
+        <strong>Important:</strong> YourPhotoAI creates AI portraits based on your photo.
+        During the session you can download every portrait you like.<br>
+        After the session ends, the final images will be sent to the email you specify.
+        Please save and store any portraits you want to keep.
+      </div>
 
-        <div class="agreement-section-title">Your email</div>
-        <input
-          type="email"
-          id="agreeEmail"
-          class="agreement-input"
-          placeholder="you@example.com"
-          autocomplete="email"
-        />
+      <div class="agreement-section-title">Your email</div>
+      <input
+        type="email"
+        id="agreeEmail"
+        class="agreement-input"
+        placeholder="you@example.com"
+        autocomplete="email"
+      />
 
-        <label class="agreement-checkbox-row">
-          <input type="checkbox" id="agreeCheckbox">
-          <span>
-            I am 16+ and I agree with
-            <a href="#">Terms</a>,
-            <a href="#">Privacy</a>,
-            <a href="#">Refunds</a>.
-          </span>
-        </label>
+      <label class="agreement-checkbox-row">
+        <input type="checkbox" id="agreeCheckbox">
+        <span>
+          I am 16+ and I agree with
+          <a href="#">Terms</a>,
+          <a href="#">Privacy</a>,
+          <a href="#">Refunds</a>.
+        </span>
+      </label>
 
-        <div class="agreement-error" id="agreeError"></div>
+      <div class="agreement-error" id="agreeError"></div>
 
-        <button class="agreement-submit" id="agreePayBtn">
-          Continue
-        </button>
+      <button class="agreement-submit" id="agreePayBtn">
+        Continue
+      </button>
 
-        <div class="agreement-hint">
-          Payments are processed via Stripe. We do not see or store your card data.
-        </div>
+      <div class="agreement-hint">
+        Payments are processed via Stripe. We do not see or store your card data.
       </div>
     </div>
+  </div>
 
   <!-- Main JS -->
   <script type="module" src="/assets/main.js"></script>
