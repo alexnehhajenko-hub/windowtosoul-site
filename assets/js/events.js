@@ -1,7 +1,7 @@
 // assets/js/events.js
 // Подписывает кнопки на нужные действия.
 
-import { els, setLanguage } from "./interface.js";
+import { els, setLanguage, refreshSelectionChips } from "./interface.js";
 import {
   openStyleSheet,
   openSkinSheet,
@@ -17,6 +17,7 @@ import {
   closeAgreementModal,
   handleAgreeConfirm
 } from "./payment.js";
+import { appState, STORAGE_KEYS, UI_TEXT } from "./state.js";
 
 export function attachMainHandlers() {
   if (els.btnStyle) {
@@ -34,6 +35,42 @@ export function attachMainHandlers() {
   if (els.btnGenerate) {
     els.btnGenerate.addEventListener("click", () => handleGenerateClick());
   }
+
+  // ✅ Restore button (no need to add to els.*)
+  const btnRestore = document.getElementById("btnRestore");
+  if (btnRestore) {
+    btnRestore.addEventListener("click", () => {
+      const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
+      const ok = window.confirm(
+        `${t.restoreGuideTitle || "Old Photo Restoration – Tips"}\n\n${t.restoreGuideText || UI_TEXT.en.restoreGuideText}`
+      );
+
+      if (!ok) return;
+
+      // включаем режим реставрации
+      appState.mode = "restore";
+
+      // для реставрации эффекты/поздравления/стиль не нужны
+      appState.selectedStyle = null;
+      appState.selectedEffects = [];
+      appState.selectedGreeting = null;
+
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.MODE, "restore");
+      } catch (e) {
+        // ignore
+      }
+
+      // обновим чипы (если показываются)
+      try {
+        refreshSelectionChips();
+      } catch (e) {
+        // ignore
+      }
+    });
+  }
+
   if (els.btnAddPhoto) {
     els.btnAddPhoto.addEventListener("click", () => {
       if (els.fileInput) els.fileInput.click();
