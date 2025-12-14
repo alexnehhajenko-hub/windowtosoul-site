@@ -24,7 +24,8 @@ export const STORAGE_KEYS = {
   CREDITS_USED: "yourphotoai_creditsUsed",
   GENERATED_IMAGES: "yourphotoai_generatedImages",
   LANGUAGE: "yourphotoai_language",
-  SELECTED_PACK: "yourphotoai_selectedPack"
+  SELECTED_PACK: "yourphotoai_selectedPack",
+  MODE: "yourphotoai_mode"
 };
 
 // Основные тексты интерфейса (чтобы не лезть в JS каждый раз)
@@ -89,7 +90,18 @@ export const UI_TEXT = {
     alertAgreeMissing: "Please confirm age and consent.",
 
     paymentSuccess:
-      "Payment completed! 🎉 You can now generate portraits with your package."
+      "Payment completed! 🎉 You can now generate portraits with your package.",
+
+    // ✅ Restore guide (EN only, but used for all languages too)
+    restoreGuideTitle: "Old Photo Restoration – Tips",
+    restoreGuideText:
+      "To get the best restoration result:\n\n" +
+      "1) Place the photo flat (table).\n" +
+      "2) Use bright soft light (near window). Avoid glare / reflections.\n" +
+      "3) Hold the phone straight above the photo (no angle).\n" +
+      "4) Keep the whole photo visible, do not cut the corners.\n" +
+      "5) Make sure it is in focus (tap on the photo).\n\n" +
+      "Press OK to enable Restoration mode. Then click GENERATE."
   },
   de: {
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
@@ -131,7 +143,12 @@ export const UI_TEXT = {
       "Die Zahlung wird über Stripe verarbeitet. Wir sehen oder speichern deine Kartendaten nicht.",
 
     download: "Porträt herunterladen",
-    supportLabel: "Support:"
+    supportLabel: "Support:",
+
+    // reuse EN guide
+    restoreGuideTitle: "Old Photo Restoration – Tips",
+    restoreGuideText:
+      UI_TEXT?.en?.restoreGuideText || ""
   },
   es: {
     subtitle: "Crea tu retrato único con IA",
@@ -173,7 +190,12 @@ export const UI_TEXT = {
       "Los pagos se procesan con Stripe. No vemos ni guardamos los datos de tu tarjeta.",
 
     download: "Descargar retrato",
-    supportLabel: "Soporte:"
+    supportLabel: "Soporte:",
+
+    // reuse EN guide
+    restoreGuideTitle: "Old Photo Restoration – Tips",
+    restoreGuideText:
+      UI_TEXT?.en?.restoreGuideText || ""
   },
   ru: {
     subtitle: "Создайте свой уникальный AI-портрет",
@@ -215,7 +237,12 @@ export const UI_TEXT = {
       "Оплата обрабатывается через Stripe. Мы не видим и не храним данные вашей карты.",
 
     download: "Скачать портрет",
-    supportLabel: "Поддержка:"
+    supportLabel: "Поддержка:",
+
+    // reuse EN guide
+    restoreGuideTitle: "Old Photo Restoration – Tips",
+    restoreGuideText:
+      UI_TEXT?.en?.restoreGuideText || ""
   }
 };
 
@@ -327,6 +354,9 @@ export const SHEET_TEXT = {
 
 // Глобальное состояние
 export const appState = {
+  // ✅ mode: "portrait" | "restore"
+  mode: "portrait",
+
   selectedStyle: null,
   selectedEffects: [],
   selectedGreeting: null,
@@ -358,6 +388,11 @@ export function loadStateFromStorage() {
     const storedLang = window.localStorage.getItem(STORAGE_KEYS.LANGUAGE);
     if (storedLang && SUPPORTED_LANGS.includes(storedLang)) {
       appState.language = storedLang;
+    }
+
+    const storedMode = window.localStorage.getItem(STORAGE_KEYS.MODE);
+    if (storedMode === "restore" || storedMode === "portrait") {
+      appState.mode = storedMode;
     }
 
     const storedPaid = window.localStorage.getItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
