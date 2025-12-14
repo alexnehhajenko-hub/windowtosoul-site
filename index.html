@@ -75,6 +75,17 @@
           <span>GREETINGS</span>
         </button>
 
+        <!-- NEW: Clear and Restore buttons -->
+        <button class="btn-main" id="btnClearEffects">
+          <span class="btn-icon">🧹</span>
+          <span>CLEAR EFFECTS</span>
+        </button>
+
+        <button class="btn-main" id="btnRestore">
+          <span class="btn-icon">🖼️</span>
+          <span>RESTORE (OLD PHOTO)</span>
+        </button>
+
         <button class="btn-main btn-secondary" id="btnGenerate">
           <span class="btn-icon">⚡️</span>
           <span>GENERATE</span>
@@ -104,6 +115,24 @@
       >
         Download portrait
       </a>
+    </div>
+
+    <!-- NEW: My Portraits button -->
+    <div class="gallery-row">
+      <button id="galleryButton" class="btn-gallery" style="display:none;">
+        📸 My portraits (<span id="galleryCount">0</span>)
+      </button>
+    </div>
+
+    <!-- Gallery Modal -->
+    <div class="gallery-backdrop" id="galleryBackdrop" style="display:none;">
+      <div class="gallery-modal">
+        <div class="gallery-header">
+          <div class="gallery-title">My portraits</div>
+          <button class="gallery-close" id="galleryCloseBtn">✕</button>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+      </div>
     </div>
 
     <!-- Footer -->
@@ -138,7 +167,7 @@
     </div>
   </div>
 
-  <!-- MODAL #1: package selection (10 / 20 / 30) -->
+  <!-- MODAL #1: package selection -->
   <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
@@ -171,7 +200,7 @@
     </div>
   </div>
 
-  <!-- MODAL #2: consent + email before payment/demo -->
+  <!-- MODAL #2: consent + email -->
   <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
@@ -216,7 +245,8 @@
     </div>
   </div>
 
-  <!-- Main JS -->
+  <!-- Scripts -->
   <script type="module" src="/assets/main.js"></script>
+  <script type="module" src="/assets/gallery.js"></script>
 </body>
 </html>
