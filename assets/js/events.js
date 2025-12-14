@@ -1,7 +1,7 @@
 // assets/js/events.js
 // Подписывает кнопки на нужные действия.
 
-import { els, setLanguage } from "./interface.js";
+import { els, setLanguage, refreshSelectionChips } from "./interface.js";
 import {
   openStyleSheet,
   openSkinSheet,
@@ -17,6 +17,7 @@ import {
   closeAgreementModal,
   handleAgreeConfirm
 } from "./payment.js";
+import { appState, STORAGE_KEYS, UI_TEXT } from "./state.js";
 
 export function attachMainHandlers() {
   if (els.btnStyle) {
@@ -31,26 +32,49 @@ export function attachMainHandlers() {
   if (els.btnGreetings) {
     els.btnGreetings.addEventListener("click", () => openGreetingSheet());
   }
-
-  // ============================
-  // RESTORE BUTTON
-  // ============================
-  const btnRestore = document.getElementById("btnRestore");
-  if (btnRestore) {
-    btnRestore.addEventListener("click", () => {
-      window.alert(
-        "Photo restoration tips:\n\n" +
-        "• Use the original scan or photo\n" +
-        "• Face should be clearly visible\n" +
-        "• Avoid screenshots or re-compressed images\n" +
-        "• Higher resolution gives better results"
-      );
-    });
-  }
-
   if (els.btnGenerate) {
     els.btnGenerate.addEventListener("click", () => handleGenerateClick());
   }
+
+  // ✅ RESTORE button (Old Photo Restoration)
+  // Включает режим restore — после этого кнопка GENERATE будет бить в /api/restore
+  const btnRestore = document.getElementById("btnRestore");
+  if (btnRestore) {
+    btnRestore.addEventListener("click", () => {
+      const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
+      const title = t.restoreGuideTitle || "Old Photo Restoration – Tips";
+      const text =
+        t.restoreGuideText ||
+        UI_TEXT.en.restoreGuideText ||
+        "Use an old photo with scratches/damage. We will restore it carefully while preserving all people.";
+
+      const ok = window.confirm(`${title}\n\n${text}`);
+      if (!ok) return;
+
+      // включаем режим реставрации
+      appState.mode = "restore";
+
+      // для реставрации эффекты/поздравления/стиль не нужны
+      appState.selectedStyle = null;
+      appState.selectedEffects = [];
+      appState.selectedGreeting = null;
+
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.MODE, "restore");
+      } catch (e) {
+        // ignore
+      }
+
+      // обновим чипы (если показываются)
+      try {
+        refreshSelectionChips();
+      } catch (e) {
+        // ignore
+      }
+    });
+  }
+
   if (els.btnAddPhoto) {
     els.btnAddPhoto.addEventListener("click", () => {
       if (els.fileInput) els.fileInput.click();
