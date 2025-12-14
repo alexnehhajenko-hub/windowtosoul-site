@@ -1,5 +1,5 @@
 // assets/js/generation.js
-// Загрузка фото, вызов /api/generate, учёт демо/пакетов, отправка email.
+// Загрузка фото, вызов /api/generate или /api/restore, учёт демо/пакетов, отправка email.
 
 import {
   appState,
@@ -108,16 +108,25 @@ export async function handleGenerateClick() {
   showGenerating(true);
 
   try {
-    const payload = {
-      style: appState.selectedStyle || "beauty",
-      text: "",
-      photo: appState.photoBase64,
-      effects: appState.selectedEffects,
-      greeting: appState.selectedGreeting || null,
-      language: appState.language || "en"
-    };
+    const isRestore = appState.mode === "restore";
 
-    const resp = await fetch("/api/generate", {
+    const payload = isRestore
+      ? {
+          photo: appState.photoBase64,
+          language: appState.language || "en"
+        }
+      : {
+          style: appState.selectedStyle || "beauty",
+          text: "",
+          photo: appState.photoBase64,
+          effects: appState.selectedEffects,
+          greeting: appState.selectedGreeting || null,
+          language: appState.language || "en"
+        };
+
+    const endpoint = isRestore ? "/api/restore" : "/api/generate";
+
+    const resp = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -138,7 +147,9 @@ export async function handleGenerateClick() {
     showResultPortrait(data.image);
     // Учитываем генерацию (кредиты, список картинок)
     registerGeneration(data.image);
-    // Сбрасываем выбранные эффекты и поздравление после успешной генерации
+
+    // Сброс эффектов/поздравления после успешной генерации
+    // (для restore это просто оставит всё чистым)
     clearEffectsSelection();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
