@@ -31,6 +31,23 @@ export function attachMainHandlers() {
   if (els.btnGreetings) {
     els.btnGreetings.addEventListener("click", () => openGreetingSheet());
   }
+
+  // ============================
+  // RESTORE BUTTON
+  // ============================
+  const btnRestore = document.getElementById("btnRestore");
+  if (btnRestore) {
+    btnRestore.addEventListener("click", () => {
+      window.alert(
+        "Photo restoration tips:\n\n" +
+        "• Use the original scan or photo\n" +
+        "• Face should be clearly visible\n" +
+        "• Avoid screenshots or re-compressed images\n" +
+        "• Higher resolution gives better results"
+      );
+    });
+  }
+
   if (els.btnGenerate) {
     els.btnGenerate.addEventListener("click", () => handleGenerateClick());
   }
