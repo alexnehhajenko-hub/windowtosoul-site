@@ -24,23 +24,34 @@ const STYLE_PREFIX = {
 const EFFECT_PROMPTS = {
   // skin (retouch / younger)
   "no-wrinkles":
-    "more youthful skin with reduced fine lines, realistic pores, natural texture, keep identity",
+    "reduce visible wrinkles and fine lines, especially around eyes and forehead, keep realistic skin texture and pores, keep identity",
+
   younger:
-    "make the same person look clearly younger by about 10–20 years, fresher face, smoother skin, keep identity and key facial structure",
+    "AGE REGRESSION: make the same person look noticeably younger by about 15–25 years while keeping identity. " +
+    "reduce deep wrinkles and fine lines, reduce sagging, lift cheeks slightly, fresher face, smoother neck area, healthier skin. " +
+    "reduce under-eye bags, brighten eyes, subtly tighten jawline. " +
+    "hair should look healthier and slightly fuller; if gray hair exists, subtly reduce grayness but keep natural look. " +
+    "do not add eyeglasses or new accessories. keep clothing and background consistent",
+
   "smooth-skin":
-    "smoother and more even skin, reduced blemishes, preserved pores, realistic skin texture",
+    "beauty skin smoothing: more even skin tone, reduce blemishes, keep pores and realistic texture, keep identity",
+
   "beauty-one-touch":
     "beauty retouch: gently smooth skin, remove acne and small blemishes, reduce fine wrinkles, keep natural pores, keep identity",
 
   // wow (lighting / atmosphere)
   "glow-golden":
     "warm golden glow on the face, healthy luminous skin, soft highlights, gentle bokeh",
+
   "cinematic-light":
     "cinematic soft key light and gentle shadows, stronger depth, tasteful contrast, premium look",
+
   "studio-glam":
     "studio glam lighting, clean beauty highlights, subtle speculars on skin, makeup-ready editorial look",
+
   "luxury-editorial":
     "luxury editorial lighting, magazine-grade portrait, crisp details, elegant contrast, premium fashion mood",
+
   "neon-pop":
     "vibrant neon pop lighting, colorful glow accents, trendy modern look, keep face realistic and recognizable",
 
@@ -77,19 +88,24 @@ const GREETING_PROMPTS = {
     "spooky Halloween portrait with cold dramatic lighting, subtle fog, eerie background details, handwritten English text 'Happy Halloween' integrated naturally"
 };
 
-// ───────── IDENTITY (POSITIVE) ─────────
+// ───────── IDENTITY + CONSISTENCY ─────────
 const IDENTITY_PROMPT =
   "Edit the input photo and preserve the same person's identity. " +
   "Keep key facial features consistent so the person remains clearly recognizable. " +
   "Maintain the overall framing and composition (shoulders-up portrait). " +
-  "If an age/skin effect is selected, apply it subtly while keeping identity. " +
+  "If an age/skin effect is selected, apply it clearly while keeping identity. " +
   "If an expression effect is selected, adjust expression while keeping identity.";
 
-// ───────── UI CLEANUP (POSITIVE) ─────────
+const CONSISTENCY_TAIL =
+  "Keep the same hairstyle direction, clothing style, and background feeling. " +
+  "Do not add eyeglasses if they are not present in the original photo. " +
+  "Do not make the person older than in the input photo.";
+
+// ───────── UI CLEANUP ─────────
 const UI_CLEANUP_TAIL =
   "If the input contains app or website UI elements, replace them with a clean, simple portrait background while keeping the person in the same position.";
 
-// ───────── SAFETY (POSITIVE) ─────────
+// ───────── SAFETY ─────────
 const SAFETY_TAIL =
   "single person portrait, fully clothed, natural anatomy, clean professional portrait result";
 
@@ -132,6 +148,7 @@ export default async function handler(req, res) {
       greetingPrompt,
       userPrompt,
       IDENTITY_PROMPT,
+      CONSISTENCY_TAIL,
       UI_CLEANUP_TAIL,
       SAFETY_TAIL
     ].filter(Boolean);
