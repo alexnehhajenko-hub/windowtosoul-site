@@ -1,5 +1,5 @@
 // assets/js/generation.js
-// Загрузка фото, вызов /api/generate или /api/restore, учёт демо/пакетов, отправка email.
+// Upload photo, call /api/generate OR /api/restore
 
 import {
   appState,
@@ -76,31 +76,30 @@ export async function handleGenerateClick() {
     return;
   }
 
-  // Проверяем демо / оплату
-  if (DEMO_MODE) {
-    if (!appState.userEmail || !appState.userAgreed) {
-      openAgreementModal();
-      return;
-    }
-    if (
-      appState.creditsTotal > 0 &&
-      appState.creditsUsed >= appState.creditsTotal
-    ) {
-      alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
-      return;
-    }
-  } else {
-    if (!appState.hasActivePack) {
-      alert(t.alertNoActivePack || UI_TEXT.en.alertNoActivePack);
-      openPayModal();
-      return;
-    }
-    if (
-      appState.creditsTotal > 0 &&
-      appState.creditsUsed >= appState.creditsTotal
-    ) {
-      alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
-      return;
+  // Payment/demo checks ONLY for normal generation.
+  // Restore can be free (you can change this later).
+  const isRestore = appState.mode === "restore";
+
+  if (!isRestore) {
+    if (DEMO_MODE) {
+      if (!appState.userEmail || !appState.userAgreed) {
+        openAgreementModal();
+        return;
+      }
+      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+        alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
+        return;
+      }
+    } else {
+      if (!appState.hasActivePack) {
+        alert(t.alertNoActivePack || UI_TEXT.en.alertNoActivePack);
+        openPayModal();
+        return;
+      }
+      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+        alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
+        return;
+      }
     }
   }
 
@@ -108,8 +107,6 @@ export async function handleGenerateClick() {
   showGenerating(true);
 
   try {
-    const isRestore = appState.mode === "restore";
-
     const payload = isRestore
       ? {
           photo: appState.photoBase64,
@@ -128,14 +125,12 @@ export async function handleGenerateClick() {
 
     const resp = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
     if (!resp.ok) {
-      throw new Error("Generation server error");
+      throw new Error("Server error: " + resp.status);
     }
 
     const data = await resp.json();
@@ -143,14 +138,19 @@ export async function handleGenerateClick() {
       throw new Error("No image URL in response");
     }
 
-    // Показываем результат
     showResultPortrait(data.image);
-    // Учитываем генерацию (кредиты, список картинок)
-    registerGeneration(data.image);
 
-    // Сброс эффектов/поздравления после успешной генерации
-    // (для restore это просто оставит всё чистым)
-    clearEffectsSelection();
+    // Count credits ONLY for normal generation
+    if (!isRestore) {
+      registerGeneration(data.image);
+      clearEffectsSelection();
+    }
+
+    // IMPORTANT: restore should not "stick"
+    if (isRestore) {
+      appState.mode = "generate";
+      refreshSelectionChips();
+    }
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
@@ -190,8 +190,6 @@ export function exitResultView(pushHistory = true) {
 }
 
 function registerGeneration(imageUrl) {
-  // Инициализируем общее количество генераций,
-  // если ещё не установлено.
   if (appState.creditsTotal <= 0) {
     if (DEMO_MODE) {
       appState.creditsTotal = DEMO_SESSION_LIMIT;
@@ -207,100 +205,20 @@ function registerGeneration(imageUrl) {
   }
 
   try {
-    window.localStorage.setItem(
-      STORAGE_KEYS.CREDITS_TOTAL,
-      String(appState.creditsTotal)
-    );
-    window.localStorage.setItem(
-      STORAGE_KEYS.CREDITS_USED,
-      String(appState.creditsUsed)
-    );
-    window.localStorage.setItem(
-      STORAGE_KEYS.GENERATED_IMAGES,
-      JSON.stringify(appState.generatedImages)
-    );
+    window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
+    window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
+    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
   } catch (e) {
     console.warn("Cannot store credits/images", e);
   }
 
   refreshSelectionChips();
-
-  if (DEMO_MODE && appState.creditsUsed >= appState.creditsTotal) {
-    finishSessionAndSendEmail();
-  }
 }
 
-// Сброс эффектов и поздравления после генерации
 function clearEffectsSelection() {
   appState.selectedEffects = [];
   appState.selectedGreeting = null;
 
   refreshSelectionChips();
   updateGreetingOverlay();
-}
-
-async function finishSessionAndSendEmail() {
-  const t = UI_TEXT[appState.language] || UI_TEXT.en;
-
-  const email = appState.userEmail;
-  if (!email) {
-    alert("Email not found. Cannot send portraits.");
-    return;
-  }
-
-  if (!appState.generatedImages || appState.generatedImages.length === 0) {
-    alert("No generated portraits to send.");
-    return;
-  }
-
-  try {
-    const resp = await fetch("/api/send-portraits", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email,
-        images: appState.generatedImages,
-        total: appState.creditsTotal,
-        used: appState.creditsUsed
-      })
-    });
-
-    if (!resp.ok) {
-      throw new Error("Email server error");
-    }
-
-    const data = await resp.json();
-    if (!data || !data.ok) {
-      throw new Error("Email service did not confirm sending.");
-    }
-
-    alert(
-      `Session finished. We sent ${appState.generatedImages.length} portrait(s) to ${email}.`
-    );
-
-    resetDemoSession();
-  } catch (err) {
-    console.error("SEND EMAIL ERROR:", err);
-    alert(
-      "Portraits have been generated, but email could not be sent. Please try later."
-    );
-  }
-}
-
-function resetDemoSession() {
-  appState.creditsTotal = 0;
-  appState.creditsUsed = 0;
-  appState.generatedImages = [];
-
-  try {
-    window.localStorage.removeItem(STORAGE_KEYS.CREDITS_TOTAL);
-    window.localStorage.removeItem(STORAGE_KEYS.CREDITS_USED);
-    window.localStorage.removeItem(STORAGE_KEYS.GENERATED_IMAGES);
-  } catch (e) {
-    console.warn("Cannot clear demo session storage", e);
-  }
-
-  refreshSelectionChips();
 }
