@@ -34,7 +34,7 @@ export const UI_TEXT = {
     generateStatus: "Generating portrait…",
 
     btnStyle: "PORTRAIT STYLE",
-    btnSkin: "SKIN EFFECT",
+    btnSkin: "SKIN / WOW",
     btnMimic: "EXPRESSION",
     btnGreetings: "GREETINGS",
     btnGenerate: "GENERATE",
@@ -111,12 +111,20 @@ export const STYLE_LABELS_EN = {
 };
 
 export const EFFECT_CHIP_LABELS_EN = {
-  "no-wrinkles": "Effect: no wrinkles",
-  younger: "Effect: younger",
-  "smooth-skin": "Effect: smooth skin",
-  "glow-golden": "Effect: golden glow",
-  "cinematic-light": "Effect: cinematic light",
-  "beauty-one-touch": "Effect: beauty one-touch",
+  // Skin
+  "no-wrinkles": "Skin: no wrinkles",
+  younger: "Skin: younger (10–20y)",
+  "smooth-skin": "Skin: smooth skin",
+  "beauty-one-touch": "Skin: beauty one-touch",
+
+  // Wow / lighting
+  "glow-golden": "Wow: golden glow",
+  "cinematic-light": "Wow: cinematic light",
+  "studio-glam": "Wow: studio glam",
+  "luxury-editorial": "Wow: luxury editorial",
+  "neon-pop": "Wow: neon pop",
+
+  // Expression
   "smile-soft": "Expression: soft smile",
   "smile-big": "Expression: big smile",
   "smile-hollywood": "Expression: Hollywood smile",
@@ -132,8 +140,8 @@ export const SHEET_TEXT = {
   en: {
     styleTitle: "Portrait style",
     styleDescription: "Choose the main artistic style.",
-    skinTitle: "Skin effect",
-    skinDescription: "Choose an effect that gives a wow feeling.",
+    skinTitle: "Skin & Wow",
+    skinDescription: "Choose a skin effect and (optionally) a wow lighting effect.",
     mimicTitle: "Expression",
     mimicDescription: "Choose the facial expression.",
     greetingTitle: "Greetings",
@@ -143,7 +151,6 @@ export const SHEET_TEXT = {
 
 // Global app state
 export const appState = {
-  // IMPORTANT: default mode MUST be generate
   mode: "generate", // "generate" | "restore"
 
   selectedStyle: null,
