@@ -1,106 +1,109 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Portrait generation: style + effects + expression + greetings
-// ✅ 2-pass pipeline: pass1 = main portrait, pass2 = strong skin retouch (wrinkles removal)
+// Portrait generation: style + expression + greetings + (skin as 2nd-pass)
+// FIX: stronger identity preservation, no forced cropping ("shoulders up"), 2-pass skin retouch.
 
 import Replicate from "replicate";
 
 // ───────────── STYLES ─────────────
 const STYLE_PREFIX = {
   beauty:
-    "high-end beauty portrait, clean studio look, natural colors, sharp eyes, realistic skin texture, keep the same person",
-  oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep the same person",
+    "high-quality realistic photo edit, keep the same person, keep the same background and clothes, natural colors, clean skin, but do not change identity",
+  oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep original background unless it looks like a screenshot",
   anime:
-    "anime style portrait, clean line art, soft pastel shading, big expressive eyes, keep the same person",
+    "anime style portrait, clean line art, soft pastel shading, big expressive eyes, colorful background, keep the same person",
   poster:
-    "cinematic movie poster portrait, dramatic lighting, high contrast, colorful atmosphere, keep the same person",
+    "cinematic movie poster portrait, dramatic lighting, high contrast, shallow depth of field, colorful atmosphere, keep the same person",
   classic:
-    "classical old master portrait, realism, warm tones, detailed skin, subtle vignette, keep the same person",
+    "classical old master portrait, realism, warm tones, detailed skin, soft vignette, subtle textured background",
   default:
-    "realistic portrait, detailed face, soft studio lighting, natural colors, keep the same person"
+    "realistic photo edit, detailed face, soft studio lighting, natural colors, keep original background if it is not a UI screenshot"
 };
 
-// ───────── EFFECTS ─────────
+// ───────── SKIN + EXPRESSION EFFECTS ─────────
+const SKIN_KEYS = new Set([
+  "no-wrinkles",
+  "younger",
+  "smooth-skin",
+  "glow-golden",
+  "cinematic-light",
+  "beauty-one-touch"
+]);
+
 const EFFECT_PROMPTS = {
   // skin
   "no-wrinkles":
-    "STRONG RETOUCH: remove wrinkles and fine lines very noticeably (forehead, under eyes, crow's feet, nasolabial lines). " +
-    "keep identity, keep pores lightly visible, do not make plastic skin, do not change face shape",
-
+    "remove wrinkles and fine lines strongly (forehead, under eyes, crow's feet, nasolabial folds), smoother younger-looking skin, but keep realistic pores and natural texture; do not change identity",
   younger:
-    "AGE REGRESSION: make the same person look clearly younger by about 15–25 years while keeping identity. " +
-    "reduce deep wrinkles, reduce sagging, fresher skin, reduce under-eye bags, slightly tighter jawline, keep natural look",
-
+    "make the same person look younger by about 10–15 years: healthier skin, reduced sagging, fresher look, but keep the exact same identity and facial structure",
   "smooth-skin":
-    "beauty skin smoothing: more even skin tone, reduce blemishes, keep pores and realistic texture, keep identity",
-
+    "smooth and even skin tone, reduce blemishes and redness, keep realistic pores; do not change identity",
   "beauty-one-touch":
-    "beauty retouch: remove acne/small blemishes, reduce fine wrinkles, keep pores, keep identity",
-
+    "natural beauty retouch: gently smooth skin, remove acne and small blemishes, reduce fine wrinkles, keep pores and realism; do not change identity",
   "glow-golden":
-    "warm golden glow on the face, healthy luminous skin, soft highlights",
-
+    "warm golden glow on the face, healthy skin, soft highlights; do not change identity",
   "cinematic-light":
-    "cinematic soft key light and gentle shadows, tasteful contrast, keep identity",
+    "cinematic soft key light and gentle shadows on the face, better contrast; do not change identity",
 
   // expression
-  "smile-soft": "subtle soft smile, calm relaxed expression, keep identity",
-  "smile-big": "big warm smile, friendly face, keep identity",
-  "smile-hollywood": "wide hollywood smile, natural teeth, keep identity",
-  laugh: "laughing expression with a bright smile, keep identity",
-  neutral: "neutral relaxed face, keep identity",
-  serious: "serious focused look, keep identity",
-  "eyes-bigger": "slightly more open attentive eyes, keep identity",
-  "eyes-brighter": "brighter expressive gaze, keep identity",
-  "surprised-wow": "wow surprised expression, keep identity"
+  "smile-soft":
+    "same person with a subtle soft smile, calm relaxed expression, keep identity",
+  "smile-big":
+    "same person with a big warm smile, friendly face, keep identity",
+  "smile-hollywood":
+    "same person with a wide hollywood smile, visible teeth but natural, keep identity",
+  laugh:
+    "same person laughing with a bright smile, joyful natural expression, keep identity",
+  neutral:
+    "same person with neutral relaxed face, keep identity",
+  serious:
+    "same person with a serious focused look, no smile, keep identity",
+  "eyes-bigger":
+    "slightly more open attentive eyes, keep the same eye shape and identity",
+  "eyes-brighter":
+    "brighter more vivid expressive gaze, keep identity",
+  "surprised-wow":
+    "surprised wow expression, eyes a bit wider, eyebrows raised, keep identity"
 };
 
 // ───────── GREETINGS ─────────
 const GREETING_PROMPTS = {
   "new-year":
-    "festive New Year portrait, cozy winter atmosphere, colorful lights and bokeh, elegant handwritten English text 'Happy New Year'",
+    "add a gentle festive New Year atmosphere. keep the person identical. subtle bokeh lights. add small elegant handwritten English text 'Happy New Year' (small, not covering the face)",
   birthday:
-    "birthday celebration portrait, balloons and confetti, party lights, elegant handwritten English text 'Happy Birthday'",
+    "add a gentle birthday atmosphere. keep the person identical. subtle balloons/confetti in background. add small elegant handwritten English text 'Happy Birthday' (small, not covering the face)",
   funny:
-    "playful fun portrait, bright colors, comic vibe, bold handwritten English text 'You look amazing!'",
+    "add a gentle playful atmosphere. keep the person identical. bright but not chaotic. add small handwritten English text 'You look amazing!' (small, not covering the face)",
   scary:
-    "spooky Halloween portrait, cold dramatic lighting, fog, handwritten English text 'Happy Halloween'"
+    "add a gentle spooky atmosphere (no gore). keep the person identical. subtle fog/background. add small handwritten English text 'Happy Halloween' (small, not covering the face)"
 };
 
-// ───────── IDENTITY / CLEANUP / SAFETY ─────────
+// ───────── IDENTITY (STRONG) ─────────
 const IDENTITY_PROMPT =
-  "Edit the input photo of the SAME person. The result must be clearly recognizable as the same person. " +
-  "Do NOT replace the face with another person. Keep the same gender. Keep key facial features consistent.";
+  "IMPORTANT IDENTITY RULES: edit the input photo of the SAME person. " +
+  "The result must be clearly recognizable as the same person. " +
+  "Do NOT change facial structure, eye shape, nose shape, lips shape, or face proportions. " +
+  "Keep hairstyle, hairline, hair color, eyebrows, and glasses consistent unless explicitly requested. " +
+  "Do NOT replace the face with another person/model. " +
+  "Keep the same gender and the same general ethnicity. " +
+  "Keep the same camera angle and the same composition. Do NOT crop or zoom.";
 
-const CONSISTENCY_TAIL =
-  "Keep hairstyle direction, clothing, and background feeling consistent. " +
-  "Do NOT add eyeglasses if they are not present in the original. Do NOT make the person older than in the input.";
-
+// ───────── REMOVE UI FROM SCREENSHOTS ─────────
 const UI_CLEANUP_TAIL =
-  "If the input looks like a screenshot with UI panels/buttons/text, remove and repaint all UI elements and generate only a clean portrait background.";
+  "If the input looks like a screenshot of a website/app (buttons, panels, menus, UI text), remove and repaint all interface elements. " +
+  "In that case, keep the person identical and use a simple natural background.";
 
+// ───────── SAFETY (NO FORCED CROP) ─────────
 const SAFETY_TAIL =
-  "portrait from shoulders up, single person, fully clothed, no nudity, no extra people, no distorted anatomy";
+  "person is fully clothed, no nudity, no sexual content, keep realism, avoid distorted anatomy";
 
-// Skin effects that should trigger PASS #2
-const SKIN_KEYS = new Set([
-  "no-wrinkles",
-  "younger",
-  "smooth-skin",
-  "beauty-one-touch"
-]);
-
+// ───────── helpers ─────────
 function pickImageUrl(output) {
-  if (!output) return null;
-
-  if (typeof output === "string") return output;
-
-  if (Array.isArray(output)) return output[0];
-
+  if (Array.isArray(output)) return output[0] || null;
   if (output?.output) {
+    if (Array.isArray(output.output)) return output.output[0] || null;
     if (typeof output.output === "string") return output.output;
-    if (Array.isArray(output.output)) return output.output[0];
   }
-
+  if (typeof output === "string") return output;
   if (output?.url) {
     try {
       return output.url();
@@ -108,34 +111,21 @@ function pickImageUrl(output) {
       return null;
     }
   }
-
   return null;
 }
 
-function buildPass2RetouchPrompt(skinKey) {
-  // PASS #2 — делаем ретушь отдельно, очень явно
-  if (skinKey === "no-wrinkles") {
-    return (
-      "HIGH-END BEAUTY RETOUCH: remove wrinkles and deep lines clearly, smooth under-eye area, soften nasolabial folds, " +
-      "reduce forehead lines, fresher skin. Keep pores lightly visible. Keep identity. Do not change face shape."
-    );
-  }
-  if (skinKey === "younger") {
-    return (
-      "AGE REGRESSION RETOUCH: make the same person look noticeably younger by 15–25 years while keeping identity. " +
-      "reduce sagging, reduce wrinkles strongly, fresher cheeks, cleaner neck area. Keep natural realism."
-    );
-  }
-  if (skinKey === "smooth-skin" || skinKey === "beauty-one-touch") {
-    return (
-      "BEAUTY RETOUCH: smooth skin, remove blemishes, reduce fine lines, keep pores and realistic texture, keep identity."
-    );
-  }
-  return null;
+function buildEffectsPrompt(keys) {
+  if (!Array.isArray(keys) || keys.length === 0) return "";
+  return keys
+    .map((k) => EFFECT_PROMPTS[k])
+    .filter(Boolean)
+    .join(". ");
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   try {
     let body = req.body;
@@ -150,91 +140,108 @@ export default async function handler(req, res) {
     const { style, text, photo, effects, greeting } = body || {};
 
     if (!process.env.REPLICATE_API_TOKEN) {
-      return res.status(500).json({ error: "Missing REPLICATE_API_TOKEN in environment variables" });
+      return res.status(500).json({
+        error: "Missing REPLICATE_API_TOKEN in environment variables"
+      });
     }
 
-    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    if (!photo) {
+      return res.status(400).json({ error: "Missing photo" });
+    }
+
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN
+    });
 
     const stylePrefix = STYLE_PREFIX[style] || STYLE_PREFIX.default;
     const userPrompt = (text || "").trim();
 
     const effectsArr = Array.isArray(effects) ? effects : [];
-    const skinKey = effectsArr.find((k) => SKIN_KEYS.has(k)) || null;
+    const skinEffects = effectsArr.filter((k) => SKIN_KEYS.has(k));
+    const otherEffects = effectsArr.filter((k) => !SKIN_KEYS.has(k));
 
-    const effectsPrompt = effectsArr
-      .map((key) => EFFECT_PROMPTS[key])
-      .filter(Boolean)
-      .join(". ");
-
+    // GREETING
     const greetingPrompt = greeting && GREETING_PROMPTS[greeting] ? GREETING_PROMPTS[greeting] : "";
 
-    // PASS #1
-    const prompt1 = [
+    // ───────── PASS #1: style + expression + greeting (NO skin) ─────────
+    const pass1Parts = [
       stylePrefix,
-      effectsPrompt,
+      buildEffectsPrompt(otherEffects),
       greetingPrompt,
       userPrompt,
       IDENTITY_PROMPT,
-      CONSISTENCY_TAIL,
       UI_CLEANUP_TAIL,
       SAFETY_TAIL
-    ]
-      .filter(Boolean)
-      .join(". ")
-      .trim();
+    ].filter(Boolean);
+
+    const pass1Prompt = pass1Parts.join(". ").trim();
 
     const out1 = await replicate.run("black-forest-labs/flux-kontext-pro", {
       input: {
-        prompt: prompt1,
+        prompt: pass1Prompt,
         input_image: photo,
         output_format: "jpg",
-        aspect_ratio: "match_input_image"
+        aspect_ratio: "match_input_image",
+        safety_tolerance: 2,
+        prompt_upsampling: false
       }
     });
 
-    const url1 = pickImageUrl(out1);
-    if (!url1) {
-      return res.status(500).json({ error: "No image URL returned (pass #1)", raw: out1 });
+    const pass1Url = pickImageUrl(out1);
+    if (!pass1Url) {
+      return res.status(500).json({
+        error: "No image URL returned from pass #1",
+        raw: out1
+      });
     }
 
-    // Если выбраны поздравления (текст на картинке), PASS #2 может испортить текст.
-    // Поэтому: при greeting — возвращаем pass1.
-    if (greeting) {
-      return res.status(200).json({ ok: true, image: url1, prompt: prompt1, note: "Greeting enabled: skipping pass #2 retouch." });
+    // If no skin effect — return pass1
+    if (!skinEffects.length) {
+      return res.status(200).json({
+        ok: true,
+        image: pass1Url,
+        prompt: pass1Prompt
+      });
     }
 
-    // PASS #2 (ретушь морщин/омоложение) — только если выбран skin-эффект
-    const pass2Core = skinKey ? buildPass2RetouchPrompt(skinKey) : null;
-    if (!pass2Core) {
-      return res.status(200).json({ ok: true, image: url1, prompt: prompt1 });
-    }
+    // ───────── PASS #2: ONLY skin retouch, minimal change ─────────
+    // (use only the first skin effect, since UI already enforces one, but keep safe)
+    const skinKey = skinEffects[0];
+    const skinPrompt = EFFECT_PROMPTS[skinKey] || "natural skin retouch, keep identity";
 
-    const prompt2 = [
-      pass2Core,
+    const pass2Prompt = [
+      "MINIMAL EDIT: apply ONLY the following change and keep everything else identical",
+      skinPrompt,
       IDENTITY_PROMPT,
-      CONSISTENCY_TAIL,
+      "Do not change the background, do not change clothing, do not change hair, do not change age unless the effect explicitly says younger",
       SAFETY_TAIL
-    ]
-      .filter(Boolean)
-      .join(". ")
-      .trim();
+    ].join(". ");
 
     const out2 = await replicate.run("black-forest-labs/flux-kontext-pro", {
       input: {
-        prompt: prompt2,
-        input_image: url1,
+        prompt: pass2Prompt,
+        input_image: pass1Url,
         output_format: "jpg",
-        aspect_ratio: "match_input_image"
+        aspect_ratio: "match_input_image",
+        safety_tolerance: 2,
+        prompt_upsampling: false
       }
     });
 
-    const url2 = pickImageUrl(out2);
-    const finalUrl = url2 || url1;
+    const finalUrl = pickImageUrl(out2);
+    if (!finalUrl) {
+      // fallback to pass1 if pass2 fails
+      return res.status(200).json({
+        ok: true,
+        image: pass1Url,
+        note: "Pass #2 returned no image; returning pass #1 result."
+      });
+    }
 
     return res.status(200).json({
       ok: true,
-      image: finalUrl,
-      prompt: prompt1
+      image: finalUrl
+      // deliberately not returning prompts to frontend
     });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
