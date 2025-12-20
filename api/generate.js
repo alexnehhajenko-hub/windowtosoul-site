@@ -1,96 +1,97 @@
 // api/generate.js — FLUX-Kontext-Pro (Replicate)
-// Portrait generation: style + skin + expression + greetings
+// Portrait generation: style + skin + wow + expression + greetings
 
 import Replicate from "replicate";
 
 // ───────────── STYLES ─────────────
 const STYLE_PREFIX = {
-  oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep original background unless it looks like a screenshot",
+  beauty:
+    "high-end beauty portrait, sharp eyes, natural skin tones, soft studio lighting, editorial look, subtle background, keep the same person and overall photo composition",
+
+  oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep the same person and composition",
   anime:
-    "anime style portrait, clean line art, soft pastel shading, big expressive eyes, colorful background, keep the same person",
+    "anime style portrait, clean line art, soft pastel shading, expressive eyes, keep the same person and composition",
   poster:
-    "cinematic movie poster portrait, dramatic lighting, high contrast, shallow depth of field, colorful atmosphere, keep the same person",
+    "cinematic movie poster portrait, dramatic lighting, high contrast, shallow depth of field, colorful atmosphere, keep the same person and composition",
   classic:
-    "classical old master portrait, realism, warm tones, detailed skin, soft vignette, subtle textured background",
-
-  "old-photo":
-    "vintage old photo portrait, slightly faded colors, soft warm tone, subtle film grain, gentle vignette, keep the same person and keep the original background and clothes, do not erase the background",
-
-  "dark-demon":
-    "dark fantasy horror portrait of the same person, dramatic moody lighting, strong contrast, subtle demonic elements like glowing eyes, dark aura or small horns, highly detailed realistic face, cinematic horror atmosphere. keep the head and shoulders and keep a slightly visible dark background or smoke, not solid pure black, no blood, no gore",
+    "classical old master portrait, realism, warm tones, detailed skin, soft vignette, keep the same person and composition",
 
   default:
-    "realistic portrait, detailed face, soft studio lighting, natural colors, keep original background if it is not a UI screenshot"
+    "realistic portrait, detailed face, soft studio lighting, natural colors, keep the same person and overall photo composition"
 };
 
-// ───────── SKIN + EXPRESSION EFFECTS ─────────
+// ───────── SKIN + WOW + EXPRESSION EFFECTS ─────────
 const EFFECT_PROMPTS = {
-  // skin
+  // skin (retouch / younger)
   "no-wrinkles":
-    "reduce wrinkles visibly, especially forehead and eye area, smoother skin but still realistic pores and texture, do not change identity",
+    "more youthful skin with reduced fine lines, realistic pores, natural texture, keep identity",
   younger:
-    "make the same person look clearly younger by about 10–15 years, fresher skin and face, keep identity and face structure",
+    "make the same person look clearly younger by about 10–20 years, fresher face, smoother skin, keep identity and key facial structure",
   "smooth-skin":
     "smoother and more even skin, reduced blemishes, preserved pores, realistic skin texture",
-
   "beauty-one-touch":
-    "keep exactly the same person and the same face, gently smooth skin, remove acne and small blemishes, reduce fine wrinkles, keep natural pores, realistic skin",
+    "beauty retouch: gently smooth skin, remove acne and small blemishes, reduce fine wrinkles, keep natural pores, keep identity",
+
+  // wow (lighting / atmosphere)
   "glow-golden":
-    "warm golden glow on the face, healthy skin, soft highlights",
+    "warm golden glow on the face, healthy luminous skin, soft highlights, gentle bokeh",
   "cinematic-light":
-    "cinematic soft key light and gentle shadows on the face, better contrast, no change of identity",
+    "cinematic soft key light and gentle shadows, stronger depth, tasteful contrast, premium look",
+  "studio-glam":
+    "studio glam lighting, clean beauty highlights, subtle speculars on skin, makeup-ready editorial look",
+  "luxury-editorial":
+    "luxury editorial lighting, magazine-grade portrait, crisp details, elegant contrast, premium fashion mood",
+  "neon-pop":
+    "vibrant neon pop lighting, colorful glow accents, trendy modern look, keep face realistic and recognizable",
 
   // expression
   "smile-soft":
-    "same person with a subtle soft smile, calm relaxed expression, keep identity",
+    "subtle soft smile, calm relaxed expression, keep identity",
   "smile-big":
-    "same person with a big warm smile, friendly face, keep identity",
+    "big warm smile, friendly face, keep identity",
   "smile-hollywood":
-    "same person with a wide hollywood smile, visible teeth but natural, keep identity",
+    "wide hollywood smile, natural teeth, keep identity",
   laugh:
-    "same person laughing with a bright smile, joyful natural expression, keep identity",
+    "laughing expression with a bright smile, joyful natural look, keep identity",
   neutral:
-    "same person with neutral relaxed face, keep identity",
+    "neutral relaxed face, keep identity",
   serious:
-    "same person with a serious focused look, no smile, keep identity",
+    "serious focused look, keep identity",
   "eyes-bigger":
     "slightly more open attentive eyes, keep the same eye shape and identity",
   "eyes-brighter":
-    "brighter more vivid expressive gaze, keep identity",
+    "brighter vivid expressive gaze, keep identity",
   "surprised-wow":
-    "surprised wow expression, eyes a bit wider, eyebrows raised, keep identity"
+    "wow surprised expression: eyes a bit wider, eyebrows raised, keep identity"
 };
 
 // ───────── GREETINGS ─────────
 const GREETING_PROMPTS = {
   "new-year":
-    "festive bright New Year portrait, cozy winter atmosphere, colorful lights and bokeh, fireworks in the distance, vivid contrast, elegant handwritten English text 'Happy New Year' on the image",
+    "festive New Year portrait with cozy winter atmosphere, colorful lights and bokeh, fireworks in the distance, elegant handwritten English text 'Happy New Year' integrated naturally",
   birthday:
-    "colorful birthday celebration portrait, balloons and confetti, party lights, bright and happy mood, elegant handwritten English text 'Happy Birthday' on the image",
+    "birthday celebration portrait with balloons and confetti, party lights, bright happy mood, elegant handwritten English text 'Happy Birthday' integrated naturally",
   funny:
-    "playful fun portrait, very bright colors, dynamic neon shapes, comic-style details, bold handwritten English text like 'You look amazing!' on the image",
+    "playful fun portrait with bright colors, dynamic neon shapes, comic-style details, bold handwritten English text 'You look amazing!' integrated naturally",
   scary:
-    "dark spooky horror-style portrait, cold dramatic lighting, subtle fog and spooky background details, creepy but readable handwritten English text 'Happy Halloween' on the image"
+    "spooky Halloween portrait with cold dramatic lighting, subtle fog, eerie background details, handwritten English text 'Happy Halloween' integrated naturally"
 };
 
-// ───────── IDENTITY (NOT TOO STRICT) ─────────
+// ───────── IDENTITY (POSITIVE) ─────────
 const IDENTITY_PROMPT =
-  "Edit the input photo of the SAME person. " +
-  "The result must be clearly recognizable as the same person. " +
-  "Do NOT replace the face with another person/model. " +
-  "Keep the same gender and the same general ethnicity. " +
-  "Face shape and key features must remain consistent. " +
-  "If the user selected 'younger' or 'no-wrinkles', you ARE allowed to make the person look younger (up to about 10–15 years) and reduce wrinkles, while keeping identity. " +
-  "If the user selected a smile/expression effect, you ARE allowed to change facial expression while keeping identity.";
+  "Edit the input photo and preserve the same person's identity. " +
+  "Keep key facial features consistent so the person remains clearly recognizable. " +
+  "Maintain the overall framing and composition (shoulders-up portrait). " +
+  "If an age/skin effect is selected, apply it subtly while keeping identity. " +
+  "If an expression effect is selected, adjust expression while keeping identity.";
 
-// ───────── REMOVE UI FROM SCREENSHOTS ─────────
+// ───────── UI CLEANUP (POSITIVE) ─────────
 const UI_CLEANUP_TAIL =
-  "If the input looks like a screenshot of a website or app (with panels, buttons, menus, or long text below and around the face), remove and repaint all interface elements and text. " +
-  "In that case generate only a clean portrait of the person with a simple background and no UI.";
+  "If the input contains app or website UI elements, replace them with a clean, simple portrait background while keeping the person in the same position.";
 
-// ───────── SAFETY ─────────
+// ───────── SAFETY (POSITIVE) ─────────
 const SAFETY_TAIL =
-  "portrait from the shoulders up, person is fully clothed, no nudity, no sexual content, no extra people, no distorted anatomy";
+  "single person portrait, fully clothed, natural anatomy, clean professional portrait result";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
