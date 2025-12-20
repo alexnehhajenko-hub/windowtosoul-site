@@ -13,7 +13,6 @@ import { els, refreshSelectionChips, setLayer } from "./interface.js";
 
 export function openPayModal() {
   if (DEMO_MODE) {
-    // в демо вместо оплаты сразу показываем окно согласия
     openAgreementModal();
     return;
   }
@@ -57,12 +56,9 @@ export function handlePayNext() {
   const t = UI_TEXT[appState.language] || UI_TEXT.en;
 
   if (!appState.selectedPack && !DEMO_MODE) {
-    if (els.payError) {
-      els.payError.textContent =
-        t.alertSelectPack || "Please select a package.";
-    } else {
-      alert(t.alertSelectPack || "Please select a package.");
-    }
+    const msg = t.alertSelectPack || UI_TEXT.en.alertSelectPack || "Please select a package.";
+    if (els.payError) els.payError.textContent = msg;
+    else alert(msg);
     return;
   }
 
@@ -100,11 +96,13 @@ export function handleAgreeConfirm() {
   const checked = els.agreeCheckbox && els.agreeCheckbox.checked;
 
   if (!email) {
-    if (els.agreeError) els.agreeError.textContent = t.alertEmailMissing;
+    const msg = t.alertEmailMissing || UI_TEXT.en.alertEmailMissing || "Please enter your email.";
+    if (els.agreeError) els.agreeError.textContent = msg;
     return;
   }
   if (!checked) {
-    if (els.agreeError) els.agreeError.textContent = t.alertAgreeMissing;
+    const msg = t.alertAgreeMissing || UI_TEXT.en.alertAgreeMissing || "Please confirm the checkbox.";
+    if (els.agreeError) els.agreeError.textContent = msg;
     return;
   }
 
@@ -115,9 +113,7 @@ export function handleAgreeConfirm() {
     "• you have the rights to the uploaded images and allow this processing.\n\n" +
     'Press "OK" if you agree.';
   const ok = window.confirm(confirmText);
-  if (!ok) {
-    return;
-  }
+  if (!ok) return;
 
   if (els.agreeError) els.agreeError.textContent = "";
 
@@ -138,14 +134,8 @@ export function handleAgreeConfirm() {
       appState.creditsTotal = DEMO_SESSION_LIMIT;
       appState.creditsUsed = 0;
       try {
-        window.localStorage.setItem(
-          STORAGE_KEYS.CREDITS_TOTAL,
-          String(appState.creditsTotal)
-        );
-        window.localStorage.setItem(
-          STORAGE_KEYS.CREDITS_USED,
-          String(appState.creditsUsed)
-        );
+        window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
+        window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
       } catch (e) {
         console.warn("Cannot store demo credits", e);
       }
@@ -161,7 +151,7 @@ export async function startStripeCheckout(email) {
   const t = UI_TEXT[appState.language] || UI_TEXT.en;
 
   if (!appState.selectedPack) {
-    alert(t.alertSelectPack || "Please select a package.");
+    alert(t.alertSelectPack || UI_TEXT.en.alertSelectPack || "Please select a package.");
     return;
   }
 
@@ -171,18 +161,11 @@ export async function startStripeCheckout(email) {
   try {
     const resp = await fetch("/api/create-checkout-session", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        pack: appState.selectedPack,
-        email
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pack: appState.selectedPack, email })
     });
 
-    if (!resp.ok) {
-      throw new Error("Server returned error.");
-    }
+    if (!resp.ok) throw new Error("Server returned error.");
 
     const data = await resp.json();
     if (!data || !data.sessionId || !data.publishableKey) {
@@ -191,28 +174,20 @@ export async function startStripeCheckout(email) {
 
     closeAgreementModal(false);
 
-    const stripe = window.Stripe
-      ? window.Stripe(data.publishableKey)
-      : null;
-
+    const stripe = window.Stripe ? window.Stripe(data.publishableKey) : null;
     if (!stripe) {
-      alert(t.alertStripeMissing || UI_TEXT.en.alertStripeMissing);
+      alert(t.alertStripeMissing || UI_TEXT.en.alertStripeMissing || "Stripe is not loaded.");
       return;
     }
 
-    const { error } = await stripe.redirectToCheckout({
-      sessionId: data.sessionId
-    });
-
+    const { error } = await stripe.redirectToCheckout({ sessionId: data.sessionId });
     if (error) {
       console.error("Stripe redirect error:", error);
-      alert(
-        "Could not open payment page: " + (error.message || String(error))
-      );
+      alert("Could not open payment page: " + (error.message || String(error)));
     }
   } catch (err) {
     console.error("PAY ERROR:", err);
-    alert(t.alertPaymentCreateFailed || UI_TEXT.en.alertPaymentCreateFailed);
+    alert(t.alertPaymentCreateFailed || UI_TEXT.en.alertPaymentCreateFailed || "Could not create a payment.");
   } finally {
     appState.isPaying = false;
   }
@@ -232,19 +207,15 @@ export function handleStripeStatusFromUrl() {
         console.warn("Cannot write localStorage", e);
       }
 
-      const storedPack = window.localStorage.getItem(
-        STORAGE_KEYS.SELECTED_PACK
-      );
+      const storedPack = window.localStorage.getItem(STORAGE_KEYS.SELECTED_PACK);
       const packKey = storedPack || appState.selectedPack;
       const size = PACK_SIZES[packKey] || 0;
+
       if (size > 0) {
         appState.creditsTotal = size;
         appState.creditsUsed = 0;
         try {
-          window.localStorage.setItem(
-            STORAGE_KEYS.CREDITS_TOTAL,
-            String(size)
-          );
+          window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(size));
           window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, "0");
         } catch (e) {
           console.warn("Cannot store credits after payment", e);
