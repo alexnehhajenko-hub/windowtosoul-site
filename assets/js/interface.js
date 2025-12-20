@@ -158,6 +158,7 @@ export function openSheet({ title, description, categories, options }) {
       chip.className = "chip";
       chip.textContent = cat.label;
       chip.dataset.value = cat.value;
+      if (cat.selected) chip.classList.add("chip-selected"); // ✅ highlight active tab
       chip.addEventListener("click", () => cat.onClick && cat.onClick(cat.value));
       els.sheetCategoryRow.appendChild(chip);
     });
@@ -200,7 +201,6 @@ export function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
-  // show mode (optional but useful)
   if (appState.mode === "restore") {
     addChip("Mode: restore");
   }
