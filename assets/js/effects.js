@@ -28,11 +28,23 @@ export function removeSkinEffects() {
     "no-wrinkles",
     "younger",
     "smooth-skin",
-    "glow-golden",
-    "cinematic-light"
+    "beauty-one-touch"
   ];
   appState.selectedEffects = appState.selectedEffects.filter(
     (e) => !skinKeys.includes(e)
+  );
+}
+
+export function removeWowEffects() {
+  const wowKeys = [
+    "glow-golden",
+    "cinematic-light",
+    "studio-glam",
+    "luxury-editorial",
+    "neon-pop"
+  ];
+  appState.selectedEffects = appState.selectedEffects.filter(
+    (e) => !wowKeys.includes(e)
   );
 }
 
@@ -77,32 +89,73 @@ export function openStyleSheet() {
   });
 }
 
-export function openSkinSheet() {
+function openSkinWowSheet(tab) {
   const lang = appState.language;
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
 
-  const optionsConfig = [
+  const categories = [
+    {
+      value: "skin",
+      label: "Skin",
+      selected: tab === "skin",
+      onClick: () => openSkinWowSheet("skin")
+    },
+    {
+      value: "wow",
+      label: "Wow",
+      selected: tab === "wow",
+      onClick: () => openSkinWowSheet("wow")
+    }
+  ];
+
+  const skinOptionsConfig = [
     { value: "no-wrinkles", label: "No wrinkles" },
     { value: "younger", label: "Younger by 10–20 years" },
     { value: "smooth-skin", label: "Smooth skin" },
-    { value: "glow-golden", label: "Golden glow ✨" },
-    { value: "cinematic-light", label: "Cinematic light 🎬" }
+    { value: "beauty-one-touch", label: "Beauty one-touch 💎" }
   ];
+
+  const wowOptionsConfig = [
+    { value: "glow-golden", label: "Golden glow ✨" },
+    { value: "cinematic-light", label: "Cinematic light 🎬" },
+    { value: "studio-glam", label: "Studio glam 💄" },
+    { value: "luxury-editorial", label: "Luxury editorial 📰" },
+    { value: "neon-pop", label: "Neon pop 🌈" }
+  ];
+
+  const optionsConfig = tab === "wow" ? wowOptionsConfig : skinOptionsConfig;
 
   openSheet({
     title: sheet.skinTitle,
     description: sheet.skinDescription,
+    categories,
     options: optionsConfig.map((opt) => ({
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
-        removeSkinEffects();
-        toggleEffect(value);
+        const wasSelected = appState.selectedEffects.includes(value);
+
+        if (tab === "wow") {
+          removeWowEffects();
+        } else {
+          removeSkinEffects();
+        }
+
+        // ✅ allow deselect: if it was selected, we just removed it and stop.
+        if (!wasSelected) {
+          toggleEffect(value);
+        }
+
         refreshSelectionChips();
         closeSheet();
       }
     }))
   });
+}
+
+export function openSkinSheet() {
+  // keep old API for button
+  openSkinWowSheet("skin");
 }
 
 export function openMimicSheet() {
@@ -128,8 +181,15 @@ export function openMimicSheet() {
       ...opt,
       selected: appState.selectedEffects.includes(opt.value),
       onClick: (value) => {
+        const wasSelected = appState.selectedEffects.includes(value);
+
         removeAllMimicEffects();
-        toggleEffect(value);
+
+        // ✅ allow deselect
+        if (!wasSelected) {
+          toggleEffect(value);
+        }
+
         refreshSelectionChips();
         closeSheet();
       }
