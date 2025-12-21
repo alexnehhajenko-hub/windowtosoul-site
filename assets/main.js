@@ -22,34 +22,15 @@ import { exitResultView } from "./js/generation.js";
 console.log("MAIN JS LOADED");
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Находим все DOM-элементы
   bindElements();
-
-  // 2. Email поддержки (если есть блок в верстке)
   setupSupportEmail();
-
-  // 3. Загружаем состояние из localStorage
   loadStateFromStorage();
-
-  // 4. Ставим язык (по умолчанию en)
   setLanguage(appState.language || "en");
-
-  // 5. Прячем оверлеи
   hideOverlaysOnStart();
-
-  // 6. Вешаем обработчики на кнопки
   attachMainHandlers();
-
-  // 7. Логика кнопки "назад"
   setupBackButtonLogic();
-
-  // 8. Логика кнопки очистки эффектов
   setupClearEffectsButton();
-
-  // 9. Статус Stripe (?status=success/cancel)
   handleStripeStatusFromUrl();
-
-  // 10. Обновляем чипы под фото
   refreshSelectionChips();
 });
 
@@ -80,23 +61,21 @@ function setupBackButtonLogic() {
   });
 }
 
-// Кнопка "CLEAR EFFECTS":
-// — очищает эффекты кожи и мимику
+// CLEAR EFFECTS:
+// — очищает эффекты
 // — убирает поздравление
-// — снимает ЛЮБОЙ стиль (selectedStyle = null)
+// — снимает стиль
+// — сбрасывает режим на generate (выходит из Hollywood Pro)
 function setupClearEffectsButton() {
   const btn = document.getElementById("btnClearEffects");
   if (!btn) return;
 
   btn.addEventListener("click", () => {
-    // 1) убираем все выбранные эффекты (кожа + мимика)
+    appState.mode = "generate";
     appState.selectedEffects = [];
-    // 2) убираем поздравление
     appState.selectedGreeting = null;
-    // 3) полностью убираем стиль — НИЧЕГО не выбрано
     appState.selectedStyle = null;
 
-    // Обновляем интерфейс
     refreshSelectionChips();
     updateGreetingOverlay();
     closeSheet();
