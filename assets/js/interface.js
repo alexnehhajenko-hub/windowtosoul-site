@@ -35,7 +35,7 @@ export function bindElements() {
   // ✅ HOLLYWOOD PRO button
   els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
 
-  // ✅ clear effects button
+  // ✅ clear effects button (was in HTML but not wired)
   els.btnClearEffects = document.getElementById("btnClearEffects");
 
   // ✅ restore button
@@ -77,7 +77,9 @@ export function bindElements() {
   els.agreementTitle = document.querySelector(".agreement-title");
   els.agreementText = document.querySelector(".agreement-text");
   els.agreementEmailTitle = document.querySelector(".agreement-section-title");
-  els.agreementCheckboxLabel = document.querySelector(".agreement-checkbox-row span");
+  els.agreementCheckboxLabel = document.querySelector(
+    ".agreement-checkbox-row span"
+  );
   els.agreementHint = document.querySelector(".agreement-hint");
 
   els.downloadLink = document.getElementById("downloadLink");
@@ -132,7 +134,9 @@ export function setLanguage(lang) {
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
+
   setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
+  setButtonLabel(els.btnClearEffects, t.btnClearEffects || "CLEAR EFFECTS");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
 
