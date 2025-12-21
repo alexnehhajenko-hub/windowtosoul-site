@@ -1,27 +1,29 @@
 // api/generate.js
 // V2 pipeline (Replicate):
-// - ALL styles + edits -> FLUX-2-Pro
-// - HOLLYWOOD PRO uses 2-pass "zoom face -> retouch -> return to original" via multi-reference
-// Goal: iPhone/Photoshop-like retouch WITHOUT identity drift.
+// - Styles -> FLUX-2-Pro
+// - Hollywood Pro (button / strong retouch) -> Qwen Upscale + Qwen Skin (identity-safe edit)
+// Goal: iPhone/Photoshop-like retouch WITHOUT swapping identity.
 
 import Replicate from "replicate";
 
 // ───────────── MODELS ─────────────
 const MODEL_FLUX2_PRO = "black-forest-labs/flux-2-pro";
+const MODEL_QWEN_UPSCALE = "qwen-edit-apps/qwen-image-edit-plus-lora-upscale";
+const MODEL_QWEN_SKIN = "qwen-edit-apps/qwen-image-edit-plus-lora-skin";
 
 // ───────────── STYLES ─────────────
 const STYLE_PREFIX = {
   beauty:
-    "High-quality realistic photo retouch. Premium iPhone portrait quality. Natural colors. Sharp details. Natural skin texture with pores.",
-  oil: "Oil painting portrait. Detailed brushwork. Soft warm light. Artistic look. Preserve recognizable facial likeness.",
+    "high-quality realistic photo retouch, keep the same person, keep the same background and clothes, natural colors, realistic texture, do not change identity",
+  oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep the same person and recognizable face",
   anime:
-    "Anime style portrait. Clean line art. Soft shading. Preserve recognizable facial likeness.",
+    "anime style portrait, clean line art, soft pastel shading, keep the same person and recognizable face",
   poster:
-    "Cinematic movie poster portrait. Dramatic lighting. High contrast. Preserve recognizable facial likeness.",
+    "cinematic movie poster portrait, dramatic lighting, high contrast, keep the same person and recognizable face",
   classic:
-    "Classical old master portrait. Realism. Warm tones. Preserve recognizable facial likeness.",
+    "classical old master portrait, realism, warm tones, keep the same person and recognizable face",
   default:
-    "Realistic photo edit. Soft studio lighting. Natural colors. Preserve recognizable facial likeness."
+    "realistic photo edit, detailed face, soft studio lighting, natural colors, keep the same person and recognizable face"
 };
 
 // ───────── SKIN + EXPRESSION EFFECTS ─────────
@@ -36,64 +38,66 @@ const SKIN_KEYS = new Set([
 ]);
 
 const EFFECT_PROMPTS = {
-  // Hollywood Pro (strong retouch, identity-safe via 2-pass)
+  // Hollywood Pro — максимально убрать морщины, но НЕ менять лицо
   "hollywood-pro":
-    "Hollywood Pro beauty retouch. Remove deep forehead lines, under-eye creases, crow's feet, and nasolabial folds. " +
-    "Even out skin tone and texture. Reduce redness, blotches, and spots. " +
-    "Keep sharp eyes, eyelashes, eyebrows, lips, hair, and glasses details. " +
-    "Natural realistic pores, premium editorial finish, no over-blur.",
+    "HOLLYWOOD PRO RETOUCH: remove deep wrinkles and fine lines VERY strongly (forehead, under eyes, crow's feet, nasolabial folds). " +
+    "even out skin tone, remove redness/blotches/spots, keep eyelashes/eyebrows/lips/hair/glasses details sharp. " +
+    "NO FACE SWAP. Do NOT change facial structure. Do NOT change head shape. Do NOT change age drastically. " +
+    "ONLY improve skin texture and tone, keep the same person.",
 
   "no-wrinkles":
-    "Strong wrinkle reduction. Smooth fine lines while keeping natural texture and pores. Premium retouch finish.",
+    "remove wrinkles and fine lines strongly, smoother younger-looking skin, keep natural texture, do not change identity",
   younger:
-    "Make the same person look fresher and slightly younger (about 5–10 years) by improving skin quality and reducing sagging subtly while keeping the same facial structure.",
+    "make the same person look fresher (about 5–10 years), reduce sagging a bit, but keep exact identity and facial structure",
   "smooth-skin":
-    "Smooth and even skin tone. Reduce blemishes and redness. Keep realistic texture and pores.",
+    "smooth and even skin tone, reduce blemishes and redness, keep realistic texture; do not change identity",
   "beauty-one-touch":
-    "Natural beauty retouch. Clean skin, remove small blemishes, soften fine lines, preserve natural texture.",
+    "natural beauty retouch: gently smooth skin, remove small blemishes, reduce fine wrinkles, keep realism; do not change identity",
   "glow-golden":
-    "Warm golden glow. Healthy skin highlights. Gentle soft light.",
+    "warm golden glow on the face, healthy skin, soft highlights; do not change identity",
   "cinematic-light":
-    "Cinematic soft key light. Gentle shadows. Better contrast and clarity.",
+    "cinematic soft key light and gentle shadows on the face, better contrast; do not change identity",
 
   // expression
-  "smile-soft": "Subtle soft smile. Calm relaxed expression. Preserve identity.",
-  "smile-big": "Big warm smile. Friendly expression. Preserve identity.",
-  "smile-hollywood": "Wide hollywood smile. Natural teeth. Preserve identity.",
-  laugh: "Natural laugh expression. Preserve identity.",
-  neutral: "Neutral relaxed expression. Preserve identity.",
-  serious: "Serious focused expression. Preserve identity.",
-  "eyes-bigger": "Slightly more open attentive eyes. Preserve identity.",
-  "eyes-brighter": "Brighter expressive gaze. Preserve identity.",
-  "surprised-wow": "Surprised wow expression. Preserve identity."
+  "smile-soft": "same person with a subtle soft smile, keep identity",
+  "smile-big": "same person with a big warm smile, keep identity",
+  "smile-hollywood": "same person with a wide hollywood smile, keep identity",
+  laugh: "same person laughing, keep identity",
+  neutral: "same person with neutral relaxed face, keep identity",
+  serious: "same person with a serious focused look, keep identity",
+  "eyes-bigger": "slightly more open attentive eyes, keep identity",
+  "eyes-brighter": "brighter expressive gaze, keep identity",
+  "surprised-wow": "surprised wow expression, keep identity"
 };
 
 // ───────── GREETINGS ─────────
 const GREETING_PROMPTS = {
   "new-year":
-    "Add a gentle festive New Year atmosphere. Subtle bokeh lights. Small elegant handwritten English text 'Happy New Year' placed away from the face.",
+    "add a gentle festive New Year atmosphere. keep the person identical. subtle bokeh lights. add small elegant handwritten English text 'Happy New Year' (small, not covering the face)",
   birthday:
-    "Add a gentle birthday atmosphere. Subtle balloons/confetti in background. Small elegant handwritten English text 'Happy Birthday' placed away from the face.",
+    "add a gentle birthday atmosphere. keep the person identical. subtle balloons/confetti in background. add small elegant handwritten English text 'Happy Birthday' (small, not covering the face)",
   funny:
-    "Add a gentle playful atmosphere. Small handwritten English text 'You look amazing!' placed away from the face.",
+    "add a gentle playful atmosphere. keep the person identical. add small handwritten English text 'You look amazing!' (small, not covering the face)",
   scary:
-    "Add a gentle spooky atmosphere (no gore). Subtle fog/background. Small handwritten English text 'Happy Halloween' placed away from the face."
+    "add a gentle spooky atmosphere (no gore). keep the person identical. subtle fog/background. add small handwritten English text 'Happy Halloween' (small, not covering the face)"
 };
 
-// ───────── IDENTITY (POSITIVE, NO NEGATIVE PROMPTS) ─────────
+// ───────── IDENTITY (VERY STRONG) ─────────
 const IDENTITY_PROMPT =
-  "Preserve the exact identity of the person from the reference image. " +
-  "Match facial structure, head shape, eyes, nose, lips, jawline, cheekbones. " +
-  "Match hairstyle, hairline, hair color, eyebrows, and glasses. " +
-  "Match the same camera angle and the same framing as the reference image.";
+  "IMPORTANT: edit the input photo of the SAME person. " +
+  "The result must be clearly recognizable as the same person. " +
+  "Do NOT change facial structure, head shape, eye shape, nose, lips, jawline, cheekbones. " +
+  "Do NOT replace the face with another person/model. " +
+  "Keep hairstyle, hairline, hair color, eyebrows, and glasses consistent. " +
+  "Keep the same camera angle and the same composition. Do NOT crop or zoom.";
 
-// ───────── UI SCREENSHOT CLEANUP (POSITIVE) ─────────
+// ───────── UI SCREENSHOT CLEANUP ─────────
 const UI_CLEANUP_TAIL =
-  "If the reference image contains app or website UI elements, recreate the scene as a clean natural photo background while preserving the same person, pose, clothing, and framing.";
+  "If the input looks like a screenshot of a website/app (buttons, panels, UI text), remove and repaint all interface elements and restore a natural background while keeping the person identical.";
 
-// ───────── QUALITY / SAFETY ─────────
-const QUALITY_TAIL =
-  "High detail. Sharp focus. Natural skin texture. Clean edges. Realistic anatomy. Fully clothed.";
+// ───────── SAFETY ─────────
+const SAFETY_TAIL =
+  "fully clothed, no nudity, no sexual content, keep realism, avoid distorted anatomy";
 
 // ───────── helpers ─────────
 function pickImageUrl(output) {
@@ -121,41 +125,15 @@ function buildEffectsPrompt(keys) {
     .join(". ");
 }
 
-// Robust FLUX-2-Pro call (supports multi-reference images)
-async function runFlux2Pro(replicate, images, prompt) {
-  const arr = Array.isArray(images) ? images.filter(Boolean) : [images].filter(Boolean);
-  if (!arr.length) throw new Error("No reference images provided");
-
+// Robust FLUX-2-Pro call (models differ in image input naming)
+async function runFlux2Pro(replicate, image, prompt) {
   const tries = [
-    {
-      input: {
-        prompt,
-        input_images: arr,
-        output_format: "jpg",
-        aspect_ratio: "match_input_image"
-      }
-    },
-    {
-      input: {
-        prompt,
-        input_images: arr
-      }
-    },
-    // fallback for single-image variants (just in case)
-    ...(arr.length === 1
-      ? [
-          {
-            input: {
-              prompt,
-              input_image: arr[0],
-              output_format: "jpg",
-              aspect_ratio: "match_input_image"
-            }
-          },
-          { input: { prompt, input_image: arr[0] } },
-          { input: { prompt, image: arr[0] } }
-        ]
-      : [])
+    { input: { prompt, input_images: [image], output_format: "jpg", aspect_ratio: "match_input_image" } },
+    { input: { prompt, input_image: image, output_format: "jpg", aspect_ratio: "match_input_image" } },
+    { input: { prompt, image, output_format: "jpg", aspect_ratio: "match_input_image" } },
+    { input: { prompt, input_images: [image] } },
+    { input: { prompt, input_image: image } },
+    { input: { prompt, image } }
   ];
 
   let lastErr = null;
@@ -172,8 +150,29 @@ async function runFlux2Pro(replicate, images, prompt) {
   throw lastErr || new Error("FLUX-2-Pro failed");
 }
 
-function jsonPrompt(obj) {
-  return JSON.stringify(obj);
+// Qwen edit call (Upscale / Skin)
+async function runQwenEdit(replicate, model, image, prompt, opts = {}) {
+  const out = await replicate.run(model, {
+    input: {
+      image,
+      prompt,
+      aspect_ratio: "match_input_image",
+      output_format: "jpg",
+      output_quality: 95,
+
+      // quality mode (40 steps) — set go_fast=false for maximum fidelity
+      go_fast: false,
+      num_inference_steps: opts.num_inference_steps ?? 40,
+
+      // LoRA strength + guidance (stronger retouch without re-drawing)
+      lora_scale: opts.lora_scale,
+      true_guidance_scale: opts.true_guidance_scale,
+
+      // keep safety checker enabled
+      disable_safety_checker: false
+    }
+  });
+  return pickImageUrl(out);
 }
 
 export default async function handler(req, res) {
@@ -196,6 +195,7 @@ export default async function handler(req, res) {
     if (!process.env.REPLICATE_API_TOKEN) {
       return res.status(500).json({ error: "Missing REPLICATE_API_TOKEN in environment variables" });
     }
+
     if (!photo) {
       return res.status(400).json({ error: "Missing photo" });
     }
@@ -215,77 +215,89 @@ export default async function handler(req, res) {
     const skinKey = skinEffects[0] || null;
     const skinPrompt = skinKey ? (EFFECT_PROMPTS[skinKey] || "") : "";
 
-    // ───────── HOLLYWOOD PRO: 2-pass zoom workflow ─────────
-    if (styleKey === "beauty" && skinKey === "hollywood-pro") {
-      // PASS A: close-up face retouch (forces model to really "see" wrinkles)
-      const closeup = jsonPrompt({
-        scene: "A tight close-up headshot crop of the face from reference image 1",
-        subjects: ["The exact same person as reference image 1 with the same facial likeness"],
-        style: "Photorealistic premium beauty retouch, iPhone portrait quality",
-        edits: skinPrompt,
-        lighting: "Match the original lighting, slightly improved clarity",
-        camera: "Very close distance, face fills the frame",
-        output: "Close-up face crop"
+    // ───────── SPECIAL: HOLLYWOOD PRO = “Photoshop workflow” (Upscale -> Skin) ─────────
+    // We do this when hollywood-pro selected (especially via the separate button).
+    if (skinKey === "hollywood-pro") {
+      // 1) Upscale/Enhance (lets the editor see micro-wrinkles better)
+      const upscalePrompt = [
+        "ENHANCE ONLY: increase detail clarity and micro-texture, keep the same person identical",
+        "do not change face shape, do not change eyes/nose/lips, do not change hair or background",
+        IDENTITY_PROMPT,
+        SAFETY_TAIL
+      ].join(". ");
+
+      const upUrl = await runQwenEdit(replicate, MODEL_QWEN_UPSCALE, photo, upscalePrompt, {
+        num_inference_steps: 40,
+        lora_scale: 1.2,
+        true_guidance_scale: 1.0
       });
 
-      const closeupUrl = await runFlux2Pro(replicate, [photo], closeup);
+      const baseForSkin = upUrl || photo;
 
-      // PASS B: return to original framing, use close-up as identity/skin detail anchor
-      const final = jsonPrompt({
-        scene: "Same full scene and framing as reference image 1",
-        subjects: [
-          "The same person as reference image 1, facial likeness guided by reference image 2"
-        ],
-        style: "Photorealistic premium iPhone portrait retouch, Photoshop-quality beauty edit",
-        edits:
-          "Apply the skin and wrinkle retouch quality from reference image 2 onto the face in reference image 1 while keeping the same full composition",
-        lighting: "Match reference image 1, slightly improved clarity and micro-contrast",
-        camera: "Match reference image 1 angle and distance",
-        notes:
-          "Preserve the same hair, glasses, clothing, background, and overall composition as reference image 1"
+      // 2) Strong Skin retouch (two passes to attack deep wrinkles)
+      const skinEditPrompt1 = [
+        "MINIMAL EDIT: change ONLY skin texture/tone. keep everything else identical",
+        stylePrefix,
+        skinPrompt,
+        "extra focus: remove deep wrinkles under eyes and nasolabial folds, keep pores natural (no plastic)",
+        IDENTITY_PROMPT,
+        UI_CLEANUP_TAIL,
+        SAFETY_TAIL
+      ].filter(Boolean).join(". ");
+
+      const skinUrl1 = await runQwenEdit(replicate, MODEL_QWEN_SKIN, baseForSkin, skinEditPrompt1, {
+        num_inference_steps: 40,
+        lora_scale: 2.0,
+        true_guidance_scale: 1.2
       });
 
-      const finalUrl = await runFlux2Pro(replicate, [photo, closeupUrl], final);
-      return res.status(200).json({ ok: true, image: finalUrl });
+      if (!skinUrl1) {
+        // fallback to FLUX if Qwen fails for any reason
+        const fluxPromptFallback = [
+          stylePrefix,
+          "MINIMAL EDIT: change ONLY skin/retouch. " + skinPrompt,
+          userPrompt,
+          IDENTITY_PROMPT,
+          UI_CLEANUP_TAIL,
+          SAFETY_TAIL
+        ].filter(Boolean).join(". ").trim();
+
+        const urlFallback = await runFlux2Pro(replicate, photo, fluxPromptFallback);
+        return res.status(200).json({ ok: true, image: urlFallback });
+      }
+
+      // Optional second skin pass: finish remaining deep lines (still minimal)
+      const skinEditPrompt2 = [
+        "MINIMAL EDIT: keep identity 100%. keep hair, eyes, eyebrows, lips and background identical",
+        "final polish: remove remaining deep wrinkles and creases while keeping natural texture",
+        IDENTITY_PROMPT,
+        SAFETY_TAIL
+      ].join(". ");
+
+      const skinUrl2 = await runQwenEdit(replicate, MODEL_QWEN_SKIN, skinUrl1, skinEditPrompt2, {
+        num_inference_steps: 40,
+        lora_scale: 1.6,
+        true_guidance_scale: 1.15
+      });
+
+      return res.status(200).json({ ok: true, image: skinUrl2 || skinUrl1 });
     }
 
-    // ───────── Non-beauty styles: add an identity anchor close-up to reduce face drift ─────────
-    // (oil/anime/poster/classic) often changes face; anchor helps keep likeness.
-    let referenceImages = [photo];
-
-    if (styleKey !== "beauty") {
-      const anchor = jsonPrompt({
-        scene: "A tight close-up headshot crop from reference image 1",
-        subjects: ["The exact same person as reference image 1 with the same facial likeness"],
-        style: "Photorealistic neutral identity anchor (no stylization)",
-        edits: "Enhance clarity slightly while preserving exact facial likeness",
-        lighting: "Neutral natural light",
-        camera: "Close distance, face fills the frame",
-        output: "Close-up identity anchor"
-      });
-
-      const anchorUrl = await runFlux2Pro(replicate, [photo], anchor);
-      referenceImages = [photo, anchorUrl];
-    }
-
-    // ───────── Single-pass default for everything else ─────────
+    // ───────── Default path: style generation/edit via FLUX-2-Pro ─────────
     const promptParts = [
       stylePrefix,
       buildEffectsPrompt(otherEffects),
-      skinPrompt ? `Skin retouch: ${skinPrompt}` : "",
+      skinPrompt ? ("MINIMAL EDIT: change ONLY skin/retouch. " + skinPrompt) : "",
       greetingPrompt,
       userPrompt,
       IDENTITY_PROMPT,
-      styleKey !== "beauty"
-        ? "Use reference image 1 for full composition. Use reference image 2 to preserve facial likeness and identity."
-        : "",
       UI_CLEANUP_TAIL,
-      QUALITY_TAIL
+      SAFETY_TAIL
     ].filter(Boolean);
 
     const finalPrompt = promptParts.join(". ").trim();
+    const url = await runFlux2Pro(replicate, photo, finalPrompt);
 
-    const url = await runFlux2Pro(replicate, referenceImages, finalPrompt);
     return res.status(200).json({ ok: true, image: url });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
