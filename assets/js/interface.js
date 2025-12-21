@@ -26,14 +26,13 @@ export function bindElements() {
 
   els.btnStyle = document.getElementById("btnStyle");
   els.btnSkin = document.getElementById("btnSkin");
-  els.btnMimic = document.getElementById("btnMimic");
   els.btnGreetings = document.getElementById("btnGreetings");
   els.btnGenerate = document.getElementById("btnGenerate");
   els.btnAddPhoto = document.getElementById("btnAddPhoto");
   els.btnPay = document.getElementById("btnPay");
 
-  // ✅ hollywood pro button
-  els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
+  // ✅ Hollywood Pro button
+  els.btnHollywood = document.getElementById("btnHollywood");
 
   // ✅ restore button
   els.btnRestore = document.getElementById("btnRestore");
@@ -124,12 +123,11 @@ export function setLanguage(lang) {
 
   setButtonLabel(els.btnStyle, t.btnStyle);
   setButtonLabel(els.btnSkin, t.btnSkin);
-  setButtonLabel(els.btnMimic, t.btnMimic);
   setButtonLabel(els.btnGreetings, t.btnGreetings);
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
-  setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
+  setButtonLabel(els.btnHollywood, t.btnHollywood);
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
 
@@ -205,8 +203,11 @@ export function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
-  if (appState.mode === "restore") addChip("Mode: restore");
-  if (appState.mode === "hollywood") addChip("Mode: Hollywood Pro");
+  if (appState.mode === "restore") {
+    addChip("Mode: restore");
+  } else if (appState.mode === "hollywood") {
+    addChip("Mode: Hollywood Pro (2 credits)");
+  }
 
   if (appState.selectedStyle) {
     const name = STYLE_LABELS_EN[appState.selectedStyle] || appState.selectedStyle;
