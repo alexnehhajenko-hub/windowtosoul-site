@@ -1,5 +1,5 @@
 // assets/js/generation.js
-// Upload photo, call /api/generate OR /api/restore
+// Upload photo, call /api/generate OR /api/restore OR /api/hollywood
 
 import {
   appState,
@@ -76,10 +76,10 @@ export async function handleGenerateClick() {
     return;
   }
 
-  // Payment/demo checks ONLY for normal generation.
-  // Restore can be free (you can change this later).
   const isRestore = appState.mode === "restore";
+  const isHollywood = appState.mode === "hollywood";
 
+  // Payment/demo checks for ALL modes except restore
   if (!isRestore) {
     if (DEMO_MODE) {
       if (!appState.userEmail || !appState.userAgreed) {
@@ -107,21 +107,30 @@ export async function handleGenerateClick() {
   showGenerating(true);
 
   try {
+    const endpoint = isRestore
+      ? "/api/restore"
+      : isHollywood
+        ? "/api/hollywood"
+        : "/api/generate";
+
     const payload = isRestore
       ? {
           photo: appState.photoBase64,
           language: appState.language || "en"
         }
-      : {
-          style: appState.selectedStyle || "beauty",
-          text: "",
-          photo: appState.photoBase64,
-          effects: appState.selectedEffects,
-          greeting: appState.selectedGreeting || null,
-          language: appState.language || "en"
-        };
-
-    const endpoint = isRestore ? "/api/restore" : "/api/generate";
+      : isHollywood
+        ? {
+            photo: appState.photoBase64,
+            language: appState.language || "en"
+          }
+        : {
+            style: appState.selectedStyle || "beauty",
+            text: "",
+            photo: appState.photoBase64,
+            effects: appState.selectedEffects,
+            greeting: appState.selectedGreeting || null,
+            language: appState.language || "en"
+          };
 
     const resp = await fetch(endpoint, {
       method: "POST",
@@ -140,14 +149,14 @@ export async function handleGenerateClick() {
 
     showResultPortrait(data.image);
 
-    // Count credits ONLY for normal generation
+    // Count credits for everything except restore
     if (!isRestore) {
       registerGeneration(data.image);
       clearEffectsSelection();
     }
 
-    // IMPORTANT: restore should not "stick"
-    if (isRestore) {
+    // modes should not "stick"
+    if (isRestore || isHollywood) {
       appState.mode = "generate";
       refreshSelectionChips();
     }
