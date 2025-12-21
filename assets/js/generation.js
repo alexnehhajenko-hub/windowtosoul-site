@@ -77,9 +77,7 @@ export async function handleGenerateClick() {
   }
 
   const isRestore = appState.mode === "restore";
-  const isHollywood = appState.mode === "hollywood";
 
-  // Payment/demo checks for generate + hollywood
   if (!isRestore) {
     if (DEMO_MODE) {
       if (!appState.userEmail || !appState.userAgreed) {
@@ -108,20 +106,7 @@ export async function handleGenerateClick() {
 
   try {
     const payload = isRestore
-      ? {
-          photo: appState.photoBase64,
-          mode: "colorize",
-          language: appState.language || "en"
-        }
-      : isHollywood
-      ? {
-          style: "beauty",
-          text: "",
-          photo: appState.photoBase64,
-          effects: ["hollywood-pro"],
-          greeting: appState.selectedGreeting || null,
-          language: appState.language || "en"
-        }
+      ? { photo: appState.photoBase64, language: appState.language || "en" }
       : {
           style: appState.selectedStyle || "beauty",
           text: "",
@@ -140,7 +125,17 @@ export async function handleGenerateClick() {
     });
 
     if (!resp.ok) {
-      throw new Error("Server error: " + resp.status);
+      let serverMsg = "";
+      try {
+        const j = await resp.json();
+        serverMsg = j?.details || j?.error || JSON.stringify(j);
+      } catch (e) {
+        try {
+          serverMsg = await resp.text();
+        } catch {}
+      }
+      console.error("SERVER ERROR:", resp.status, serverMsg);
+      throw new Error("Server error: " + resp.status + (serverMsg ? " | " + serverMsg : ""));
     }
 
     const data = await resp.json();
@@ -150,16 +145,9 @@ export async function handleGenerateClick() {
 
     showResultPortrait(data.image);
 
-    // Credits: restore = free; hollywood = 2 credits; normal = 1 credit
     if (!isRestore) {
-      const creditsToConsume = isHollywood ? 2 : 1;
-      registerGeneration(data.image, creditsToConsume);
-
-      // For normal generate we clear effects to reduce confusion.
-      // Hollywood Pro stays “always-on” via its button.
-      if (!isHollywood) {
-        clearEffectsSelection();
-      }
+      registerGeneration(data.image);
+      clearEffectsSelection();
     }
 
     if (isRestore) {
@@ -204,7 +192,7 @@ export function exitResultView(pushHistory = true) {
   if (pushHistory) setLayer("home", true);
 }
 
-function registerGeneration(imageUrl, creditsToConsume = 1) {
+function registerGeneration(imageUrl) {
   if (appState.creditsTotal <= 0) {
     if (DEMO_MODE) {
       appState.creditsTotal = DEMO_SESSION_LIMIT;
@@ -213,7 +201,7 @@ function registerGeneration(imageUrl, creditsToConsume = 1) {
     }
   }
 
-  appState.creditsUsed += creditsToConsume;
+  appState.creditsUsed += 1;
 
   if (!appState.generatedImages.includes(imageUrl)) {
     appState.generatedImages.push(imageUrl);
@@ -233,6 +221,7 @@ function registerGeneration(imageUrl, creditsToConsume = 1) {
 function clearEffectsSelection() {
   appState.selectedEffects = [];
   appState.selectedGreeting = null;
+
   refreshSelectionChips();
   updateGreetingOverlay();
 }
