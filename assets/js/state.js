@@ -37,6 +37,7 @@ export const UI_TEXT = {
     btnSkin: "SKIN EFFECT",
     btnMimic: "EXPRESSION",
     btnGreetings: "GREETINGS",
+    btnHollywoodPro: "HOLLYWOOD PRO",
     btnGenerate: "GENERATE",
     btnAddPhoto: "ADD PHOTO",
     btnPay: "PACKAGES",
@@ -79,7 +80,7 @@ export const UI_TEXT = {
     alertGenerationFailed:
       "Could not generate the portrait. Please try again.",
 
-    // ✅ missing in your current UI_TEXT (used by payment.js)
+    // used by payment.js
     alertEmailMissing: "Please enter your email.",
     alertAgreeMissing: "Please confirm the checkbox.",
     alertStripeMissing: "Stripe is not loaded. Please refresh the page and try again.",
@@ -89,9 +90,9 @@ export const UI_TEXT = {
       "Payment completed! 🎉 You can now generate portraits with your package."
   },
 
-  // keep minimal fallback translations
   de: {
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
+    btnHollywoodPro: "HOLLYWOOD PRO",
     alertEmailMissing: "Bitte gib deine E-Mail ein.",
     alertAgreeMissing: "Bitte bestätige das Kästchen.",
     alertStripeMissing: "Stripe ist nicht geladen. Bitte Seite neu laden.",
@@ -99,6 +100,7 @@ export const UI_TEXT = {
   },
   es: {
     subtitle: "Crea tu retrato único con IA",
+    btnHollywoodPro: "HOLLYWOOD PRO",
     alertEmailMissing: "Introduce tu correo electrónico.",
     alertAgreeMissing: "Confirma la casilla, por favor.",
     alertStripeMissing: "Stripe no está cargado. Recarga la página.",
@@ -106,6 +108,7 @@ export const UI_TEXT = {
   },
   ru: {
     subtitle: "Создайте свой уникальный AI-портрет",
+    btnHollywoodPro: "ГОЛЛИВУД PRO",
     alertEmailMissing: "Введите email.",
     alertAgreeMissing: "Подтвердите галочку согласия.",
     alertStripeMissing: "Stripe не загрузился. Обновите страницу и попробуйте снова.",
@@ -136,7 +139,7 @@ export const STYLE_LABELS_EN = {
 };
 
 export const EFFECT_CHIP_LABELS_EN = {
-  // ✅ new pro option
+  // pro option
   "hollywood-pro": "Skin: Hollywood Pro",
 
   // existing
@@ -174,7 +177,7 @@ export const SHEET_TEXT = {
 // Global app state
 export const appState = {
   // IMPORTANT: default mode MUST be generate
-  mode: "generate", // "generate" | "restore"
+  mode: "generate", // "generate" | "restore" | "hollywood"
 
   selectedStyle: null,
   selectedEffects: [],
