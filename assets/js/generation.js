@@ -1,9 +1,6 @@
 // assets/js/generation.js
 // Upload photo, call /api/generate OR /api/restore
-// Fixes:
-// - Add fetch timeout (prevents infinite spinner)
-// - Store hi-res preview for better beauty/restore identity
-// - Always clear effects after a successful generation (and after restore result)
+// V2: async prediction + polling (prevents long hangs/timeouts)
 
 import {
   appState,
@@ -13,17 +10,8 @@ import {
   UI_TEXT,
   PACK_SIZES
 } from "./state.js";
-import {
-  els,
-  refreshSelectionChips,
-  setLayer,
-  updateGreetingOverlay
-} from "./interface.js";
+import { els, refreshSelectionChips, setLayer, updateGreetingOverlay } from "./interface.js";
 import { openAgreementModal, openPayModal } from "./payment.js";
-
-const PREVIEW_MAX_NORMAL = 1024;
-const PREVIEW_MAX_HI = 1600; // better for faces/restoration
-const FETCH_TIMEOUT_MS = 120000; // 120s (so Safari won't hang forever)
 
 export function handleFileSelected(event) {
   const file = event.target.files && event.target.files[0];
@@ -35,14 +23,12 @@ export function handleFileSelected(event) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      const resizedNormal = resizeImageToMax(img, PREVIEW_MAX_NORMAL);
-      const resizedHi = resizeImageToMax(img, PREVIEW_MAX_HI);
-
-      appState.photoBase64 = resizedNormal;
-      appState.photoBase64Hi = resizedHi;
+      // ✅ Higher quality input for better identity + wrinkles handling
+      const resizedDataUrl = resizeImageToMax(img, 1536);
+      appState.photoBase64 = resizedDataUrl;
 
       if (els.previewImage) {
-        els.previewImage.src = resizedNormal;
+        els.previewImage.src = resizedDataUrl;
         els.previewImage.style.display = "block";
       }
       if (els.previewPlaceholder) {
@@ -74,29 +60,66 @@ function resizeImageToMax(img, maxSize) {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, width, height);
+
+  // slightly higher quality
   return canvas.toDataURL("image/jpeg", 0.92);
 }
 
-function choosePhotoForRequest(isRestore) {
-  // For restore and beauty/skin (Hollywood Pro), send higher-res for better faces.
-  const styleIsBeauty = (appState.selectedStyle || "beauty") === "beauty";
-  const hasSkin = Array.isArray(appState.selectedEffects) && appState.selectedEffects.length > 0;
-
-  if (isRestore || styleIsBeauty || hasSkin) {
-    return appState.photoBase64Hi || appState.photoBase64;
-  }
-  return appState.photoBase64;
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-async function fetchWithTimeout(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
+async function fetchJsonWithTimeout(url, options, timeoutMs) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, { ...options, signal: controller.signal });
-    return resp;
+    const resp = await fetch(url, { ...options, signal: ctrl.signal });
+    const json = await resp.json().catch(() => null);
+    return { resp, json };
   } finally {
-    clearTimeout(id);
+    clearTimeout(t);
   }
+}
+
+async function pollPrediction(predId, t, maxMs = 240000) {
+  const started = Date.now();
+  let lastStatus = "starting";
+
+  while (Date.now() - started < maxMs) {
+    // update UI text occasionally
+    const elapsed = Date.now() - started;
+    if (els.generateStatusText) {
+      if (elapsed > 60000) els.generateStatusText.textContent = t.generateStatus + " (still working…)";
+      else els.generateStatusText.textContent = t.generateStatus;
+    }
+
+    const { resp, json } = await fetchJsonWithTimeout(
+      `/api/prediction?id=${encodeURIComponent(predId)}`,
+      { method: "GET" },
+      20000
+    );
+
+    if (!resp.ok) {
+      const msg = json?.details || json?.error || `HTTP ${resp.status}`;
+      throw new Error("Prediction poll failed: " + msg);
+    }
+
+    lastStatus = json?.status || lastStatus;
+
+    if (lastStatus === "succeeded" || lastStatus === "successful") {
+      if (json?.image) return json.image;
+      throw new Error("Prediction succeeded but returned no image");
+    }
+
+    if (lastStatus === "failed" || lastStatus === "canceled") {
+      const e = json?.replicateError ? ` | ${json.replicateError}` : "";
+      throw new Error("Prediction failed: " + lastStatus + e);
+    }
+
+    await sleep(1800);
+  }
+
+  throw new Error("Prediction timeout: took too long");
 }
 
 export async function handleGenerateClick() {
@@ -135,17 +158,15 @@ export async function handleGenerateClick() {
   }
 
   appState.isGenerating = true;
-  showGenerating(true);
+  showGenerating(true, t.generateStatus);
 
   try {
-    const photoToSend = choosePhotoForRequest(isRestore);
-
     const payload = isRestore
-      ? { photo: photoToSend, language: appState.language || "en" }
+      ? { photo: appState.photoBase64, language: appState.language || "en" }
       : {
           style: appState.selectedStyle || "beauty",
           text: "",
-          photo: photoToSend,
+          photo: appState.photoBase64,
           effects: appState.selectedEffects,
           greeting: appState.selectedGreeting || null,
           language: appState.language || "en"
@@ -153,68 +174,58 @@ export async function handleGenerateClick() {
 
     const endpoint = isRestore ? "/api/restore" : "/api/generate";
 
-    const resp = await fetchWithTimeout(
+    // fast request (create prediction) — should return quickly now
+    const { resp, json } = await fetchJsonWithTimeout(
       endpoint,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       },
-      FETCH_TIMEOUT_MS
+      30000
     );
 
     if (!resp.ok) {
-      let serverMsg = "";
-      try {
-        const j = await resp.json();
-        serverMsg = j?.details || j?.error || JSON.stringify(j);
-      } catch (e) {
-        try {
-          serverMsg = await resp.text();
-        } catch {}
-      }
-      console.error("SERVER ERROR:", resp.status, serverMsg);
-      throw new Error("Server error: " + resp.status + (serverMsg ? " | " + serverMsg : ""));
+      const msg = json?.details || json?.error || `HTTP ${resp.status}`;
+      throw new Error("Server error: " + msg);
     }
 
-    const data = await resp.json();
-    if (!data || !data.image) {
-      throw new Error("No image URL in response");
+    if (!json) throw new Error("Empty server response");
+
+    // If server already has an image (rare), show it immediately.
+    let imageUrl = json.image || null;
+
+    // Otherwise poll by prediction id
+    if (!imageUrl && json.prediction) {
+      imageUrl = await pollPrediction(json.prediction, t, 240000);
     }
 
-    showResultPortrait(data.image);
+    if (!imageUrl) throw new Error("No image URL");
 
-    // Register credits ONLY for generate (not restore)
+    showResultPortrait(imageUrl);
+
     if (!isRestore) {
-      registerGeneration(data.image);
+      registerGeneration(imageUrl);
+      clearEffectsSelection(); // ✅ effects are reset after each successful generation
     }
 
-    // ✅ Always clear effects/greeting after success (user requested)
-    clearEffectsSelection();
-
-    // After restore: go back to generate mode
     if (isRestore) {
       appState.mode = "generate";
       refreshSelectionChips();
     }
   } catch (err) {
     console.error("GENERATION ERROR:", err);
-    // Timeout (AbortController)
-    const msg =
-      (err && (err.name === "AbortError" || String(err).includes("AbortError")))
-        ? (t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed) + " (timeout)"
-        : (t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
-
-    alert(msg);
+    alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
   } finally {
     showGenerating(false);
     appState.isGenerating = false;
   }
 }
 
-export function showGenerating(isOn) {
+export function showGenerating(isOn, text) {
   if (!els.generateStatus) return;
   els.generateStatus.style.display = isOn ? "flex" : "none";
+  if (isOn && els.generateStatusText && text) els.generateStatusText.textContent = text;
 }
 
 export function showResultPortrait(url) {
@@ -259,10 +270,7 @@ function registerGeneration(imageUrl) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
     window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
-    window.localStorage.setItem(
-      STORAGE_KEYS.GENERATED_IMAGES,
-      JSON.stringify(appState.generatedImages)
-    );
+    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
   } catch (e) {
     console.warn("Cannot store credits/images", e);
   }
