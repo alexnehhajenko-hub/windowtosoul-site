@@ -32,7 +32,7 @@ export function attachMainHandlers() {
     });
   }
 
-  // ✅ HOLLYWOOD PRO: one-click pro retouch (no greetings forced)
+  // ✅ HOLLYWOOD PRO: one-click pro retouch (no smiles, no greetings forced)
   if (els.btnHollywoodPro) {
     els.btnHollywoodPro.addEventListener("click", () => {
       appState.mode = "generate";
@@ -45,7 +45,7 @@ export function attachMainHandlers() {
     });
   }
 
-  // ✅ CLEAR EFFECTS
+  // ✅ CLEAR EFFECTS (now actually works)
   if (els.btnClearEffects) {
     els.btnClearEffects.addEventListener("click", () => {
       appState.selectedEffects = [];
