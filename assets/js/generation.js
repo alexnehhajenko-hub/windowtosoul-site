@@ -17,9 +17,8 @@ import {
 } from "./interface.js";
 import { openAgreementModal, openPayModal } from "./payment.js";
 
-const MAX_UPLOAD_SIZE = 2048; // ✅ was 1024 — more face detail -> less identity drift
-const JPEG_QUALITY = 0.92;
-const REQUEST_TIMEOUT_MS = 120000; // ✅ 2 minutes (prevents infinite loading)
+// ✅ Longer wait for slow models (client-side guard)
+const REQUEST_TIMEOUT_MS = 120000; // 2 minutes
 
 export function handleFileSelected(event) {
   const file = event.target.files && event.target.files[0];
@@ -31,7 +30,7 @@ export function handleFileSelected(event) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      const resizedDataUrl = resizeImageToMax(img, MAX_UPLOAD_SIZE, JPEG_QUALITY);
+      const resizedDataUrl = resizeImageToMax(img, 1024);
       appState.photoBase64 = resizedDataUrl;
 
       if (els.previewImage) {
@@ -44,7 +43,6 @@ export function handleFileSelected(event) {
       if (els.downloadLink) {
         els.downloadLink.style.display = "none";
       }
-
       updateGreetingOverlay();
     };
     img.src = e.target.result;
@@ -52,7 +50,7 @@ export function handleFileSelected(event) {
   reader.readAsDataURL(file);
 }
 
-function resizeImageToMax(img, maxSize, quality = 0.9) {
+function resizeImageToMax(img, maxSize) {
   const canvas = document.createElement("canvas");
   let { width, height } = img;
 
@@ -68,22 +66,7 @@ function resizeImageToMax(img, maxSize, quality = 0.9) {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", quality);
-}
-
-async function fetchWithTimeout(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const resp = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-    return resp;
-  } finally {
-    clearTimeout(id);
-  }
+  return canvas.toDataURL("image/jpeg", 0.9);
 }
 
 export async function handleGenerateClick() {
@@ -104,10 +87,7 @@ export async function handleGenerateClick() {
         openAgreementModal();
         return;
       }
-      if (
-        appState.creditsTotal > 0 &&
-        appState.creditsUsed >= appState.creditsTotal
-      ) {
+      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
         alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
         return;
       }
@@ -117,10 +97,7 @@ export async function handleGenerateClick() {
         openPayModal();
         return;
       }
-      if (
-        appState.creditsTotal > 0 &&
-        appState.creditsUsed >= appState.creditsTotal
-      ) {
+      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
         alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
         return;
       }
@@ -129,6 +106,10 @@ export async function handleGenerateClick() {
 
   appState.isGenerating = true;
   showGenerating(true);
+
+  // ✅ AbortController timeout so “loading forever” cannot happen
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const payload = isRestore
@@ -144,15 +125,12 @@ export async function handleGenerateClick() {
 
     const endpoint = isRestore ? "/api/restore" : "/api/generate";
 
-    const resp = await fetchWithTimeout(
-      endpoint,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      },
-      REQUEST_TIMEOUT_MS
-    );
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
 
     if (!resp.ok) {
       let serverMsg = "";
@@ -165,11 +143,7 @@ export async function handleGenerateClick() {
         } catch {}
       }
       console.error("SERVER ERROR:", resp.status, serverMsg);
-      throw new Error(
-        "Server error: " +
-          resp.status +
-          (serverMsg ? " | " + serverMsg : "")
-      );
+      throw new Error("Server error: " + resp.status + (serverMsg ? " | " + serverMsg : ""));
     }
 
     const data = await resp.json();
@@ -190,25 +164,22 @@ export async function handleGenerateClick() {
   } catch (err) {
     console.error("GENERATION ERROR:", err);
 
-    // ✅ handle timeout gracefully
-    const msg = String(err?.message || err);
-    if (msg.includes("aborted") || msg.toLowerCase().includes("abort")) {
-      alert(
-        (t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed) +
-          "\n\nTimeout: generation took too long. Please try again."
-      );
+    // If it was aborted by timeout, show clearer message:
+    if (String(err?.name) === "AbortError") {
+      alert("Generation is taking too long. Please try again.");
     } else {
       alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
     }
   } finally {
-    // ✅ ALWAYS clear effects after any generate attempt (as you asked)
-    // so the next run starts clean.
-    if (!isRestore) {
-      clearEffectsSelection();
-    }
+    clearTimeout(timeoutId);
 
     showGenerating(false);
     appState.isGenerating = false;
+
+    // ✅ IMPORTANT: effects MUST be cleared after each generation attempt (success or fail)
+    if (!isRestore) {
+      clearEffectsSelection();
+    }
   }
 }
 
@@ -257,18 +228,9 @@ function registerGeneration(imageUrl) {
   }
 
   try {
-    window.localStorage.setItem(
-      STORAGE_KEYS.CREDITS_TOTAL,
-      String(appState.creditsTotal)
-    );
-    window.localStorage.setItem(
-      STORAGE_KEYS.CREDITS_USED,
-      String(appState.creditsUsed)
-    );
-    window.localStorage.setItem(
-      STORAGE_KEYS.GENERATED_IMAGES,
-      JSON.stringify(appState.generatedImages)
-    );
+    window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
+    window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
+    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
   } catch (e) {
     console.warn("Cannot store credits/images", e);
   }
