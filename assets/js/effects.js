@@ -25,13 +25,13 @@ export function toggleEffect(value) {
 
 export function removeSkinEffects() {
   const skinKeys = [
-    // ✅ add pro
     "hollywood-pro",
-
     "no-wrinkles",
     "younger",
     "smooth-skin",
-    "beauty-one-touch"
+    "beauty-one-touch",
+    "glow-golden",
+    "cinematic-light"
   ];
   appState.selectedEffects = appState.selectedEffects.filter(
     (e) => !skinKeys.includes(e)
@@ -112,11 +112,9 @@ function openSkinWowSheet(tab) {
   ];
 
   const skinOptionsConfig = [
-    // ✅ NEW: Hollywood Pro first
-    { value: "hollywood-pro", label: "Hollywood Pro ✨ (no wrinkles)" },
-
+    { value: "hollywood-pro", label: "Hollywood Pro ⭐️ (strong)" },
     { value: "no-wrinkles", label: "No wrinkles" },
-    { value: "younger", label: "Younger by 10–20 years" },
+    { value: "younger", label: "Younger (5–10 years)" },
     { value: "smooth-skin", label: "Smooth skin" },
     { value: "beauty-one-touch", label: "Beauty one-touch 💎" }
   ];
@@ -147,7 +145,7 @@ function openSkinWowSheet(tab) {
           removeSkinEffects();
         }
 
-        // ✅ allow deselect: if it was selected, we just removed it and stop.
+        // allow deselect
         if (!wasSelected) {
           toggleEffect(value);
         }
@@ -160,7 +158,6 @@ function openSkinWowSheet(tab) {
 }
 
 export function openSkinSheet() {
-  // keep old API for button
   openSkinWowSheet("skin");
 }
 
@@ -191,7 +188,6 @@ export function openMimicSheet() {
 
         removeAllMimicEffects();
 
-        // ✅ allow deselect
         if (!wasSelected) {
           toggleEffect(value);
         }
