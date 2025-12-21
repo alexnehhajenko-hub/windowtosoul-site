@@ -38,7 +38,6 @@ export const UI_TEXT = {
     btnMimic: "EXPRESSION",
     btnGreetings: "GREETINGS",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    btnClearEffects: "CLEAR EFFECTS",
     btnGenerate: "GENERATE",
     btnAddPhoto: "ADD PHOTO",
     btnPay: "PACKAGES",
@@ -93,7 +92,6 @@ export const UI_TEXT = {
   de: {
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    btnClearEffects: "EFFEKTE LÖSCHEN",
     alertEmailMissing: "Bitte gib deine E-Mail ein.",
     alertAgreeMissing: "Bitte bestätige das Kästchen.",
     alertStripeMissing: "Stripe ist nicht geladen. Bitte Seite neu laden.",
@@ -102,7 +100,6 @@ export const UI_TEXT = {
   es: {
     subtitle: "Crea tu retrato único con IA",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    btnClearEffects: "BORRAR EFECTOS",
     alertEmailMissing: "Introduce tu correo electrónico.",
     alertAgreeMissing: "Confirma la casilla, por favor.",
     alertStripeMissing: "Stripe no está cargado. Recarga la página.",
@@ -111,7 +108,6 @@ export const UI_TEXT = {
   ru: {
     subtitle: "Создайте свой уникальный AI-портрет",
     btnHollywoodPro: "ГОЛЛИВУД PRO",
-    btnClearEffects: "СБРОСИТЬ ЭФФЕКТЫ",
     alertEmailMissing: "Введите email.",
     alertAgreeMissing: "Подтвердите галочку согласия.",
     alertStripeMissing: "Stripe не загрузился. Обновите страницу и попробуйте снова.",
@@ -186,7 +182,12 @@ export const appState = {
   language: "en",
 
   originalFile: null,
+
+  // Base64 previews:
+  // - photoBase64: normal (faster)
+  // - photoBase64Hi: higher-res (better for beauty/restore, slower but more detail)
   photoBase64: null,
+  photoBase64Hi: null,
 
   selectedPack: null,
 
