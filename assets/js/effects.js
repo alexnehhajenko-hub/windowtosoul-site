@@ -25,7 +25,9 @@ export function toggleEffect(value) {
 
 export function removeSkinEffects() {
   const skinKeys = [
+    // ✅ add pro
     "hollywood-pro",
+
     "no-wrinkles",
     "younger",
     "smooth-skin",
@@ -110,8 +112,8 @@ function openSkinWowSheet(tab) {
   ];
 
   const skinOptionsConfig = [
-    // ✅ main pro retouch
-    { value: "hollywood-pro", label: "Hollywood Pro ⭐️ (no wrinkles)" },
+    // ✅ NEW: Hollywood Pro first
+    { value: "hollywood-pro", label: "Hollywood Pro ✨ (no wrinkles)" },
 
     { value: "no-wrinkles", label: "No wrinkles" },
     { value: "younger", label: "Younger by 10–20 years" },
@@ -145,7 +147,7 @@ function openSkinWowSheet(tab) {
           removeSkinEffects();
         }
 
-        // ✅ allow deselect
+        // ✅ allow deselect: if it was selected, we just removed it and stop.
         if (!wasSelected) {
           toggleEffect(value);
         }
@@ -158,6 +160,7 @@ function openSkinWowSheet(tab) {
 }
 
 export function openSkinSheet() {
+  // keep old API for button
   openSkinWowSheet("skin");
 }
 
