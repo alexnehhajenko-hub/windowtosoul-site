@@ -1,5 +1,5 @@
 // assets/js/generation.js
-// Upload photo, call /api/generate OR /api/restore OR /api/hollywood
+// Upload photo, call /api/generate OR /api/restore
 
 import {
   appState,
@@ -79,7 +79,7 @@ export async function handleGenerateClick() {
   const isRestore = appState.mode === "restore";
   const isHollywood = appState.mode === "hollywood";
 
-  // Payment/demo checks for ALL modes except restore
+  // Payment/demo checks for generate + hollywood
   if (!isRestore) {
     if (DEMO_MODE) {
       if (!appState.userEmail || !appState.userAgreed) {
@@ -107,30 +107,31 @@ export async function handleGenerateClick() {
   showGenerating(true);
 
   try {
-    const endpoint = isRestore
-      ? "/api/restore"
-      : isHollywood
-        ? "/api/hollywood"
-        : "/api/generate";
-
     const payload = isRestore
       ? {
           photo: appState.photoBase64,
+          mode: "colorize",
           language: appState.language || "en"
         }
       : isHollywood
-        ? {
-            photo: appState.photoBase64,
-            language: appState.language || "en"
-          }
-        : {
-            style: appState.selectedStyle || "beauty",
-            text: "",
-            photo: appState.photoBase64,
-            effects: appState.selectedEffects,
-            greeting: appState.selectedGreeting || null,
-            language: appState.language || "en"
-          };
+      ? {
+          style: "beauty",
+          text: "",
+          photo: appState.photoBase64,
+          effects: ["hollywood-pro"],
+          greeting: appState.selectedGreeting || null,
+          language: appState.language || "en"
+        }
+      : {
+          style: appState.selectedStyle || "beauty",
+          text: "",
+          photo: appState.photoBase64,
+          effects: appState.selectedEffects,
+          greeting: appState.selectedGreeting || null,
+          language: appState.language || "en"
+        };
+
+    const endpoint = isRestore ? "/api/restore" : "/api/generate";
 
     const resp = await fetch(endpoint, {
       method: "POST",
@@ -149,14 +150,19 @@ export async function handleGenerateClick() {
 
     showResultPortrait(data.image);
 
-    // Count credits for everything except restore
+    // Credits: restore = free; hollywood = 2 credits; normal = 1 credit
     if (!isRestore) {
-      registerGeneration(data.image);
-      clearEffectsSelection();
+      const creditsToConsume = isHollywood ? 2 : 1;
+      registerGeneration(data.image, creditsToConsume);
+
+      // For normal generate we clear effects to reduce confusion.
+      // Hollywood Pro stays “always-on” via its button.
+      if (!isHollywood) {
+        clearEffectsSelection();
+      }
     }
 
-    // modes should not "stick"
-    if (isRestore || isHollywood) {
+    if (isRestore) {
       appState.mode = "generate";
       refreshSelectionChips();
     }
@@ -198,7 +204,7 @@ export function exitResultView(pushHistory = true) {
   if (pushHistory) setLayer("home", true);
 }
 
-function registerGeneration(imageUrl) {
+function registerGeneration(imageUrl, creditsToConsume = 1) {
   if (appState.creditsTotal <= 0) {
     if (DEMO_MODE) {
       appState.creditsTotal = DEMO_SESSION_LIMIT;
@@ -207,7 +213,7 @@ function registerGeneration(imageUrl) {
     }
   }
 
-  appState.creditsUsed += 1;
+  appState.creditsUsed += creditsToConsume;
 
   if (!appState.generatedImages.includes(imageUrl)) {
     appState.generatedImages.push(imageUrl);
@@ -227,7 +233,6 @@ function registerGeneration(imageUrl) {
 function clearEffectsSelection() {
   appState.selectedEffects = [];
   appState.selectedGreeting = null;
-
   refreshSelectionChips();
   updateGreetingOverlay();
 }
