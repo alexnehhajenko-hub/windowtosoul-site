@@ -1,7 +1,22 @@
-// api/restore.js — Photo Restoration (2-pass pipeline: identity restore -> border cleanup)
-// Uses FLUX-Kontext-Pro (Replicate)
+// api/restore.js — Photo Restoration (2-pass pipeline + optional beautify pass #3)
+// Uses Replicate image-edit model (default: FLUX-Kontext-Pro)
+//
+// BODY params:
+//   photo: base64 data url OR image url (required)
+//   mode: "colorize" | "bw" (optional; default "colorize")
+//   beautify: boolean (optional; default false)
+//   beautifyLevel: "soft" (optional; default "soft")
+//
+// Response:
+//   { ok: true, image: <finalUrl>, restored: <restore2passUrl>, mode, beautifyApplied }
 
 import Replicate from "replicate";
+
+// You can override model via env if you want to test another Replicate model later
+const RESTORE_MODEL =
+  process.env.RESTORE_MODEL || "black-forest-labs/flux-kontext-pro";
+const BEAUTIFY_MODEL =
+  process.env.BEAUTIFY_MODEL || "black-forest-labs/flux-kontext-pro";
 
 // PASS #1: максимально сохранить людей/лица/композицию, восстановить качество
 const PASS1_PROMPT = [
@@ -30,7 +45,6 @@ const PASS2_PROMPT = [
   "remove torn edges, stains on the border, and leftover paper margins",
   "crop to the real photo content",
 
-  // если края отсутствуют — дорисовать только фон/края, не трогая людей
   "if parts near the border are missing, extend the background naturally",
   "do NOT invent new subjects",
   "do NOT change any faces, do NOT change any people",
@@ -48,6 +62,20 @@ const COLOR_PRESET = [
 const BW_PRESET = [
   "keep it black and white",
   "improve tonal range and contrast, classic film look"
+].join(", ");
+
+// OPTIONAL PASS #3: мягкая “Photoshop-like” ретушь после реставрации
+// ВАЖНО: это НЕ “сильное омоложение/операция”, а премиум ретушь.
+// Сильное омоложение (Hollywood Pro) лучше делать в /api/generate.
+const BEAUTIFY_SOFT_PROMPT = [
+  "high-end natural photo retouch, like professional photoshop, keep the SAME people and identities",
+  "reduce wrinkles and fine lines noticeably (forehead, under eyes, crow's feet, nasolabial folds) but keep realistic skin texture and pores",
+  "even skin tone, remove mild blemishes and redness, keep realism",
+  "subtle lifting effect only: slightly tighten jawline and neck area without changing facial structure or proportions",
+  "improve light gently: softer flattering key light, natural contrast, no harsh shadows",
+  "keep hair, glasses, clothing, background, and composition identical",
+  "do NOT change age drastically; just a fresher healthier look",
+  "no text, no captions, no logos, no watermarks"
 ].join(", ");
 
 function pickImageUrl(output) {
@@ -71,6 +99,11 @@ function pickImageUrl(output) {
   return imageUrl;
 }
 
+async function runReplicate(replicate, model, input) {
+  const out = await replicate.run(model, { input });
+  return pickImageUrl(out);
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -86,10 +119,16 @@ export default async function handler(req, res) {
       }
     }
 
-    const { photo, mode } = body || {};
+    const { photo, mode, beautify, beautifyLevel } = body || {};
 
     if (!photo) {
       return res.status(400).json({ error: "Missing photo" });
+    }
+
+    if (!process.env.REPLICATE_API_TOKEN) {
+      return res.status(500).json({
+        error: "Missing REPLICATE_API_TOKEN in environment variables"
+      });
     }
 
     const m = (mode || "colorize").toLowerCase();
@@ -102,52 +141,78 @@ export default async function handler(req, res) {
     // ---------- PASS #1 ----------
     const pass1Prompt = [PASS1_PROMPT, tonePreset].join(". ").trim();
 
-    const out1 = await replicate.run("black-forest-labs/flux-kontext-pro", {
-      input: {
-        prompt: pass1Prompt,
-        input_image: photo,
-        output_format: "jpg"
-      }
+    const pass1Url = await runReplicate(replicate, RESTORE_MODEL, {
+      prompt: pass1Prompt,
+      input_image: photo,
+      output_format: "jpg",
+      aspect_ratio: "match_input_image",
+      safety_tolerance: 2,
+      prompt_upsampling: false
     });
 
-    const pass1Url = pickImageUrl(out1);
     if (!pass1Url) {
-      return res.status(500).json({ error: "Restore pass #1 returned no image URL" });
+      return res
+        .status(500)
+        .json({ error: "Restore pass #1 returned no image URL" });
     }
 
     // ---------- PASS #2 ----------
-    // ВАЖНО: во втором проходе используем результат первого как input_image
     const pass2Prompt = [PASS2_PROMPT].join(". ").trim();
 
-    const out2 = await replicate.run("black-forest-labs/flux-kontext-pro", {
-      input: {
-        prompt: pass2Prompt,
-        input_image: pass1Url,
-        output_format: "jpg"
-      }
+    const pass2Url = await runReplicate(replicate, RESTORE_MODEL, {
+      prompt: pass2Prompt,
+      input_image: pass1Url,
+      output_format: "jpg",
+      aspect_ratio: "match_input_image",
+      safety_tolerance: 2,
+      prompt_upsampling: false
     });
 
-    const finalUrl = pickImageUrl(out2);
-    if (!finalUrl) {
-      // Если вдруг pass2 не вернул — отдаём pass1, чтобы пользователь не остался без результата
+    const restoredUrl = pass2Url || pass1Url;
+
+    // ---------- OPTIONAL PASS #3 (Beautify) ----------
+    const wantBeautify = !!beautify;
+    const level = (beautifyLevel || "soft").toLowerCase();
+
+    if (!wantBeautify) {
       return res.status(200).json({
         ok: true,
-        image: pass1Url,
+        image: restoredUrl,
+        restored: restoredUrl,
         mode: m,
-        note: "Pass #2 failed to return an image; returning pass #1 result."
+        beautifyApplied: false
       });
     }
 
+    // For now only "soft" is supported (safe for identity). We can add "pro" later.
+    const beautifyPromptCore =
+      level === "soft" ? BEAUTIFY_SOFT_PROMPT : BEAUTIFY_SOFT_PROMPT;
+
+    // Keep BW if user asked BW
+    const beautifyPrompt =
+      m === "bw"
+        ? [beautifyPromptCore, BW_PRESET].join(", ")
+        : [beautifyPromptCore].join(", ");
+
+    const beautifiedUrl = await runReplicate(replicate, BEAUTIFY_MODEL, {
+      prompt: beautifyPrompt,
+      input_image: restoredUrl,
+      output_format: "jpg",
+      aspect_ratio: "match_input_image",
+      safety_tolerance: 2,
+      prompt_upsampling: false
+    });
+
+    // If beautify failed — still return restored result (user must not lose output)
     return res.status(200).json({
       ok: true,
-      image: finalUrl,
+      image: beautifiedUrl || restoredUrl,
+      restored: restoredUrl,
       mode: m,
-      // не возвращаем промпты на фронт
-      pass1: undefined,
-      pass2: undefined
+      beautifyApplied: !!beautifiedUrl
     });
   } catch (err) {
-    console.error("RESTORE 2-PASS ERROR:", err);
+    console.error("RESTORE ERROR:", err);
     return res.status(500).json({
       error: "Restore failed",
       details: err?.message || String(err)
