@@ -35,8 +35,9 @@ export const UI_TEXT = {
 
     btnStyle: "PORTRAIT STYLE",
     btnSkin: "SKIN EFFECT",
+    btnMimic: "EXPRESSION",
     btnGreetings: "GREETINGS",
-    btnHollywood: "HOLLYWOOD PRO",
+    btnHollywoodPro: "HOLLYWOOD PRO",
     btnGenerate: "GENERATE",
     btnAddPhoto: "ADD PHOTO",
     btnPay: "PACKAGES",
@@ -90,7 +91,7 @@ export const UI_TEXT = {
 
   de: {
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
-    btnHollywood: "HOLLYWOOD PRO",
+    btnHollywoodPro: "HOLLYWOOD PRO",
     alertEmailMissing: "Bitte gib deine E-Mail ein.",
     alertAgreeMissing: "Bitte bestätige das Kästchen.",
     alertStripeMissing: "Stripe ist nicht geladen. Bitte Seite neu laden.",
@@ -98,7 +99,7 @@ export const UI_TEXT = {
   },
   es: {
     subtitle: "Crea tu retrato único con IA",
-    btnHollywood: "HOLLYWOOD PRO",
+    btnHollywoodPro: "HOLLYWOOD PRO",
     alertEmailMissing: "Introduce tu correo electrónico.",
     alertAgreeMissing: "Confirma la casilla, por favor.",
     alertStripeMissing: "Stripe no está cargado. Recarga la página.",
@@ -106,7 +107,7 @@ export const UI_TEXT = {
   },
   ru: {
     subtitle: "Создайте свой уникальный AI-портрет",
-    btnHollywood: "ГОЛЛИВУД PRO",
+    btnHollywoodPro: "ГОЛЛИВУД PRO",
     alertEmailMissing: "Введите email.",
     alertAgreeMissing: "Подтвердите галочку согласия.",
     alertStripeMissing: "Stripe не загрузился. Обновите страницу и попробуйте снова.",
@@ -138,12 +139,23 @@ export const STYLE_LABELS_EN = {
 
 export const EFFECT_CHIP_LABELS_EN = {
   "hollywood-pro": "Skin: Hollywood Pro",
+
   "no-wrinkles": "Effect: no wrinkles",
   younger: "Effect: younger",
   "smooth-skin": "Effect: smooth skin",
   "glow-golden": "Effect: golden glow",
   "cinematic-light": "Effect: cinematic light",
-  "beauty-one-touch": "Effect: beauty one-touch"
+  "beauty-one-touch": "Effect: beauty one-touch",
+
+  "smile-soft": "Expression: soft smile",
+  "smile-big": "Expression: big smile",
+  "smile-hollywood": "Expression: Hollywood smile",
+  laugh: "Expression: laugh",
+  "surprised-wow": "Expression: wow-surprised",
+  neutral: "Expression: neutral",
+  serious: "Expression: serious look",
+  "eyes-bigger": "Expression: bigger eyes",
+  "eyes-brighter": "Expression: brighter eyes"
 };
 
 export const SHEET_TEXT = {
@@ -152,14 +164,16 @@ export const SHEET_TEXT = {
     styleDescription: "Choose the main artistic style.",
     skinTitle: "Skin effect",
     skinDescription: "Choose an effect that gives a wow feeling.",
+    mimicTitle: "Expression",
+    mimicDescription: "Choose the facial expression.",
     greetingTitle: "Greetings",
     greetingDescription: "We will gently add festive atmosphere to the portrait."
   }
 };
 
+// Global app state
 export const appState = {
-  // generate | restore | hollywood
-  mode: "generate",
+  mode: "generate", // "generate" | "restore"
 
   selectedStyle: null,
   selectedEffects: [],
