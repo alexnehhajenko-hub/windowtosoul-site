@@ -1,14 +1,7 @@
-/* /assets/style.css */
-
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-/* utility */
-.btn-hidden {
-  display: none !important;
 }
 
 body {
@@ -116,12 +109,13 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-
-  /* FIX: раньше было opacity:0 и класс .visible нигде не ставился,
-     поэтому поздравления были невидимы. Теперь показывается, когда display:block */
-  opacity: 1;
-
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 0.12s ease-out;
+}
+
+.greeting-overlay.visible {
+  opacity: 1;
 }
 
 /* Блок с кнопками */
@@ -237,24 +231,6 @@ body {
   background: linear-gradient(135deg, #364064, #474a78);
 }
 
-/* ✅ HOLLYWOOD PRO (отдельная кнопка — “премиум ретушь”) */
-.btn-hollywood {
-  background: linear-gradient(135deg, #ffcc66, #ff4ecd 45%, #7c5cff 100%);
-  box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.88),
-    0 0 0 1px rgba(255, 255, 255, 0.10),
-    0 2px 0 rgba(255, 245, 220, 0.35) inset,
-    0 -3px 12px rgba(0, 0, 0, 0.72) inset;
-  color: #1b0f0a;
-}
-
-.btn-hollywood::after {
-  background: radial-gradient(circle at top left,
-    rgba(255, 255, 255, 0.22) 0,
-    transparent 58%);
-  opacity: 0.9;
-}
-
 .btn-pay {
   background: linear-gradient(135deg, #d9b86a, #c7945c 45%, #b46b54 100%);
   box-shadow:
@@ -263,6 +239,16 @@ body {
     0 2px 0 rgba(255, 245, 220, 0.35) inset,
     0 -3px 10px rgba(0, 0, 0, 0.7) inset;
   color: #24140a;
+}
+
+/* ✅ Hollywood Pro button */
+.btn-hollywood {
+  background: linear-gradient(135deg, #ffcc66, #ff7ad9 45%, #7c5cff 100%);
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.88),
+    0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 2px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -3px 10px rgba(0, 0, 0, 0.65) inset;
 }
 
 .btn-icon {
@@ -312,7 +298,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(3, 5, 18, 0.7);
-  display: none;          /* показываем/скрываем через style.display */
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 20;
