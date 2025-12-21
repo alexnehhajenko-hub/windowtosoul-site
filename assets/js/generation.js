@@ -1,7 +1,5 @@
 // assets/js/generation.js
 // Upload photo, call /api/generate OR /api/restore
-// Update: keep 2 image sizes (1024 + HQ 2048) and send HQ for Hollywood Pro / skin retouch.
-// Also send retouch flags (face_zoom) for server-side "zoom-in face -> retouch -> restore" pipeline.
 
 import {
   appState,
@@ -19,14 +17,9 @@ import {
 } from "./interface.js";
 import { openAgreementModal, openPayModal } from "./payment.js";
 
-// Effects that benefit from higher input resolution
-const HQ_EFFECTS = new Set([
-  "hollywood-pro",
-  "no-wrinkles",
-  "younger",
-  "smooth-skin",
-  "beauty-one-touch"
-]);
+const MAX_UPLOAD_SIZE = 2048; // ✅ was 1024 — more face detail -> less identity drift
+const JPEG_QUALITY = 0.92;
+const REQUEST_TIMEOUT_MS = 120000; // ✅ 2 minutes (prevents infinite loading)
 
 export function handleFileSelected(event) {
   const file = event.target.files && event.target.files[0];
@@ -38,16 +31,11 @@ export function handleFileSelected(event) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      // normal preview/generation image
-      const resizedDataUrl = resizeImageToMax(img, 1024);
+      const resizedDataUrl = resizeImageToMax(img, MAX_UPLOAD_SIZE, JPEG_QUALITY);
       appState.photoBase64 = resizedDataUrl;
 
-      // HQ image for Hollywood Pro / skin retouch / restore
-      const resizedHQ = resizeImageToMax(img, 2048);
-      appState.photoBase64HQ = resizedHQ;
-
       if (els.previewImage) {
-        els.previewImage.src = resizedDataUrl; // preview fast
+        els.previewImage.src = resizedDataUrl;
         els.previewImage.style.display = "block";
       }
       if (els.previewPlaceholder) {
@@ -56,6 +44,7 @@ export function handleFileSelected(event) {
       if (els.downloadLink) {
         els.downloadLink.style.display = "none";
       }
+
       updateGreetingOverlay();
     };
     img.src = e.target.result;
@@ -63,7 +52,7 @@ export function handleFileSelected(event) {
   reader.readAsDataURL(file);
 }
 
-function resizeImageToMax(img, maxSize) {
+function resizeImageToMax(img, maxSize, quality = 0.9) {
   const canvas = document.createElement("canvas");
   let { width, height } = img;
 
@@ -79,17 +68,22 @@ function resizeImageToMax(img, maxSize) {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", 0.9);
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
-function shouldUseHQImage({ isRestore, style, effects }) {
-  if (isRestore) return true;
-  if (style === "beauty") return true;
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (Array.isArray(effects) && effects.some((e) => HQ_EFFECTS.has(e))) {
-    return true;
+  try {
+    const resp = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return resp;
+  } finally {
+    clearTimeout(id);
   }
-  return false;
 }
 
 export async function handleGenerateClick() {
@@ -110,7 +104,10 @@ export async function handleGenerateClick() {
         openAgreementModal();
         return;
       }
-      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+      if (
+        appState.creditsTotal > 0 &&
+        appState.creditsUsed >= appState.creditsTotal
+      ) {
         alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
         return;
       }
@@ -120,7 +117,10 @@ export async function handleGenerateClick() {
         openPayModal();
         return;
       }
-      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+      if (
+        appState.creditsTotal > 0 &&
+        appState.creditsUsed >= appState.creditsTotal
+      ) {
         alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
         return;
       }
@@ -131,49 +131,28 @@ export async function handleGenerateClick() {
   showGenerating(true);
 
   try {
-    const effectsArr = Array.isArray(appState.selectedEffects) ? appState.selectedEffects : [];
-    const styleKey = appState.selectedStyle || "beauty";
-
-    const useHQ = shouldUseHQImage({
-      isRestore,
-      style: styleKey,
-      effects: effectsArr
-    });
-
-    const photoToSend = (useHQ ? appState.photoBase64HQ : appState.photoBase64) || appState.photoBase64;
-
-    // Extra retouch flags (server can ignore safely now; we will use them in api/generate.js V2 later)
-    const hasHollywoodPro = effectsArr.includes("hollywood-pro");
-    const retouch = hasHollywoodPro
-      ? {
-          mode: "hollywood-pro",
-          face_zoom: true,       // server: zoom-in face -> retouch -> restore
-          strength: "max"        // server: stronger wrinkle removal
-        }
-      : null;
-
     const payload = isRestore
-      ? {
-          photo: photoToSend,
-          language: appState.language || "en"
-        }
+      ? { photo: appState.photoBase64, language: appState.language || "en" }
       : {
-          style: styleKey,
+          style: appState.selectedStyle || "beauty",
           text: "",
-          photo: photoToSend,
-          effects: effectsArr,
+          photo: appState.photoBase64,
+          effects: appState.selectedEffects,
           greeting: appState.selectedGreeting || null,
-          language: appState.language || "en",
-          ...(retouch ? { retouch } : {})
+          language: appState.language || "en"
         };
 
     const endpoint = isRestore ? "/api/restore" : "/api/generate";
 
-    const resp = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    const resp = await fetchWithTimeout(
+      endpoint,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      },
+      REQUEST_TIMEOUT_MS
+    );
 
     if (!resp.ok) {
       let serverMsg = "";
@@ -186,7 +165,11 @@ export async function handleGenerateClick() {
         } catch {}
       }
       console.error("SERVER ERROR:", resp.status, serverMsg);
-      throw new Error("Server error: " + resp.status + (serverMsg ? " | " + serverMsg : ""));
+      throw new Error(
+        "Server error: " +
+          resp.status +
+          (serverMsg ? " | " + serverMsg : "")
+      );
     }
 
     const data = await resp.json();
@@ -198,7 +181,6 @@ export async function handleGenerateClick() {
 
     if (!isRestore) {
       registerGeneration(data.image);
-      clearEffectsSelection();
     }
 
     if (isRestore) {
@@ -207,8 +189,24 @@ export async function handleGenerateClick() {
     }
   } catch (err) {
     console.error("GENERATION ERROR:", err);
-    alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
+
+    // ✅ handle timeout gracefully
+    const msg = String(err?.message || err);
+    if (msg.includes("aborted") || msg.toLowerCase().includes("abort")) {
+      alert(
+        (t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed) +
+          "\n\nTimeout: generation took too long. Please try again."
+      );
+    } else {
+      alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
+    }
   } finally {
+    // ✅ ALWAYS clear effects after any generate attempt (as you asked)
+    // so the next run starts clean.
+    if (!isRestore) {
+      clearEffectsSelection();
+    }
+
     showGenerating(false);
     appState.isGenerating = false;
   }
@@ -259,9 +257,18 @@ function registerGeneration(imageUrl) {
   }
 
   try {
-    window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
-    window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
-    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
+    window.localStorage.setItem(
+      STORAGE_KEYS.CREDITS_TOTAL,
+      String(appState.creditsTotal)
+    );
+    window.localStorage.setItem(
+      STORAGE_KEYS.CREDITS_USED,
+      String(appState.creditsUsed)
+    );
+    window.localStorage.setItem(
+      STORAGE_KEYS.GENERATED_IMAGES,
+      JSON.stringify(appState.generatedImages)
+    );
   } catch (e) {
     console.warn("Cannot store credits/images", e);
   }
