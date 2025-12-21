@@ -35,6 +35,9 @@ export function bindElements() {
   // ✅ restore button
   els.btnRestore = document.getElementById("btnRestore");
 
+  // ✅ NEW: hollywood pro button (separate)
+  els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
+
   els.btnLangEn = document.getElementById("langEn");
   els.btnLangDe = document.getElementById("langDe");
   els.btnLangEs = document.getElementById("langEs");
@@ -121,11 +124,17 @@ export function setLanguage(lang) {
 
   setButtonLabel(els.btnStyle, t.btnStyle);
   setButtonLabel(els.btnSkin, t.btnSkin);
+
+  // Expression will be removed/hidden later, but keep label safe
   setButtonLabel(els.btnMimic, t.btnMimic);
+
   setButtonLabel(els.btnGreetings, t.btnGreetings);
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
+
+  // ✅ label for Hollywood Pro (fallback)
+  setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
 
@@ -158,7 +167,7 @@ export function openSheet({ title, description, categories, options }) {
       chip.className = "chip";
       chip.textContent = cat.label;
       chip.dataset.value = cat.value;
-      if (cat.selected) chip.classList.add("chip-selected"); // ✅ highlight active tab
+      if (cat.selected) chip.classList.add("chip-selected");
       chip.addEventListener("click", () => cat.onClick && cat.onClick(cat.value));
       els.sheetCategoryRow.appendChild(chip);
     });
@@ -203,6 +212,8 @@ export function refreshSelectionChips() {
 
   if (appState.mode === "restore") {
     addChip("Mode: restore");
+  } else if (appState.mode === "hollywood") {
+    addChip("Mode: hollywood pro");
   }
 
   if (appState.selectedStyle) {
