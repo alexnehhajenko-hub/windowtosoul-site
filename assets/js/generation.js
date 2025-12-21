@@ -1,5 +1,7 @@
 // assets/js/generation.js
 // Upload photo, call /api/generate OR /api/restore
+// Update: keep 2 image sizes (1024 + HQ 2048) and send HQ for Hollywood Pro / skin retouch.
+// Also send retouch flags (face_zoom) for server-side "zoom-in face -> retouch -> restore" pipeline.
 
 import {
   appState,
@@ -17,6 +19,15 @@ import {
 } from "./interface.js";
 import { openAgreementModal, openPayModal } from "./payment.js";
 
+// Effects that benefit from higher input resolution
+const HQ_EFFECTS = new Set([
+  "hollywood-pro",
+  "no-wrinkles",
+  "younger",
+  "smooth-skin",
+  "beauty-one-touch"
+]);
+
 export function handleFileSelected(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
@@ -27,11 +38,16 @@ export function handleFileSelected(event) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
+      // normal preview/generation image
       const resizedDataUrl = resizeImageToMax(img, 1024);
       appState.photoBase64 = resizedDataUrl;
 
+      // HQ image for Hollywood Pro / skin retouch / restore
+      const resizedHQ = resizeImageToMax(img, 2048);
+      appState.photoBase64HQ = resizedHQ;
+
       if (els.previewImage) {
-        els.previewImage.src = resizedDataUrl;
+        els.previewImage.src = resizedDataUrl; // preview fast
         els.previewImage.style.display = "block";
       }
       if (els.previewPlaceholder) {
@@ -64,6 +80,16 @@ function resizeImageToMax(img, maxSize) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, width, height);
   return canvas.toDataURL("image/jpeg", 0.9);
+}
+
+function shouldUseHQImage({ isRestore, style, effects }) {
+  if (isRestore) return true;
+  if (style === "beauty") return true;
+
+  if (Array.isArray(effects) && effects.some((e) => HQ_EFFECTS.has(e))) {
+    return true;
+  }
+  return false;
 }
 
 export async function handleGenerateClick() {
@@ -105,15 +131,40 @@ export async function handleGenerateClick() {
   showGenerating(true);
 
   try {
+    const effectsArr = Array.isArray(appState.selectedEffects) ? appState.selectedEffects : [];
+    const styleKey = appState.selectedStyle || "beauty";
+
+    const useHQ = shouldUseHQImage({
+      isRestore,
+      style: styleKey,
+      effects: effectsArr
+    });
+
+    const photoToSend = (useHQ ? appState.photoBase64HQ : appState.photoBase64) || appState.photoBase64;
+
+    // Extra retouch flags (server can ignore safely now; we will use them in api/generate.js V2 later)
+    const hasHollywoodPro = effectsArr.includes("hollywood-pro");
+    const retouch = hasHollywoodPro
+      ? {
+          mode: "hollywood-pro",
+          face_zoom: true,       // server: zoom-in face -> retouch -> restore
+          strength: "max"        // server: stronger wrinkle removal
+        }
+      : null;
+
     const payload = isRestore
-      ? { photo: appState.photoBase64, language: appState.language || "en" }
-      : {
-          style: appState.selectedStyle || "beauty",
-          text: "",
-          photo: appState.photoBase64,
-          effects: appState.selectedEffects,
-          greeting: appState.selectedGreeting || null,
+      ? {
+          photo: photoToSend,
           language: appState.language || "en"
+        }
+      : {
+          style: styleKey,
+          text: "",
+          photo: photoToSend,
+          effects: effectsArr,
+          greeting: appState.selectedGreeting || null,
+          language: appState.language || "en",
+          ...(retouch ? { retouch } : {})
         };
 
     const endpoint = isRestore ? "/api/restore" : "/api/generate";
