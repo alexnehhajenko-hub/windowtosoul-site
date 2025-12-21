@@ -4,7 +4,7 @@ import { els, setLanguage, refreshSelectionChips } from "./interface.js";
 import {
   openStyleSheet,
   openSkinSheet,
-  openMimicSheet,
+  // openMimicSheet, // ❌ Expression выключаем
   openGreetingSheet
 } from "./effects.js";
 import { handleGenerateClick, handleFileSelected } from "./generation.js";
@@ -21,8 +21,28 @@ import {
 export function attachMainHandlers() {
   if (els.btnStyle) els.btnStyle.addEventListener("click", () => openStyleSheet());
   if (els.btnSkin) els.btnSkin.addEventListener("click", () => openSkinSheet());
-  if (els.btnMimic) els.btnMimic.addEventListener("click", () => openMimicSheet());
+
+  // ✅ Expression отключаем (и прячем кнопку, если есть)
+  if (els.btnMimic) {
+    els.btnMimic.classList.add("btn-hidden");
+    // не вешаем обработчик
+  }
+
   if (els.btnGreetings) els.btnGreetings.addEventListener("click", () => openGreetingSheet());
+
+  // ✅ HOLLYWOOD PRO (отдельная кнопка)
+  if (els.btnHollywoodPro) {
+    els.btnHollywoodPro.addEventListener("click", () => {
+      appState.mode = "hollywood";
+
+      // Hollywood Pro = только ретушь. Не используем стили/эффекты.
+      appState.selectedStyle = null;
+      appState.selectedEffects = [];
+
+      refreshSelectionChips();
+      handleGenerateClick();
+    });
+  }
 
   if (els.btnGenerate) {
     els.btnGenerate.addEventListener("click", () => {
