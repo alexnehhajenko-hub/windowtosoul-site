@@ -1,47 +1,73 @@
-// api/restore.js — Photo Restoration (V2: Qwen Light Restoration -> Qwen Upscale)
-// Goal: improve old photo quality WITHOUT changing identity (no new people, no face swap)
+// api/restore.js — Photo Restoration (2-pass pipeline: gentle restore -> border cleanup)
+// Uses FLUX-Kontext-Pro (Replicate)
+// Fixes in this version:
+// - Stronger identity/face preservation (no "beauty face")
+// - Gentler prompts (less chance to "invent" faces)
+// - Vercel maxDuration increased
 
 import Replicate from "replicate";
 
-const MODEL_QWEN_LIGHT_RESTORE = "qwen-edit-apps/qwen-image-edit-plus-lora-light-restoration";
-const MODEL_QWEN_UPSCALE = "qwen-edit-apps/qwen-image-edit-plus-lora-upscale";
+export const config = {
+  maxDuration: 60
+};
 
-const IDENTITY_GUARD =
-  "IMPORTANT: preserve the original people and facial identity exactly. " +
-  "Do NOT replace faces. Do NOT change the number of people. Do NOT add new people. " +
-  "Do NOT change facial structure (eyes/nose/lips/jaw). Keep composition and perspective.";
-
-const RESTORE_PROMPT_BASE = [
+const PASS1_PROMPT = [
   "restore and enhance this photo while preserving the original content exactly",
+  "keep the same number of people and their positions",
+  "preserve each person's facial identity and expression exactly",
+  "do NOT replace faces, do NOT swap faces, do NOT beautify faces into a different person",
   "repair blur carefully, improve clarity and fine details",
-  "reduce noise, scratches, dust, stains",
+  "reduce noise, scratches, dust and stains gently",
   "recover missing details subtly without changing the scene",
   "keep original composition and camera perspective",
+  "keep clothing and era consistent with the original photo (do not modernize)",
   "no text, no captions, no logos, no watermarks",
-  "photorealistic restoration only, no stylization",
-  IDENTITY_GUARD
-].join(". ");
+  "photorealistic restoration only, no stylization"
+].join(", ");
+
+const PASS2_PROMPT = [
+  "clean up photo borders and remove paper frame artifacts carefully",
+  "remove torn edges, stains on the border, and leftover paper margins",
+  "do NOT crop aggressively; keep the same framing unless the border is clearly outside the real photo",
+  "if parts near the border are missing, extend background naturally without inventing new subjects",
+  "do NOT change any faces, do NOT change any people",
+  "keep all people identical and in the same positions",
+  "keep the same lighting and photographic realism",
+  "no text, no captions, no logos, no watermarks"
+].join(", ");
 
 const COLOR_PRESET = [
   "colorize realistically with natural skin tones",
   "avoid oversaturation, keep classic photographic look"
-].join(". ");
+].join(", ");
 
 const BW_PRESET = [
   "keep it black and white",
   "improve tonal range and contrast, classic film look"
-].join(". ");
+].join(", ");
 
 function pickImageUrl(output) {
-  if (Array.isArray(output)) return output[0] || null;
+  if (!output) return null;
+  if (Array.isArray(output)) {
+    const first = output[0];
+    if (typeof first === "string") return first;
+    if (first?.url) {
+      try {
+        return typeof first.url === "function" ? first.url() : first.url;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
   if (output?.output) {
-    if (Array.isArray(output.output)) return output.output[0] || null;
+    if (Array.isArray(output.output)) return pickImageUrl(output.output);
     if (typeof output.output === "string") return output.output;
   }
   if (typeof output === "string") return output;
   if (output?.url) {
     try {
-      return output.url();
+      return typeof output.url === "function" ? output.url() : output.url;
     } catch {
       return null;
     }
@@ -49,24 +75,25 @@ function pickImageUrl(output) {
   return null;
 }
 
-async function runQwen(replicate, model, image, prompt, opts = {}) {
-  const out = await replicate.run(model, {
-    input: {
-      image,
-      prompt,
-      aspect_ratio: "match_input_image",
-      output_format: "jpg",
-      output_quality: 95,
-
-      go_fast: false,
-      num_inference_steps: opts.num_inference_steps ?? 40,
-      lora_scale: opts.lora_scale,
-      true_guidance_scale: opts.true_guidance_scale,
-
-      disable_safety_checker: false
-    }
-  });
-  return pickImageUrl(out);
+async function runFlux(replicate, prompt, inputImage) {
+  // Keep payload minimal + match_input_image where possible
+  try {
+    const out = await replicate.run("black-forest-labs/flux-kontext-pro", {
+      input: {
+        prompt,
+        input_image: inputImage,
+        aspect_ratio: "match_input_image",
+        output_format: "jpg",
+        prompt_upsampling: false
+      }
+    });
+    return pickImageUrl(out);
+  } catch (e) {
+    const out2 = await replicate.run("black-forest-labs/flux-kontext-pro", {
+      input: { prompt, input_image: inputImage }
+    });
+    return pickImageUrl(out2);
+  }
 }
 
 export default async function handler(req, res) {
@@ -94,43 +121,38 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing REPLICATE_API_TOKEN" });
     }
 
-    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-
     const m = (mode || "colorize").toLowerCase();
     const tonePreset = m === "bw" ? BW_PRESET : COLOR_PRESET;
 
-    // PASS #1: light restoration (identity-safe)
-    const pass1Prompt = [RESTORE_PROMPT_BASE, tonePreset].join(". ").trim();
-    const pass1Url = await runQwen(replicate, MODEL_QWEN_LIGHT_RESTORE, photo, pass1Prompt, {
-      lora_scale: 1.0,
-      true_guidance_scale: 1.0,
-      num_inference_steps: 40
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN
     });
 
+    const pass1Prompt = [PASS1_PROMPT, tonePreset].join(". ").trim();
+    const pass1Url = await runFlux(replicate, pass1Prompt, photo);
     if (!pass1Url) {
       return res.status(500).json({ error: "Restore pass #1 returned no image URL" });
     }
 
-    // PASS #2: upscale / detail enhancement
-    const pass2Prompt = [
-      "enhance details and clarity, keep identity exactly, do not change faces",
-      "reduce remaining noise and artifacts, keep photographic realism",
-      IDENTITY_GUARD
-    ].join(". ");
+    const pass2Prompt = PASS2_PROMPT.trim();
+    const finalUrl = await runFlux(replicate, pass2Prompt, pass1Url);
 
-    const finalUrl = await runQwen(replicate, MODEL_QWEN_UPSCALE, pass1Url, pass2Prompt, {
-      lora_scale: 1.0,
-      true_guidance_scale: 1.0,
-      num_inference_steps: 40
-    });
+    if (!finalUrl) {
+      return res.status(200).json({
+        ok: true,
+        image: pass1Url,
+        mode: m,
+        note: "Pass #2 failed; returning pass #1."
+      });
+    }
 
     return res.status(200).json({
       ok: true,
-      image: finalUrl || pass1Url,
+      image: finalUrl,
       mode: m
     });
   } catch (err) {
-    console.error("RESTORE ERROR:", err);
+    console.error("RESTORE 2-PASS ERROR:", err);
     return res.status(500).json({
       error: "Restore failed",
       details: err?.message || String(err)
