@@ -80,7 +80,6 @@ export const UI_TEXT = {
     alertGenerationFailed:
       "Could not generate the portrait. Please try again.",
 
-    // used by payment.js
     alertEmailMissing: "Please enter your email.",
     alertAgreeMissing: "Please confirm the checkbox.",
     alertStripeMissing: "Stripe is not loaded. Please refresh the page and try again.",
@@ -108,7 +107,7 @@ export const UI_TEXT = {
   },
   ru: {
     subtitle: "Создайте свой уникальный AI-портрет",
-    btnHollywoodPro: "ГОЛЛИВУД PRO",
+    btnHollywoodPro: "ГОЛЛИВУД ПРО",
     alertEmailMissing: "Введите email.",
     alertAgreeMissing: "Подтвердите галочку согласия.",
     alertStripeMissing: "Stripe не загрузился. Обновите страницу и попробуйте снова.",
@@ -139,10 +138,6 @@ export const STYLE_LABELS_EN = {
 };
 
 export const EFFECT_CHIP_LABELS_EN = {
-  // pro option
-  "hollywood-pro": "Skin: Hollywood Pro",
-
-  // existing
   "no-wrinkles": "Effect: no wrinkles",
   younger: "Effect: younger",
   "smooth-skin": "Effect: smooth skin",
