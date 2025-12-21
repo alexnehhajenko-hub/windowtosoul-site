@@ -35,16 +35,14 @@ const SKIN_KEYS = new Set([
 ]);
 
 const EFFECT_PROMPTS = {
-  // ✅ Hollywood Pro — stronger wrinkle removal, but identity-locked
+  // Hollywood Pro — stronger wrinkle removal, but MUST keep identity
   "hollywood-pro":
-    "HOLLYWOOD PRO RETOUCH (PHOTO EDIT, NOT GENERATION). " +
-    "Work like Photoshop: imagine you zoom into the face at 200% and do micro-retouch, then return to the original framing unchanged. " +
-    "Remove wrinkles strongly: forehead lines, under-eye lines, crow's feet, nasolabial folds. " +
-    "Reduce redness/blotches/spots, even skin tone. " +
-    "KEEP realistic pores and natural texture (no plastic). " +
-    "ABSOLUTE IDENTITY LOCK: same eyes, same eyelids, same iris color, same eyebrows, same nose, same lips, same jawline, same cheekbones, same face proportions. " +
-    "Keep hairline/hairstyle, glasses shape and position identical. " +
-    "Do not beautify into a different person. NO FACE SWAP. Do not change expression.",
+    "HOLLYWOOD PRO RETOUCH (IDENTITY SAFE): strongly reduce deep wrinkles and fine lines " +
+    "(forehead, under eyes, crow's feet, nasolabial folds) using skin texture smoothing and tone blending, " +
+    "NOT by redrawing facial features. Keep natural pores and realistic skin texture (no plastic). " +
+    "Even out skin tone, remove redness/blotches/spots. Improve clarity and micro-contrast gently. " +
+    "DO NOT change facial geometry: keep exact eye shape, eyelids, eyebrows, nose shape, lips shape, jawline, cheeks. " +
+    "DO NOT change hairline, hairstyle, glasses. NO FACE SWAP. Keep the same person.",
 
   "no-wrinkles":
     "remove wrinkles and fine lines strongly, smoother younger-looking skin, keep natural texture, do not change identity",
@@ -60,24 +58,15 @@ const EFFECT_PROMPTS = {
     "cinematic soft key light and gentle shadows on the face, better contrast; do not change identity",
 
   // expression
-  "smile-soft":
-    "same person with a subtle soft smile, keep identity",
-  "smile-big":
-    "same person with a big warm smile, keep identity",
-  "smile-hollywood":
-    "same person with a wide hollywood smile, keep identity",
-  laugh:
-    "same person laughing, keep identity",
-  neutral:
-    "same person with neutral relaxed face, keep identity",
-  serious:
-    "same person with a serious focused look, keep identity",
-  "eyes-bigger":
-    "slightly more open attentive eyes, keep identity",
-  "eyes-brighter":
-    "brighter expressive gaze, keep identity",
-  "surprised-wow":
-    "surprised wow expression, keep identity"
+  "smile-soft": "same person with a subtle soft smile, keep identity",
+  "smile-big": "same person with a big warm smile, keep identity",
+  "smile-hollywood": "same person with a wide hollywood smile, keep identity",
+  laugh: "same person laughing, keep identity",
+  neutral: "same person with neutral relaxed face, keep identity",
+  serious: "same person with a serious focused look, keep identity",
+  "eyes-bigger": "slightly more open attentive eyes, keep identity",
+  "eyes-brighter": "brighter expressive gaze, keep identity",
+  "surprised-wow": "surprised wow expression, keep identity"
 };
 
 // ───────── GREETINGS ─────────
@@ -94,16 +83,23 @@ const GREETING_PROMPTS = {
 
 // ───────── IDENTITY (VERY STRONG) ─────────
 const IDENTITY_PROMPT =
-  "IMPORTANT: edit the input photo of the SAME person. " +
-  "The result must be clearly recognizable as the same person. " +
+  "IMPORTANT: edit the input photo of the SAME people. " +
+  "If there are multiple people, preserve EACH person's identity (do not replace or merge faces). " +
+  "The result must be clearly recognizable as the same people. " +
   "Do NOT change facial structure, head shape, eye shape, nose, lips, jawline, cheekbones. " +
-  "Do NOT replace the face with another person/model. " +
+  "Do NOT replace faces with another person/model. NO FACE SWAP. " +
   "Keep hairstyle, hairline, hair color, eyebrows, and glasses consistent. " +
-  "Keep the same camera angle and the same composition. Do NOT crop or zoom.";
+  "Keep the same camera angle and the same composition. Do NOT crop or zoom. " +
+  "Keep the same number of people and their positions.";
+
+// ───────── DETAIL (simulate photoshop zoom-retouch, without changing composition) ─────────
+const DETAIL_TAIL =
+  "RETUCH DETAIL: do the retouch with very high facial detail as if the face is zoomed-in 4x internally, " +
+  "then keep the final image in the SAME original composition (no zoom, no crop).";
 
 // ───────── UI SCREENSHOT CLEANUP ─────────
 const UI_CLEANUP_TAIL =
-  "If the input looks like a screenshot of a website/app (buttons, panels, UI text), remove and repaint all interface elements and restore a natural background while keeping the person identical.";
+  "If the input looks like a screenshot of a website/app (buttons, panels, UI text), remove and repaint all interface elements and restore a natural background while keeping the people identical.";
 
 // ───────── SAFETY ─────────
 const SAFETY_TAIL =
@@ -128,13 +124,18 @@ function buildEffectsPrompt(keys) {
     .join(". ");
 }
 
-// Robust FLUX-2-Pro call (models may differ in input image field naming)
-async function runFlux2Pro(replicate, image, prompt) {
+// Robust FLUX-2-Pro call (models may name image input differently)
+// We try: input_images[] then input_image then image.
+async function runFlux2Pro(replicate, image, prompt, extraImages = null) {
+  const images = Array.isArray(extraImages) && extraImages.length
+    ? [image, ...extraImages].slice(0, 8)
+    : [image];
+
   const tries = [
     {
       input: {
         prompt,
-        input_images: [image],
+        input_images: images,
         output_format: "jpg",
         aspect_ratio: "match_input_image"
       }
@@ -155,7 +156,7 @@ async function runFlux2Pro(replicate, image, prompt) {
         aspect_ratio: "match_input_image"
       }
     },
-    { input: { prompt, input_images: [image] } },
+    { input: { prompt, input_images: images } },
     { input: { prompt, input_image: image } },
     { input: { prompt, image } }
   ];
@@ -189,7 +190,8 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects, greeting } = body || {};
+    // NOTE: refs is optional (future: multi-reference for group faces)
+    const { style, text, photo, effects, greeting, refs } = body || {};
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return res.status(500).json({
@@ -211,7 +213,7 @@ export default async function handler(req, res) {
 
     const effectsArr = Array.isArray(effects) ? effects : [];
     const skinEffects = effectsArr.filter((k) => SKIN_KEYS.has(k));
-    const otherEffects = effectsArr.filter((k)/topics) => !SKIN_KEYS.has(k));
+    const otherEffects = effectsArr.filter((k) => !SKIN_KEYS.has(k));
 
     const greetingPrompt =
       greeting && GREETING_PROMPTS[greeting] ? GREETING_PROMPTS[greeting] : "";
@@ -219,22 +221,31 @@ export default async function handler(req, res) {
     const skinKey = skinEffects[0] || null;
     const skinPrompt = skinKey ? (EFFECT_PROMPTS[skinKey] || "") : "";
 
+    // Strong “minimal edit” guardrail for retouch:
+    const minimalEdit =
+      skinPrompt
+        ? "MINIMAL EDIT: change ONLY skin/retouch (wrinkles, texture, tone, gentle light). Do NOT redraw facial features."
+        : "";
+
+    // Build one strong prompt:
     const promptParts = [
       stylePrefix,
       buildEffectsPrompt(otherEffects),
-      skinPrompt
-        ? ("MINIMAL EDIT: change ONLY skin/retouch. Do not change face geometry. " + skinPrompt)
-        : "",
+      minimalEdit,
+      skinPrompt,
       greetingPrompt,
       userPrompt,
       IDENTITY_PROMPT,
+      DETAIL_TAIL,
       UI_CLEANUP_TAIL,
       SAFETY_TAIL
     ].filter(Boolean);
 
     const finalPrompt = promptParts.join(". ").trim();
 
-    const url = await runFlux2Pro(replicate, photo, finalPrompt);
+    const extraRefs = Array.isArray(refs) ? refs : null;
+    const url = await runFlux2Pro(replicate, photo, finalPrompt, extraRefs);
+
     return res.status(200).json({ ok: true, image: url });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
