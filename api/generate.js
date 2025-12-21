@@ -1,245 +1,278 @@
-// api/generate.js
-// V2 pipeline (Replicate):
-// - ALL styles + edits -> FLUX-2-Pro
-// Goal: iPhone/Photoshop-like retouch WITHOUT swapping identity.
+// assets/js/generation.js
+// Upload photo, call /api/generate OR /api/restore
+// Update: keep 2 image sizes (1024 + HQ 2048) and send HQ for Hollywood Pro / skin retouch.
+// Also send retouch flags (face_zoom) for server-side "zoom-in face -> retouch -> restore" pipeline.
 
-import Replicate from "replicate";
+import {
+  appState,
+  DEMO_MODE,
+  DEMO_SESSION_LIMIT,
+  STORAGE_KEYS,
+  UI_TEXT,
+  PACK_SIZES
+} from "./state.js";
+import {
+  els,
+  refreshSelectionChips,
+  setLayer,
+  updateGreetingOverlay
+} from "./interface.js";
+import { openAgreementModal, openPayModal } from "./payment.js";
 
-// ───────────── MODELS ─────────────
-const MODEL_FLUX2_PRO = "black-forest-labs/flux-2-pro";
-
-// ───────────── STYLES ─────────────
-const STYLE_PREFIX = {
-  beauty:
-    "high-quality realistic photo retouch, keep the same person, keep the same background and clothes, natural colors, realistic texture, do not change identity",
-  oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep the same person and recognizable face",
-  anime:
-    "anime style portrait, clean line art, soft pastel shading, keep the same person and recognizable face",
-  poster:
-    "cinematic movie poster portrait, dramatic lighting, high contrast, keep the same person and recognizable face",
-  classic:
-    "classical old master portrait, realism, warm tones, keep the same person and recognizable face",
-  default:
-    "realistic photo edit, detailed face, soft studio lighting, natural colors, keep the same person and recognizable face"
-};
-
-// ───────── SKIN + EXPRESSION EFFECTS ─────────
-const SKIN_KEYS = new Set([
+// Effects that benefit from higher input resolution
+const HQ_EFFECTS = new Set([
   "hollywood-pro",
   "no-wrinkles",
   "younger",
   "smooth-skin",
-  "glow-golden",
-  "cinematic-light",
   "beauty-one-touch"
 ]);
 
-const EFFECT_PROMPTS = {
-  // Hollywood Pro — strong retouch, but must keep identity
-  "hollywood-pro":
-    "HOLLYWOOD PRO RETOUCH: remove deep wrinkles and fine lines strongly (forehead, under eyes, crow's feet, nasolabial folds). " +
-    "make skin smooth, even and clean like premium beauty retouch, but keep natural texture (no plastic). " +
-    "remove blotches/redness/spots. keep all details of eyes, eyelashes, eyebrows, lips, hair, glasses. " +
-    "NO FACE SWAP. DO NOT change facial structure. DO NOT change age drastically. Keep the same person.",
+export function handleFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
 
-  "no-wrinkles":
-    "remove wrinkles and fine lines strongly, smoother younger-looking skin, keep natural texture, do not change identity",
-  younger:
-    "make the same person look fresher (about 5–10 years), reduce sagging a bit, but keep exact identity and facial structure",
-  "smooth-skin":
-    "smooth and even skin tone, reduce blemishes and redness, keep realistic texture; do not change identity",
-  "beauty-one-touch":
-    "natural beauty retouch: gently smooth skin, remove small blemishes, reduce fine wrinkles, keep realism; do not change identity",
-  "glow-golden":
-    "warm golden glow on the face, healthy skin, soft highlights; do not change identity",
-  "cinematic-light":
-    "cinematic soft key light and gentle shadows on the face, better contrast; do not change identity",
+  appState.originalFile = file;
 
-  // expression
-  "smile-soft":
-    "same person with a subtle soft smile, keep identity",
-  "smile-big":
-    "same person with a big warm smile, keep identity",
-  "smile-hollywood":
-    "same person with a wide hollywood smile, keep identity",
-  laugh:
-    "same person laughing, keep identity",
-  neutral:
-    "same person with neutral relaxed face, keep identity",
-  serious:
-    "same person with a serious focused look, keep identity",
-  "eyes-bigger":
-    "slightly more open attentive eyes, keep identity",
-  "eyes-brighter":
-    "brighter expressive gaze, keep identity",
-  "surprised-wow":
-    "surprised wow expression, keep identity"
-};
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // normal preview/generation image
+      const resizedDataUrl = resizeImageToMax(img, 1024);
+      appState.photoBase64 = resizedDataUrl;
 
-// ───────── GREETINGS ─────────
-const GREETING_PROMPTS = {
-  "new-year":
-    "add a gentle festive New Year atmosphere. keep the person identical. subtle bokeh lights. add small elegant handwritten English text 'Happy New Year' (small, not covering the face)",
-  birthday:
-    "add a gentle birthday atmosphere. keep the person identical. subtle balloons/confetti in background. add small elegant handwritten English text 'Happy Birthday' (small, not covering the face)",
-  funny:
-    "add a gentle playful atmosphere. keep the person identical. add small handwritten English text 'You look amazing!' (small, not covering the face)",
-  scary:
-    "add a gentle spooky atmosphere (no gore). keep the person identical. subtle fog/background. add small handwritten English text 'Happy Halloween' (small, not covering the face)"
-};
+      // HQ image for Hollywood Pro / skin retouch / restore
+      const resizedHQ = resizeImageToMax(img, 2048);
+      appState.photoBase64HQ = resizedHQ;
 
-// ───────── IDENTITY (VERY STRONG) ─────────
-const IDENTITY_PROMPT =
-  "IMPORTANT: edit the input photo of the SAME person. " +
-  "The result must be clearly recognizable as the same person. " +
-  "Do NOT change facial structure, head shape, eye shape, nose, lips, jawline, cheekbones. " +
-  "Do NOT replace the face with another person/model. " +
-  "Keep hairstyle, hairline, hair color, eyebrows, and glasses consistent. " +
-  "Keep the same camera angle and the same composition. Do NOT crop or zoom.";
+      if (els.previewImage) {
+        els.previewImage.src = resizedDataUrl; // preview fast
+        els.previewImage.style.display = "block";
+      }
+      if (els.previewPlaceholder) {
+        els.previewPlaceholder.style.display = "none";
+      }
+      if (els.downloadLink) {
+        els.downloadLink.style.display = "none";
+      }
+      updateGreetingOverlay();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
-// ───────── UI SCREENSHOT CLEANUP ─────────
-const UI_CLEANUP_TAIL =
-  "If the input looks like a screenshot of a website/app (buttons, panels, UI text), remove and repaint all interface elements and restore a natural background while keeping the person identical.";
+function resizeImageToMax(img, maxSize) {
+  const canvas = document.createElement("canvas");
+  let { width, height } = img;
 
-// ───────── SAFETY ─────────
-const SAFETY_TAIL =
-  "fully clothed, no nudity, no sexual content, keep realism, avoid distorted anatomy";
-
-// ───────── helpers ─────────
-function pickImageUrl(output) {
-  if (Array.isArray(output)) return output[0] || null;
-  if (output?.output) {
-    if (Array.isArray(output.output)) return output.output[0] || null;
-    if (typeof output.output === "string") return output.output;
+  if (width > height && width > maxSize) {
+    height = Math.round((height * maxSize) / width);
+    width = maxSize;
+  } else if (height >= width && height > maxSize) {
+    width = Math.round((width * maxSize) / height);
+    height = maxSize;
   }
-  if (typeof output === "string") return output;
-  return null;
+
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", 0.9);
 }
 
-function buildEffectsPrompt(keys) {
-  if (!Array.isArray(keys) || keys.length === 0) return "";
-  return keys
-    .map((k) => EFFECT_PROMPTS[k])
-    .filter(Boolean)
-    .join(". ");
+function shouldUseHQImage({ isRestore, style, effects }) {
+  if (isRestore) return true;
+  if (style === "beauty") return true;
+
+  if (Array.isArray(effects) && effects.some((e) => HQ_EFFECTS.has(e))) {
+    return true;
+  }
+  return false;
 }
 
-// Robust FLUX-2-Pro call (different models sometimes name image input differently)
-// We try: input_images[] then input_image then image.
-async function runFlux2Pro(replicate, image, prompt) {
-  const tries = [
-    {
-      input: {
-        prompt,
-        input_images: [image],
-        output_format: "jpg",
-        aspect_ratio: "match_input_image"
-      }
-    },
-    {
-      input: {
-        prompt,
-        input_image: image,
-        output_format: "jpg",
-        aspect_ratio: "match_input_image"
-      }
-    },
-    {
-      input: {
-        prompt,
-        image,
-        output_format: "jpg",
-        aspect_ratio: "match_input_image"
-      }
-    },
-    { input: { prompt, input_images: [image] } },
-    { input: { prompt, input_image: image } },
-    { input: { prompt, image } }
-  ];
+export async function handleGenerateClick() {
+  if (appState.isGenerating) return;
 
-  let lastErr = null;
-  for (const payload of tries) {
-    try {
-      const out = await replicate.run(MODEL_FLUX2_PRO, payload);
-      const url = pickImageUrl(out);
-      if (url) return url;
-      lastErr = new Error("No image URL in model output");
-    } catch (e) {
-      lastErr = e;
+  const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
+  if (!appState.photoBase64) {
+    alert(t.alertAddPhoto || "Please add a photo first.");
+    return;
+  }
+
+  const isRestore = appState.mode === "restore";
+
+  if (!isRestore) {
+    if (DEMO_MODE) {
+      if (!appState.userEmail || !appState.userAgreed) {
+        openAgreementModal();
+        return;
+      }
+      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+        alert(t.alertDemoFinished || UI_TEXT.en.alertDemoFinished);
+        return;
+      }
+    } else {
+      if (!appState.hasActivePack) {
+        alert(t.alertNoActivePack || UI_TEXT.en.alertNoActivePack);
+        openPayModal();
+        return;
+      }
+      if (appState.creditsTotal > 0 && appState.creditsUsed >= appState.creditsTotal) {
+        alert(t.alertPaidFinished || UI_TEXT.en.alertPaidFinished);
+        return;
+      }
     }
   }
-  throw lastErr || new Error("FLUX-2-Pro failed");
+
+  appState.isGenerating = true;
+  showGenerating(true);
+
+  try {
+    const effectsArr = Array.isArray(appState.selectedEffects) ? appState.selectedEffects : [];
+    const styleKey = appState.selectedStyle || "beauty";
+
+    const useHQ = shouldUseHQImage({
+      isRestore,
+      style: styleKey,
+      effects: effectsArr
+    });
+
+    const photoToSend = (useHQ ? appState.photoBase64HQ : appState.photoBase64) || appState.photoBase64;
+
+    // Extra retouch flags (server can ignore safely now; we will use them in api/generate.js V2 later)
+    const hasHollywoodPro = effectsArr.includes("hollywood-pro");
+    const retouch = hasHollywoodPro
+      ? {
+          mode: "hollywood-pro",
+          face_zoom: true,       // server: zoom-in face -> retouch -> restore
+          strength: "max"        // server: stronger wrinkle removal
+        }
+      : null;
+
+    const payload = isRestore
+      ? {
+          photo: photoToSend,
+          language: appState.language || "en"
+        }
+      : {
+          style: styleKey,
+          text: "",
+          photo: photoToSend,
+          effects: effectsArr,
+          greeting: appState.selectedGreeting || null,
+          language: appState.language || "en",
+          ...(retouch ? { retouch } : {})
+        };
+
+    const endpoint = isRestore ? "/api/restore" : "/api/generate";
+
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      let serverMsg = "";
+      try {
+        const j = await resp.json();
+        serverMsg = j?.details || j?.error || JSON.stringify(j);
+      } catch (e) {
+        try {
+          serverMsg = await resp.text();
+        } catch {}
+      }
+      console.error("SERVER ERROR:", resp.status, serverMsg);
+      throw new Error("Server error: " + resp.status + (serverMsg ? " | " + serverMsg : ""));
+    }
+
+    const data = await resp.json();
+    if (!data || !data.image) {
+      throw new Error("No image URL in response");
+    }
+
+    showResultPortrait(data.image);
+
+    if (!isRestore) {
+      registerGeneration(data.image);
+      clearEffectsSelection();
+    }
+
+    if (isRestore) {
+      appState.mode = "generate";
+      refreshSelectionChips();
+    }
+  } catch (err) {
+    console.error("GENERATION ERROR:", err);
+    alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
+  } finally {
+    showGenerating(false);
+    appState.isGenerating = false;
+  }
 }
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+export function showGenerating(isOn) {
+  if (!els.generateStatus) return;
+  els.generateStatus.style.display = isOn ? "flex" : "none";
+}
+
+export function showResultPortrait(url) {
+  if (els.previewImage) {
+    els.previewImage.src = url;
+    els.previewImage.style.display = "block";
+  }
+  if (els.previewPlaceholder) {
+    els.previewPlaceholder.style.display = "none";
+  }
+
+  if (els.downloadLink) {
+    els.downloadLink.href = url;
+    els.downloadLink.style.display = "inline-flex";
+  }
+
+  updateGreetingOverlay();
+  document.body.classList.add("result-mode");
+  setLayer("result", true);
+}
+
+export function exitResultView(pushHistory = true) {
+  document.body.classList.remove("result-mode");
+  if (pushHistory) setLayer("home", true);
+}
+
+function registerGeneration(imageUrl) {
+  if (appState.creditsTotal <= 0) {
+    if (DEMO_MODE) {
+      appState.creditsTotal = DEMO_SESSION_LIMIT;
+    } else if (appState.selectedPack && PACK_SIZES[appState.selectedPack]) {
+      appState.creditsTotal = PACK_SIZES[appState.selectedPack];
+    }
+  }
+
+  appState.creditsUsed += 1;
+
+  if (!appState.generatedImages.includes(imageUrl)) {
+    appState.generatedImages.push(imageUrl);
   }
 
   try {
-    let body = req.body;
-    if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        body = {};
-      }
-    }
-
-    const { style, text, photo, effects, greeting } = body || {};
-
-    if (!process.env.REPLICATE_API_TOKEN) {
-      return res.status(500).json({
-        error: "Missing REPLICATE_API_TOKEN in environment variables"
-      });
-    }
-
-    if (!photo) {
-      return res.status(400).json({ error: "Missing photo" });
-    }
-
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN
-    });
-
-    const styleKey = style || "beauty";
-    const stylePrefix = STYLE_PREFIX[styleKey] || STYLE_PREFIX.default;
-    const userPrompt = (text || "").trim();
-
-    const effectsArr = Array.isArray(effects) ? effects : [];
-    const skinEffects = effectsArr.filter((k) => SKIN_KEYS.has(k));
-    const otherEffects = effectsArr.filter((k) => !SKIN_KEYS.has(k));
-
-    const greetingPrompt =
-      greeting && GREETING_PROMPTS[greeting] ? GREETING_PROMPTS[greeting] : "";
-
-    // We keep "one skin effect" behavior (UI does it), but server is safe anyway:
-    const skinKey = skinEffects[0] || null;
-    const skinPrompt = skinKey ? (EFFECT_PROMPTS[skinKey] || "") : "";
-
-    // Build one strong prompt:
-    // - style + expression + greeting
-    // - if skin chosen: add strong retouch instructions, but no face swap
-    const promptParts = [
-      stylePrefix,
-      buildEffectsPrompt(otherEffects),
-      skinPrompt ? ("MINIMAL EDIT: change ONLY skin/retouch. " + skinPrompt) : "",
-      greetingPrompt,
-      userPrompt,
-      IDENTITY_PROMPT,
-      UI_CLEANUP_TAIL,
-      SAFETY_TAIL
-    ].filter(Boolean);
-
-    const finalPrompt = promptParts.join(". ").trim();
-
-    const url = await runFlux2Pro(replicate, photo, finalPrompt);
-    return res.status(200).json({ ok: true, image: url });
-  } catch (err) {
-    console.error("GENERATION ERROR:", err);
-    return res.status(500).json({
-      error: "Generation failed",
-      details: err?.message || String(err)
-    });
+    window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
+    window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
+    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
+  } catch (e) {
+    console.warn("Cannot store credits/images", e);
   }
+
+  refreshSelectionChips();
+}
+
+function clearEffectsSelection() {
+  appState.selectedEffects = [];
+  appState.selectedGreeting = null;
+
+  refreshSelectionChips();
+  updateGreetingOverlay();
 }
