@@ -4,7 +4,6 @@ import { els, setLanguage, refreshSelectionChips } from "./interface.js";
 import {
   openStyleSheet,
   openSkinSheet,
-  openMimicSheet,
   openGreetingSheet
 } from "./effects.js";
 import { handleGenerateClick, handleFileSelected } from "./generation.js";
@@ -21,28 +20,22 @@ import {
 export function attachMainHandlers() {
   if (els.btnStyle) els.btnStyle.addEventListener("click", () => openStyleSheet());
   if (els.btnSkin) els.btnSkin.addEventListener("click", () => openSkinSheet());
-  if (els.btnMimic) els.btnMimic.addEventListener("click", () => openMimicSheet());
   if (els.btnGreetings) els.btnGreetings.addEventListener("click", () => openGreetingSheet());
 
-  if (els.btnGenerate) {
-    els.btnGenerate.addEventListener("click", () => {
-      appState.mode = "generate";
+  // ✅ HOLLYWOOD PRO: no expressions, forced pro retouch
+  if (els.btnHollywood) {
+    els.btnHollywood.addEventListener("click", () => {
+      appState.mode = "hollywood";
+      appState.selectedStyle = "beauty";
+      appState.selectedEffects = ["hollywood-pro"];
       refreshSelectionChips();
       handleGenerateClick();
     });
   }
 
-  // ✅ Hollywood Pro (retouch only)
-  if (els.btnHollywoodPro) {
-    els.btnHollywoodPro.addEventListener("click", () => {
-      appState.mode = "hollywood";
-
-      // Hollywood = only retouch. No styles/effects/expressions.
-      appState.selectedStyle = null;
-      appState.selectedEffects = [];
-      // greetings можно оставить, но лучше выключить чтобы не мешали ретуши:
-      appState.selectedGreeting = null;
-
+  if (els.btnGenerate) {
+    els.btnGenerate.addEventListener("click", () => {
+      appState.mode = "generate";
       refreshSelectionChips();
       handleGenerateClick();
     });
