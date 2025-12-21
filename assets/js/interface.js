@@ -35,6 +35,9 @@ export function bindElements() {
   // ✅ HOLLYWOOD PRO button
   els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
 
+  // ✅ clear effects button
+  els.btnClearEffects = document.getElementById("btnClearEffects");
+
   // ✅ restore button
   els.btnRestore = document.getElementById("btnRestore");
 
@@ -129,8 +132,6 @@ export function setLanguage(lang) {
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
-
-  // ✅ Hollywood Pro label
   setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
