@@ -14,8 +14,6 @@ body {
   align-items: stretch;
 }
 
-/* Основной контейнер */
-
 .app {
   width: 100%;
   max-width: 420px;
@@ -24,8 +22,6 @@ body {
   flex-direction: column;
   gap: 12px;
 }
-
-/* Шапка */
 
 .app-header {
   text-align: center;
@@ -45,8 +41,6 @@ body {
   font-size: 12px;
   opacity: 0.7;
 }
-
-/* Preview */
 
 .preview-box {
   position: relative;
@@ -90,8 +84,6 @@ body {
   display: none;
 }
 
-/* Текст поздравления поверх изображения */
-
 .greeting-overlay {
   position: absolute;
   bottom: 16px;
@@ -118,16 +110,12 @@ body {
   opacity: 1;
 }
 
-/* Блок с кнопками */
-
 .controls {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 6px;
 }
-
-/* Выбранные настройки (чипы) */
 
 .selection-row {
   display: flex;
@@ -145,8 +133,6 @@ body {
   opacity: 0.85;
   white-space: nowrap;
 }
-
-/* Кнопки */
 
 .button-list {
   display: flex;
@@ -209,9 +195,7 @@ body {
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: radial-gradient(circle at top left,
-    rgba(255, 255, 255, 0.14) 0,
-    transparent 55%);
+  background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.14) 0, transparent 55%);
   opacity: 0.85;
   pointer-events: none;
 }
@@ -231,6 +215,16 @@ body {
   background: linear-gradient(135deg, #364064, #474a78);
 }
 
+/* ✅ Hollywood Pro button styling */
+.btn-hollywood {
+  background: linear-gradient(135deg, #ff4ecd, #7c5cff 45%, #ffb54b 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.88),
+    0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 2px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -3px 10px rgba(0, 0, 0, 0.7) inset;
+}
+
 .btn-pay {
   background: linear-gradient(135deg, #d9b86a, #c7945c 45%, #b46b54 100%);
   box-shadow:
@@ -241,21 +235,9 @@ body {
   color: #24140a;
 }
 
-/* ✅ Hollywood Pro button */
-.btn-hollywood {
-  background: linear-gradient(135deg, #ffcc66, #ff7ad9 45%, #7c5cff 100%);
-  box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.88),
-    0 0 0 1px rgba(255, 255, 255, 0.10),
-    0 2px 0 rgba(255, 255, 255, 0.22) inset,
-    0 -3px 10px rgba(0, 0, 0, 0.65) inset;
-}
-
 .btn-icon {
   font-size: 16px;
 }
-
-/* Кнопка скачать */
 
 .download-row {
   margin-top: 10px;
@@ -282,8 +264,6 @@ body {
     0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-/* Footer */
-
 .footer {
   margin-top: auto;
   font-size: 10px;
@@ -291,8 +271,6 @@ body {
   text-align: center;
   line-height: 1.4;
 }
-
-/* ------- SHEET (эффекты) ------- */
 
 .sheet-backdrop {
   position: fixed;
@@ -384,8 +362,6 @@ body {
   background: linear-gradient(135deg, #5560d8, #8b7fe7);
   border-color: rgba(255, 255, 255, 0.6);
 }
-
-/* ------- Модалка №1: Пакеты ------- */
 
 .pay-backdrop {
   position: fixed;
@@ -503,8 +479,6 @@ body {
     0 8px 22px rgba(0, 0, 0, 0.9),
     0 0 0 1px rgba(255, 255, 255, 0.05);
 }
-
-/* ------- Модалка №2: соглашение + email ------- */
 
 .agreement-backdrop {
   position: fixed;
@@ -630,8 +604,6 @@ body {
   opacity: 0.72;
   line-height: 1.4;
 }
-
-/* Генерация (оверлей) */
 
 .generate-status {
   position: absolute;
