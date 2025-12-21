@@ -32,11 +32,11 @@ export function bindElements() {
   els.btnAddPhoto = document.getElementById("btnAddPhoto");
   els.btnPay = document.getElementById("btnPay");
 
+  // ✅ hollywood pro button
+  els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
+
   // ✅ restore button
   els.btnRestore = document.getElementById("btnRestore");
-
-  // ✅ NEW: hollywood pro button (separate)
-  els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
 
   els.btnLangEn = document.getElementById("langEn");
   els.btnLangDe = document.getElementById("langDe");
@@ -124,16 +124,11 @@ export function setLanguage(lang) {
 
   setButtonLabel(els.btnStyle, t.btnStyle);
   setButtonLabel(els.btnSkin, t.btnSkin);
-
-  // Expression will be removed/hidden later, but keep label safe
   setButtonLabel(els.btnMimic, t.btnMimic);
-
   setButtonLabel(els.btnGreetings, t.btnGreetings);
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
-
-  // ✅ label for Hollywood Pro (fallback)
   setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
@@ -210,11 +205,8 @@ export function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
-  if (appState.mode === "restore") {
-    addChip("Mode: restore");
-  } else if (appState.mode === "hollywood") {
-    addChip("Mode: hollywood pro");
-  }
+  if (appState.mode === "restore") addChip("Mode: restore");
+  if (appState.mode === "hollywood") addChip("Mode: Hollywood Pro");
 
   if (appState.selectedStyle) {
     const name = STYLE_LABELS_EN[appState.selectedStyle] || appState.selectedStyle;
