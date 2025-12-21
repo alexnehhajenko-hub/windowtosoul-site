@@ -4,6 +4,7 @@ import { els, setLanguage, refreshSelectionChips } from "./interface.js";
 import {
   openStyleSheet,
   openSkinSheet,
+  openMimicSheet,
   openGreetingSheet
 } from "./effects.js";
 import { handleGenerateClick, handleFileSelected } from "./generation.js";
@@ -20,22 +21,24 @@ import {
 export function attachMainHandlers() {
   if (els.btnStyle) els.btnStyle.addEventListener("click", () => openStyleSheet());
   if (els.btnSkin) els.btnSkin.addEventListener("click", () => openSkinSheet());
+  if (els.btnMimic) els.btnMimic.addEventListener("click", () => openMimicSheet());
   if (els.btnGreetings) els.btnGreetings.addEventListener("click", () => openGreetingSheet());
 
-  // ✅ HOLLYWOOD PRO: no expressions, forced pro retouch
-  if (els.btnHollywood) {
-    els.btnHollywood.addEventListener("click", () => {
-      appState.mode = "hollywood";
-      appState.selectedStyle = "beauty";
-      appState.selectedEffects = ["hollywood-pro"];
+  if (els.btnGenerate) {
+    els.btnGenerate.addEventListener("click", () => {
+      appState.mode = "generate";
       refreshSelectionChips();
       handleGenerateClick();
     });
   }
 
-  if (els.btnGenerate) {
-    els.btnGenerate.addEventListener("click", () => {
+  // ✅ HOLLYWOOD PRO: one-click pro retouch (no smiles, no greetings forced)
+  if (els.btnHollywoodPro) {
+    els.btnHollywoodPro.addEventListener("click", () => {
       appState.mode = "generate";
+      appState.selectedStyle = "beauty";
+      appState.selectedEffects = ["hollywood-pro"];
+      appState.selectedGreeting = null;
       refreshSelectionChips();
       handleGenerateClick();
     });
