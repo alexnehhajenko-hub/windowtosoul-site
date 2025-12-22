@@ -33,6 +33,8 @@ export function bindElements() {
   els.btnPay = document.getElementById("btnPay");
 
   els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
+  els.btnContinueEdits = document.getElementById("btnContinueEdits");
+
   els.btnRestore = document.getElementById("btnRestore");
 
   els.btnLangEn = document.getElementById("langEn");
@@ -126,7 +128,9 @@ export function setLanguage(lang) {
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
+
   setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
+  setButtonLabel(els.btnContinueEdits, t.btnContinueEdits || "CONTINUE EDITS");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
 
@@ -204,6 +208,10 @@ export function refreshSelectionChips() {
 
   if (appState.mode === "restore") addChip("Mode: restore");
 
+  if (appState.useResultAsInput && appState.lastResultUrl) {
+    addChip("Layering: ON (use last result)");
+  }
+
   if (appState.selectedStyle) {
     const name = STYLE_LABELS_EN[appState.selectedStyle] || appState.selectedStyle;
     addChip(`Style: ${name}`);
@@ -225,8 +233,6 @@ export function updateGreetingOverlay() {
   }
 
   const text = GREETING_TEXT[key] || "";
-
-  // ✅ If text is empty (props/costumes) -> hide overlay
   if (!text.trim()) {
     els.greetingOverlay.textContent = "";
     els.greetingOverlay.style.display = "none";
