@@ -32,13 +32,7 @@ export function bindElements() {
   els.btnAddPhoto = document.getElementById("btnAddPhoto");
   els.btnPay = document.getElementById("btnPay");
 
-  // ✅ HOLLYWOOD PRO button
   els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
-
-  // ✅ clear effects button (was in HTML but not wired)
-  els.btnClearEffects = document.getElementById("btnClearEffects");
-
-  // ✅ restore button
   els.btnRestore = document.getElementById("btnRestore");
 
   els.btnLangEn = document.getElementById("langEn");
@@ -77,9 +71,7 @@ export function bindElements() {
   els.agreementTitle = document.querySelector(".agreement-title");
   els.agreementText = document.querySelector(".agreement-text");
   els.agreementEmailTitle = document.querySelector(".agreement-section-title");
-  els.agreementCheckboxLabel = document.querySelector(
-    ".agreement-checkbox-row span"
-  );
+  els.agreementCheckboxLabel = document.querySelector(".agreement-checkbox-row span");
   els.agreementHint = document.querySelector(".agreement-hint");
 
   els.downloadLink = document.getElementById("downloadLink");
@@ -134,9 +126,7 @@ export function setLanguage(lang) {
   setButtonLabel(els.btnGenerate, t.btnGenerate);
   setButtonLabel(els.btnAddPhoto, t.btnAddPhoto);
   setButtonLabel(els.btnPay, t.btnPay);
-
   setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
-  setButtonLabel(els.btnClearEffects, t.btnClearEffects || "CLEAR EFFECTS");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
 
@@ -212,9 +202,7 @@ export function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
-  if (appState.mode === "restore") {
-    addChip("Mode: restore");
-  }
+  if (appState.mode === "restore") addChip("Mode: restore");
 
   if (appState.selectedStyle) {
     const name = STYLE_LABELS_EN[appState.selectedStyle] || appState.selectedStyle;
@@ -237,6 +225,14 @@ export function updateGreetingOverlay() {
   }
 
   const text = GREETING_TEXT[key] || "";
+
+  // ✅ If text is empty (props/costumes) -> hide overlay
+  if (!text.trim()) {
+    els.greetingOverlay.textContent = "";
+    els.greetingOverlay.style.display = "none";
+    return;
+  }
+
   els.greetingOverlay.textContent = text;
   els.greetingOverlay.style.display = "block";
 }
