@@ -38,142 +38,57 @@ export const UI_TEXT = {
     btnMimic: "EXPRESSION",
     btnGreetings: "GREETINGS",
     btnHollywoodPro: "HOLLYWOOD PRO",
+    btnContinueEdits: "CONTINUE EDITS",
     btnGenerate: "GENERATE",
     btnAddPhoto: "ADD PHOTO",
     btnPay: "PACKAGES",
 
-    sheetOptionsTitle: "Options",
-    sheetCategoryTitle: "Categories",
-
-    payTitle: "Choose a package",
-    paySectionTitle: "Generation packages",
-    payNext: "Continue",
-    payPack10Title: "10 generations",
-    payPack20Title: "20 generations",
-    payPack30Title: "30 generations",
-
-    agreementTitle: "Confirmation",
-    agreementText:
-      "Before payment, please confirm your age and consent.\n\n" +
-      "Important: YourPhotoAI creates AI portraits based on your photo. " +
-      "After the session ends, the final images will be sent to the email you specify.",
-    agreementEmailTitle: "Your email",
-    agreementCheckboxHtml:
-      'I am 16+ and I agree with the <a href="#">Terms</a>, ' +
-      '<a href="#">Privacy</a>, <a href="#">Refunds</a>.',
-    agreementSubmitDemo: "Continue",
-    agreementSubmitPaid: "Go to payment",
-    agreementHint:
-      "Payments are processed via Stripe. We do not see or store your card data.",
-
     download: "Download portrait",
-    supportLabel: "Support:",
 
     alertAddPhoto: "Please add a photo first.",
-    alertSelectPack: "Please select a package.",
     alertNoActivePack:
       "Please purchase a package first. After payment you can generate portraits.",
-    alertDemoFinished:
-      "Your free demo limit has been used. Please reload the page to start a new demo or purchase a package.",
     alertPaidFinished:
       "Your package is finished. Please purchase a new package to continue.",
     alertGenerationFailed:
       "Could not generate the portrait. Please try again.",
 
-    alertEmailMissing: "Please enter your email.",
-    alertAgreeMissing: "Please confirm the checkbox.",
-    alertStripeMissing: "Stripe is not loaded. Please refresh the page and try again.",
-    alertPaymentCreateFailed: "Could not create a payment. Please try again.",
-
-    paymentSuccess:
-      "Payment completed! 🎉 You can now generate portraits with your package."
+    alertNoResultToContinue:
+      "Generate at least once first, then you can continue edits on the result."
   },
 
   de: {
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    alertEmailMissing: "Bitte gib deine E-Mail ein.",
-    alertAgreeMissing: "Bitte bestätige das Kästchen.",
-    alertStripeMissing: "Stripe ist nicht geladen. Bitte Seite neu laden.",
-    alertPaymentCreateFailed: "Zahlung konnte nicht erstellt werden. Bitte erneut versuchen."
+    btnContinueEdits: "WEITER BEARBEITEN",
+    alertNoResultToContinue: "Erstelle zuerst ein Ergebnis, dann kannst du darauf weiter bearbeiten."
   },
   es: {
     subtitle: "Crea tu retrato único con IA",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    alertEmailMissing: "Introduce tu correo electrónico.",
-    alertAgreeMissing: "Confirma la casilla, por favor.",
-    alertStripeMissing: "Stripe no está cargado. Recarga la página.",
-    alertPaymentCreateFailed: "No se pudo crear el pago. Inténtalo de nuevo."
+    btnContinueEdits: "SEGUIR EDITANDO",
+    alertNoResultToContinue: "Genera primero un resultado y luego podrás seguir editando."
   },
   ru: {
     subtitle: "Создайте свой уникальный AI-портрет",
     btnHollywoodPro: "ГОЛЛИВУД PRO",
-    alertEmailMissing: "Введите email.",
-    alertAgreeMissing: "Подтвердите галочку согласия.",
-    alertStripeMissing: "Stripe не загрузился. Обновите страницу и попробуйте снова.",
-    alertPaymentCreateFailed: "Не удалось создать оплату. Попробуйте ещё раз."
+    btnContinueEdits: "НАЛОЖЕНИЕ",
+    alertNoResultToContinue: "Сначала сделайте 1 генерацию, потом можно накладывать эффекты на результат."
   }
 };
 
 export const GREETING_LABELS = {
-  en: {
-    "new-year": "New Year 🎄",
-    birthday: "Birthday 🎂",
-    funny: "Funny 😜",
-    scary: "Spooky 👻",
-    "devil-eyes": "Devil eyes 🔥",
-    "santa-hat": "Santa hat 🎅",
-    "viking-helm": "Viking crown 🛡️",
-    "samurai-helm": "Samurai helm 🥷",
-    "blue-demon": "Blue demon 😈"
-  },
-  de: {
-    "new-year": "Neujahr 🎄",
-    birthday: "Geburtstag 🎂",
-    funny: "Witzig 😜",
-    scary: "Gruselig 👻",
-    "devil-eyes": "Teufelsaugen 🔥",
-    "santa-hat": "Weihnachtsmütze 🎅",
-    "viking-helm": "Wikingerkrone 🛡️",
-    "samurai-helm": "Samurai-Helm 🥷",
-    "blue-demon": "Blauer Dämon 😈"
-  },
-  es: {
-    "new-year": "Año Nuevo 🎄",
-    birthday: "Cumpleaños 🎂",
-    funny: "Divertido 😜",
-    scary: "Terrorífico 👻",
-    "devil-eyes": "Ojos demonio 🔥",
-    "santa-hat": "Gorro Santa 🎅",
-    "viking-helm": "Corona vikinga 🛡️",
-    "samurai-helm": "Casco samurái 🥷",
-    "blue-demon": "Demonio azul 😈"
-  },
-  ru: {
-    "new-year": "Новый год 🎄",
-    birthday: "День рождения 🎂",
-    funny: "Смешное 😜",
-    scary: "Страшное 👻",
-    "devil-eyes": "Глаза демона 🔥",
-    "santa-hat": "Шапка Санты 🎅",
-    "viking-helm": "Корона викинга 🛡️",
-    "samurai-helm": "Шлем самурая 🥷",
-    "blue-demon": "Синий демон 😈"
-  }
+  en: { "new-year": "New Year 🎄", birthday: "Birthday 🎂", funny: "Funny 😜", scary: "Spooky 👻" },
+  de: { "new-year": "Neujahr 🎄", birthday: "Geburtstag 🎂", funny: "Witzig 😜", scary: "Gruselig 👻" },
+  es: { "new-year": "Año Nuevo 🎄", birthday: "Cumpleaños 🎂", funny: "Divertido 😜", scary: "Terrorífico 👻" },
+  ru: { "new-year": "Новый год 🎄", birthday: "День рождения 🎂", funny: "Смешное 😜", scary: "Страшное 👻" }
 };
 
-// Text overlay on the preview image.
-// For props/costumes we keep it empty -> overlay must be hidden (see interface.js fix).
 export const GREETING_TEXT = {
   "new-year": "Happy New Year!",
   birthday: "Happy Birthday!",
   funny: "You are AI-level awesome!",
-  scary: "Happy Halloween!",
-  "devil-eyes": "",
-  "santa-hat": "",
-  "viking-helm": "",
-  "samurai-helm": "",
-  "blue-demon": ""
+  scary: "Happy Halloween!"
 };
 
 export const STYLE_LABELS_EN = {
@@ -214,7 +129,7 @@ export const SHEET_TEXT = {
     mimicTitle: "Expression",
     mimicDescription: "Choose the facial expression.",
     greetingTitle: "Greetings",
-    greetingDescription: "Choose a greeting or a fun prop (hat, glowing eyes, etc.)."
+    greetingDescription: "We will gently add festive atmosphere to the portrait."
   }
 };
 
@@ -230,6 +145,10 @@ export const appState = {
 
   originalFile: null,
   photoBase64: null,
+
+  // ✅ NEW: layering mode
+  useResultAsInput: false,
+  lastResultUrl: null,
 
   selectedPack: null,
 
