@@ -116,17 +116,64 @@ export const UI_TEXT = {
 };
 
 export const GREETING_LABELS = {
-  en: { "new-year": "New Year 🎄", birthday: "Birthday 🎂", funny: "Funny 😜", scary: "Scary 👻" },
-  de: { "new-year": "Neujahr 🎄", birthday: "Geburtstag 🎂", funny: "Witzig 😜", scary: "Gruselig 👻" },
-  es: { "new-year": "Año Nuevo 🎄", birthday: "Cumpleaños 🎂", funny: "Divertido 😜", scary: "Terrorífico 👻" },
-  ru: { "new-year": "Новый год 🎄", birthday: "День рождения 🎂", funny: "Смешное 😜", scary: "Страшное 👻" }
+  en: {
+    "new-year": "New Year 🎄",
+    birthday: "Birthday 🎂",
+    funny: "Funny 😜",
+    scary: "Spooky 👻",
+    "devil-eyes": "Devil eyes 🔥",
+    "santa-hat": "Santa hat 🎅",
+    "viking-helm": "Viking crown 🛡️",
+    "samurai-helm": "Samurai helm 🥷",
+    "blue-demon": "Blue demon 😈"
+  },
+  de: {
+    "new-year": "Neujahr 🎄",
+    birthday: "Geburtstag 🎂",
+    funny: "Witzig 😜",
+    scary: "Gruselig 👻",
+    "devil-eyes": "Teufelsaugen 🔥",
+    "santa-hat": "Weihnachtsmütze 🎅",
+    "viking-helm": "Wikingerkrone 🛡️",
+    "samurai-helm": "Samurai-Helm 🥷",
+    "blue-demon": "Blauer Dämon 😈"
+  },
+  es: {
+    "new-year": "Año Nuevo 🎄",
+    birthday: "Cumpleaños 🎂",
+    funny: "Divertido 😜",
+    scary: "Terrorífico 👻",
+    "devil-eyes": "Ojos demonio 🔥",
+    "santa-hat": "Gorro Santa 🎅",
+    "viking-helm": "Corona vikinga 🛡️",
+    "samurai-helm": "Casco samurái 🥷",
+    "blue-demon": "Demonio azul 😈"
+  },
+  ru: {
+    "new-year": "Новый год 🎄",
+    birthday: "День рождения 🎂",
+    funny: "Смешное 😜",
+    scary: "Страшное 👻",
+    "devil-eyes": "Глаза демона 🔥",
+    "santa-hat": "Шапка Санты 🎅",
+    "viking-helm": "Корона викинга 🛡️",
+    "samurai-helm": "Шлем самурая 🥷",
+    "blue-demon": "Синий демон 😈"
+  }
 };
 
+// Text overlay on the preview image.
+// For props/costumes we keep it empty -> overlay must be hidden (see interface.js fix).
 export const GREETING_TEXT = {
   "new-year": "Happy New Year!",
   birthday: "Happy Birthday!",
   funny: "You are AI-level awesome!",
-  scary: "Your AI twin is watching you..."
+  scary: "Happy Halloween!",
+  "devil-eyes": "",
+  "santa-hat": "",
+  "viking-helm": "",
+  "samurai-helm": "",
+  "blue-demon": ""
 };
 
 export const STYLE_LABELS_EN = {
@@ -167,7 +214,7 @@ export const SHEET_TEXT = {
     mimicTitle: "Expression",
     mimicDescription: "Choose the facial expression.",
     greetingTitle: "Greetings",
-    greetingDescription: "We will gently add festive atmosphere to the portrait."
+    greetingDescription: "Choose a greeting or a fun prop (hat, glowing eyes, etc.)."
   }
 };
 
@@ -182,12 +229,7 @@ export const appState = {
   language: "en",
 
   originalFile: null,
-
-  // Base64 previews:
-  // - photoBase64: normal (faster)
-  // - photoBase64Hi: higher-res (better for beauty/restore, slower but more detail)
   photoBase64: null,
-  photoBase64Hi: null,
 
   selectedPack: null,
 
