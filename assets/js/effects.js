@@ -33,9 +33,7 @@ export function removeSkinEffects() {
     "glow-golden",
     "cinematic-light"
   ];
-  appState.selectedEffects = appState.selectedEffects.filter(
-    (e) => !skinKeys.includes(e)
-  );
+  appState.selectedEffects = appState.selectedEffects.filter((e) => !skinKeys.includes(e));
 }
 
 export function removeWowEffects() {
@@ -46,9 +44,7 @@ export function removeWowEffects() {
     "luxury-editorial",
     "neon-pop"
   ];
-  appState.selectedEffects = appState.selectedEffects.filter(
-    (e) => !wowKeys.includes(e)
-  );
+  appState.selectedEffects = appState.selectedEffects.filter((e) => !wowKeys.includes(e));
 }
 
 export function removeAllMimicEffects() {
@@ -63,9 +59,7 @@ export function removeAllMimicEffects() {
     "eyes-bigger",
     "eyes-brighter"
   ];
-  appState.selectedEffects = appState.selectedEffects.filter(
-    (e) => !mimicKeys.includes(e)
-  );
+  appState.selectedEffects = appState.selectedEffects.filter((e) => !mimicKeys.includes(e));
 }
 
 export function openStyleSheet() {
@@ -97,24 +91,14 @@ function openSkinWowSheet(tab) {
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
 
   const categories = [
-    {
-      value: "skin",
-      label: "Skin",
-      selected: tab === "skin",
-      onClick: () => openSkinWowSheet("skin")
-    },
-    {
-      value: "wow",
-      label: "Wow",
-      selected: tab === "wow",
-      onClick: () => openSkinWowSheet("wow")
-    }
+    { value: "skin", label: "Skin", selected: tab === "skin", onClick: () => openSkinWowSheet("skin") },
+    { value: "wow", label: "Wow", selected: tab === "wow", onClick: () => openSkinWowSheet("wow") }
   ];
 
   const skinOptionsConfig = [
-    { value: "hollywood-pro", label: "Hollywood Pro ⭐️ (strong)" },
+    { value: "hollywood-pro", label: "Hollywood Pro ⭐️" },
     { value: "no-wrinkles", label: "No wrinkles" },
-    { value: "younger", label: "Younger (5–10 years)" },
+    { value: "younger", label: "Younger by 5–10 years" },
     { value: "smooth-skin", label: "Smooth skin" },
     { value: "beauty-one-touch", label: "Beauty one-touch 💎" }
   ];
@@ -139,16 +123,10 @@ function openSkinWowSheet(tab) {
       onClick: (value) => {
         const wasSelected = appState.selectedEffects.includes(value);
 
-        if (tab === "wow") {
-          removeWowEffects();
-        } else {
-          removeSkinEffects();
-        }
+        if (tab === "wow") removeWowEffects();
+        else removeSkinEffects();
 
-        // allow deselect
-        if (!wasSelected) {
-          toggleEffect(value);
-        }
+        if (!wasSelected) toggleEffect(value);
 
         refreshSelectionChips();
         closeSheet();
@@ -187,10 +165,7 @@ export function openMimicSheet() {
         const wasSelected = appState.selectedEffects.includes(value);
 
         removeAllMimicEffects();
-
-        if (!wasSelected) {
-          toggleEffect(value);
-        }
+        if (!wasSelected) toggleEffect(value);
 
         refreshSelectionChips();
         closeSheet();
@@ -204,15 +179,25 @@ export function openGreetingSheet() {
   const sheet = SHEET_TEXT[lang] || SHEET_TEXT.en;
   const labels = GREETING_LABELS[lang] || GREETING_LABELS.en;
 
-  const optionsConfig = ["new-year", "birthday", "funny", "scary"];
+  // ✅ Extended list: greetings + props/costumes
+  const optionsConfig = [
+    "new-year",
+    "birthday",
+    "funny",
+    "scary",
+    "santa-hat",
+    "devil-eyes",
+    "viking-helm",
+    "samurai-helm",
+    "blue-demon"
+  ];
 
   const options = optionsConfig.map((value) => ({
     value,
-    label: labels[value],
+    label: labels[value] || value,
     selected: appState.selectedGreeting === value,
     onClick: (val) => {
-      appState.selectedGreeting =
-        appState.selectedGreeting === val ? null : val;
+      appState.selectedGreeting = appState.selectedGreeting === val ? null : val;
       refreshSelectionChips();
       updateGreetingOverlay();
       closeSheet();
