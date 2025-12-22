@@ -1,6 +1,6 @@
 // assets/js/events.js
 
-import { els, setLanguage, refreshSelectionChips, updateGreetingOverlay } from "./interface.js";
+import { els, setLanguage, refreshSelectionChips } from "./interface.js";
 import {
   openStyleSheet,
   openSkinSheet,
@@ -8,7 +8,7 @@ import {
   openGreetingSheet
 } from "./effects.js";
 import { handleGenerateClick, handleFileSelected } from "./generation.js";
-import { appState } from "./state.js";
+import { appState, UI_TEXT } from "./state.js";
 import {
   openPayModal,
   closePayModal,
@@ -32,7 +32,6 @@ export function attachMainHandlers() {
     });
   }
 
-  // ✅ HOLLYWOOD PRO: one-click pro retouch (no smiles, no greetings forced)
   if (els.btnHollywoodPro) {
     els.btnHollywoodPro.addEventListener("click", () => {
       appState.mode = "generate";
@@ -40,18 +39,22 @@ export function attachMainHandlers() {
       appState.selectedEffects = ["hollywood-pro"];
       appState.selectedGreeting = null;
       refreshSelectionChips();
-      updateGreetingOverlay();
       handleGenerateClick();
     });
   }
 
-  // ✅ CLEAR EFFECTS (now actually works)
-  if (els.btnClearEffects) {
-    els.btnClearEffects.addEventListener("click", () => {
-      appState.selectedEffects = [];
-      appState.selectedGreeting = null;
+  // ✅ Continue edits toggle
+  if (els.btnContinueEdits) {
+    els.btnContinueEdits.addEventListener("click", () => {
+      const t = UI_TEXT[appState.language] || UI_TEXT.en;
+
+      if (!appState.lastResultUrl) {
+        alert(t.alertNoResultToContinue || UI_TEXT.en.alertNoResultToContinue);
+        return;
+      }
+
+      appState.useResultAsInput = !appState.useResultAsInput;
       refreshSelectionChips();
-      updateGreetingOverlay();
     });
   }
 
