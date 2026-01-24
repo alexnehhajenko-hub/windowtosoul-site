@@ -22,9 +22,7 @@ export const STORAGE_KEYS = {
   CREDITS_USED: "yourphotoai_creditsUsed",
   GENERATED_IMAGES: "yourphotoai_generatedImages",
   LANGUAGE: "yourphotoai_language",
-  SELECTED_PACK: "yourphotoai_selectedPack",
-  // ✅ restore tone preset
-  RESTORE_MODE: "yourphotoai_restoreMode"
+  SELECTED_PACK: "yourphotoai_selectedPack"
 };
 
 const EN = {
@@ -39,6 +37,7 @@ const EN = {
   btnMimic: "EXPRESSION",
   btnGreetings: "GREETINGS",
   btnHollywoodPro: "HOLLYWOOD PRO",
+  btnMagazinePro: "MAGAZINE PRO",
   btnGenerate: "GENERATE",
   btnAddPhoto: "ADD PHOTO",
   btnPay: "PACKAGES",
@@ -93,11 +92,11 @@ const EN = {
 export const UI_TEXT = {
   en: EN,
 
-  // ✅ Full keys to prevent "undefined" UI
   de: {
     ...EN,
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
     btnHollywoodPro: "HOLLYWOOD PRO",
+    btnMagazinePro: "MAGAZINE PRO",
     btnAddPhoto: "FOTO HINZUFÜGEN",
     btnGenerate: "GENERIEREN",
     btnPay: "PAKETE",
@@ -117,6 +116,7 @@ export const UI_TEXT = {
     ...EN,
     subtitle: "Crea tu retrato único con IA",
     btnHollywoodPro: "HOLLYWOOD PRO",
+    btnMagazinePro: "MAGAZINE PRO",
     btnAddPhoto: "AÑADIR FOTO",
     btnGenerate: "GENERAR",
     btnPay: "PAQUETES",
@@ -136,6 +136,7 @@ export const UI_TEXT = {
     ...EN,
     subtitle: "Создайте свой уникальный AI-портрет",
     btnHollywoodPro: "ГОЛЛИВУД PRO",
+    btnMagazinePro: "ЖУРНАЛ PRO",
     btnAddPhoto: "ДОБАВИТЬ ФОТО",
     btnGenerate: "СОЗДАТЬ",
     btnPay: "ПАКЕТЫ",
@@ -176,6 +177,7 @@ export const STYLE_LABELS_EN = {
 
 export const EFFECT_CHIP_LABELS_EN = {
   "hollywood-pro": "Skin: Hollywood Pro",
+  "magazine-pro": "Skin: Magazine Pro",
 
   "no-wrinkles": "Effect: no wrinkles",
   younger: "Effect: younger",
@@ -235,14 +237,7 @@ export const appState = {
   userEmail: "",
   userAgreed: false,
 
-  layer: "home",
-
-  // ✅ chaining/layering (used in generation.js)
-  lastResultUrl: null,
-  useResultAsInput: false,
-
-  // ✅ restore tone preset: "neutral" | "warm" | "bw"
-  restoreMode: "neutral"
+  layer: "home"
 };
 
 export function loadStateFromStorage() {
@@ -279,12 +274,6 @@ export function loadStateFromStorage() {
     const storedPack = window.localStorage.getItem(STORAGE_KEYS.SELECTED_PACK);
     if (storedPack && PACK_SIZES[storedPack]) {
       appState.selectedPack = storedPack;
-    }
-
-    // ✅ restore mode
-    const storedRestoreMode = window.localStorage.getItem(STORAGE_KEYS.RESTORE_MODE);
-    if (storedRestoreMode === "neutral" || storedRestoreMode === "warm" || storedRestoreMode === "bw") {
-      appState.restoreMode = storedRestoreMode;
     }
   } catch (e) {
     console.warn("Cannot read localStorage", e);
