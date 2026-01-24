@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   attachMainHandlers();
   setupBackButtonLogic();
   setupClearEffectsButton();
+  setupLanguageDropdownAutoClose(); // ✅ NEW
   handleStripeStatusFromUrl();
   refreshSelectionChips();
 });
@@ -79,5 +80,88 @@ function setupClearEffectsButton() {
     refreshSelectionChips();
     updateGreetingOverlay();
     closeSheet();
+  });
+}
+
+/**
+ * ✅ Language dropdown auto-close (safe mode):
+ * - Works with old 4-button UI (does nothing harmful).
+ * - If you already converted languages into a dropdown/menu, it will close it after selection
+ *   and on outside click.
+ *
+ * We don't assume exact markup. We try common patterns:
+ * - container: .lang-switch or #langSwitch
+ * - open class: .open / .lang-open / .is-open
+ * - menu element: .lang-menu / .lang-dropdown / [data-lang-menu]
+ * - toggle button: .lang-toggle / #langToggle / [data-lang-toggle]
+ */
+function setupLanguageDropdownAutoClose() {
+  const langButtons = [
+    document.getElementById("langEn"),
+    document.getElementById("langDe"),
+    document.getElementById("langEs"),
+    document.getElementById("langRu")
+  ].filter(Boolean);
+
+  // If no language buttons exist, nothing to do.
+  if (langButtons.length === 0) return;
+
+  const container =
+    document.querySelector(".lang-switch") ||
+    document.getElementById("langSwitch") ||
+    document.querySelector("[data-lang-container]") ||
+    null;
+
+  function closeLangMenu() {
+    if (!container) return;
+
+    // remove typical "open" classes
+    container.classList.remove("open");
+    container.classList.remove("lang-open");
+    container.classList.remove("is-open");
+
+    // hide typical menu nodes if present
+    const menu =
+      container.querySelector(".lang-menu") ||
+      container.querySelector(".lang-dropdown") ||
+      container.querySelector("[data-lang-menu]") ||
+      null;
+    if (menu) menu.style.display = "none";
+
+    // update aria on toggle if present
+    const toggle =
+      container.querySelector(".lang-toggle") ||
+      container.querySelector("#langToggle") ||
+      container.querySelector("[data-lang-toggle]") ||
+      null;
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+  }
+
+  // Close after selecting a language
+  langButtons.forEach((btn) => {
+    btn.addEventListener(
+      "click",
+      () => {
+        // Let setLanguage run first (events.js), then close.
+        // (setTimeout 0 = next tick, avoids race with any UI toggling)
+        setTimeout(() => closeLangMenu(), 0);
+      },
+      { passive: true }
+    );
+  });
+
+  // Close on click outside (only if we can locate container)
+  document.addEventListener("click", (e) => {
+    if (!container) return;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+
+    // click outside container -> close
+    if (!container.contains(target)) closeLangMenu();
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeLangMenu();
   });
 }
