@@ -1,5 +1,5 @@
 // assets/js/generation.js
-// Upload photo, call /api/generate OR /api/restore
+// Upload photo, call /api/generate OR /api/restore OR /api/magazine-pro (async polling)
 
 import {
   appState,
@@ -75,31 +75,43 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// ✅ Poll restore prediction (server-side proxy endpoint)
-async function pollPrediction(predId, maxMs = 240000) {
+async function pollPrediction(predId, t, { timeoutMs = 240000, intervalMs = 1500 } = {}) {
   const started = Date.now();
-  let delay = 1500;
 
-  while (Date.now() - started < maxMs) {
-    const r = await fetch(`/api/prediction?id=${encodeURIComponent(predId)}`, { method: "GET" });
-    const j = await r.json().catch(() => ({}));
-
-    if (!r.ok || !j?.ok) {
-      const details = j?.details || j?.error || "Prediction status error";
-      throw new Error(details);
+  while (true) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error("Prediction timeout");
     }
 
-    const status = j.status;
-    if (status === "succeeded" && j.image) return j.image;
+    const r = await fetch(`/api/prediction?id=${encodeURIComponent(predId)}`, {
+      method: "GET"
+    });
+
+    let j = {};
+    try {
+      j = await r.json();
+    } catch {}
+
+    if (!r.ok) {
+      const msg = j?.details || j?.error || `HTTP ${r.status}`;
+      throw new Error("Prediction check failed: " + msg);
+    }
+
+    const status = j?.status || "unknown";
+
+    if (status === "succeeded") {
+      if (!j?.image) throw new Error("Prediction succeeded but image is missing");
+      return j.image;
+    }
+
     if (status === "failed" || status === "canceled") {
-      throw new Error(j.error || "Restore failed");
+      const msg = j?.error || j?.logs || "Prediction failed";
+      throw new Error(String(msg));
     }
 
-    await sleep(delay);
-    delay = Math.min(4500, Math.round(delay * 1.25));
+    // starting | processing | unknown -> wait
+    await sleep(intervalMs);
   }
-
-  throw new Error("Restore timeout (prediction still running)");
 }
 
 export async function handleGenerateClick() {
@@ -113,7 +125,11 @@ export async function handleGenerateClick() {
   }
 
   const isRestore = appState.mode === "restore";
+  const isMagazinePro = !isRestore && Array.isArray(appState.selectedEffects)
+    ? appState.selectedEffects.includes("magazine-pro")
+    : false;
 
+  // Payment / credits gate: restore is free (as you already had)
   if (!isRestore) {
     if (DEMO_MODE) {
       if (!appState.userEmail || !appState.userAgreed) {
@@ -148,23 +164,24 @@ export async function handleGenerateClick() {
         ? appState.lastResultUrl
         : appState.photoBase64;
 
-    const payload = isRestore
-      ? {
-          photo: appState.photoBase64,
-          // ✅ send restore mode (neutral/warm/bw)
-          mode: appState.restoreMode || "neutral",
-          language: appState.language || "en"
-        }
-      : {
-          style: appState.selectedStyle || "beauty",
-          text: "",
-          photo: inputPhoto,
-          effects: appState.selectedEffects,
-          greeting: appState.selectedGreeting || null,
-          language: appState.language || "en"
-        };
+    let endpoint = "/api/generate";
+    let payload = {
+      style: appState.selectedStyle || "beauty",
+      text: "",
+      photo: inputPhoto,
+      effects: appState.selectedEffects,
+      greeting: appState.selectedGreeting || null,
+      language: appState.language || "en"
+    };
 
-    const endpoint = isRestore ? "/api/restore" : "/api/generate";
+    if (isRestore) {
+      endpoint = "/api/restore";
+      payload = { photo: appState.photoBase64, language: appState.language || "en" };
+    } else if (isMagazinePro) {
+      // ✅ Magazine Pro runs on separate ASYNC pipeline
+      endpoint = "/api/magazine-pro";
+      payload = { photo: inputPhoto };
+    }
 
     const resp = await fetch(endpoint, {
       method: "POST",
@@ -188,32 +205,39 @@ export async function handleGenerateClick() {
 
     const data = await resp.json();
 
-    // ✅ Restore can be async: image may be null, but prediction id exists
-    if (isRestore) {
-      if (data?.image) {
-        showResultPortrait(data.image);
-      } else if (data?.prediction) {
-        const finalUrl = await pollPrediction(data.prediction, 240000);
-        showResultPortrait(finalUrl);
+    // ✅ SYNC path
+    if (data && data.image) {
+      showResultPortrait(data.image);
+
+      if (!isRestore) {
+        registerGeneration(data.image);
+        clearEffectsSelection();
       } else {
-        throw new Error("Restore returned no image and no prediction id");
+        appState.mode = "generate";
+        refreshSelectionChips();
       }
 
-      // after restore: back to generate
-      appState.mode = "generate";
-      refreshSelectionChips();
       return;
     }
 
-    // normal generate flow expects image
-    if (!data || !data.image) {
-      throw new Error("No image URL in response");
+    // ✅ ASYNC path (restore + magazine-pro)
+    const predId = data?.prediction || data?.predictionId || null;
+    if (!predId) {
+      throw new Error("No image URL or prediction id in response");
     }
 
-    showResultPortrait(data.image);
+    const imageUrl = await pollPrediction(predId, t, { timeoutMs: 240000, intervalMs: 1500 });
 
-    registerGeneration(data.image);
-    clearEffectsSelection();
+    showResultPortrait(imageUrl);
+
+    // restore: do not spend credits
+    if (!isRestore) {
+      registerGeneration(imageUrl);
+      clearEffectsSelection();
+    } else {
+      appState.mode = "generate";
+      refreshSelectionChips();
+    }
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
@@ -275,10 +299,7 @@ function registerGeneration(imageUrl) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
     window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
-    window.localStorage.setItem(
-      STORAGE_KEYS.GENERATED_IMAGES,
-      JSON.stringify(appState.generatedImages)
-    );
+    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
   } catch (e) {
     console.warn("Cannot store credits/images", e);
   }
