@@ -32,9 +32,13 @@ export function bindElements() {
   els.btnAddPhoto = document.getElementById("btnAddPhoto");
   els.btnPay = document.getElementById("btnPay");
 
+  // ✅ HOLLYWOOD PRO button
   els.btnHollywoodPro = document.getElementById("btnHollywoodPro");
-  els.btnContinueEdits = document.getElementById("btnContinueEdits");
 
+  // ✅ MAGAZINE PRO button
+  els.btnMagazinePro = document.getElementById("btnMagazinePro");
+
+  // ✅ restore button
   els.btnRestore = document.getElementById("btnRestore");
 
   els.btnLangEn = document.getElementById("langEn");
@@ -130,7 +134,7 @@ export function setLanguage(lang) {
   setButtonLabel(els.btnPay, t.btnPay);
 
   setButtonLabel(els.btnHollywoodPro, t.btnHollywoodPro || "HOLLYWOOD PRO");
-  setButtonLabel(els.btnContinueEdits, t.btnContinueEdits || "CONTINUE EDITS");
+  setButtonLabel(els.btnMagazinePro, t.btnMagazinePro || "MAGAZINE PRO");
 
   if (els.downloadLink) els.downloadLink.textContent = t.download;
 
@@ -206,10 +210,8 @@ export function refreshSelectionChips() {
     els.selectionRow.appendChild(chip);
   }
 
-  if (appState.mode === "restore") addChip("Mode: restore");
-
-  if (appState.useResultAsInput && appState.lastResultUrl) {
-    addChip("Layering: ON (use last result)");
+  if (appState.mode === "restore") {
+    addChip("Mode: restore");
   }
 
   if (appState.selectedStyle) {
@@ -233,12 +235,6 @@ export function updateGreetingOverlay() {
   }
 
   const text = GREETING_TEXT[key] || "";
-  if (!text.trim()) {
-    els.greetingOverlay.textContent = "";
-    els.greetingOverlay.style.display = "none";
-    return;
-  }
-
   els.greetingOverlay.textContent = text;
   els.greetingOverlay.style.display = "block";
 }
