@@ -177,7 +177,7 @@ export const STYLE_LABELS_EN = {
 
 export const EFFECT_CHIP_LABELS_EN = {
   "hollywood-pro": "Skin: Hollywood Pro",
-  "magazine-pro": "Skin: Magazine Pro",
+  "magazine-pro": "Magazine Pro",
 
   "no-wrinkles": "Effect: no wrinkles",
   younger: "Effect: younger",
@@ -237,7 +237,11 @@ export const appState = {
   userEmail: "",
   userAgreed: false,
 
-  layer: "home"
+  layer: "home",
+
+  // layering support
+  lastResultUrl: null,
+  useResultAsInput: false
 };
 
 export function loadStateFromStorage() {
