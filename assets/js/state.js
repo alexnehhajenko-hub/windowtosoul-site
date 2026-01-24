@@ -22,7 +22,9 @@ export const STORAGE_KEYS = {
   CREDITS_USED: "yourphotoai_creditsUsed",
   GENERATED_IMAGES: "yourphotoai_generatedImages",
   LANGUAGE: "yourphotoai_language",
-  SELECTED_PACK: "yourphotoai_selectedPack"
+  SELECTED_PACK: "yourphotoai_selectedPack",
+  // ✅ restore tone preset
+  RESTORE_MODE: "yourphotoai_restoreMode"
 };
 
 const EN = {
@@ -233,7 +235,14 @@ export const appState = {
   userEmail: "",
   userAgreed: false,
 
-  layer: "home"
+  layer: "home",
+
+  // ✅ chaining/layering (used in generation.js)
+  lastResultUrl: null,
+  useResultAsInput: false,
+
+  // ✅ restore tone preset: "neutral" | "warm" | "bw"
+  restoreMode: "neutral"
 };
 
 export function loadStateFromStorage() {
@@ -270,6 +279,12 @@ export function loadStateFromStorage() {
     const storedPack = window.localStorage.getItem(STORAGE_KEYS.SELECTED_PACK);
     if (storedPack && PACK_SIZES[storedPack]) {
       appState.selectedPack = storedPack;
+    }
+
+    // ✅ restore mode
+    const storedRestoreMode = window.localStorage.getItem(STORAGE_KEYS.RESTORE_MODE);
+    if (storedRestoreMode === "neutral" || storedRestoreMode === "warm" || storedRestoreMode === "bw") {
+      appState.restoreMode = storedRestoreMode;
     }
   } catch (e) {
     console.warn("Cannot read localStorage", e);
