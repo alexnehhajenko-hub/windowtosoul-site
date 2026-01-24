@@ -25,60 +25,133 @@ export const STORAGE_KEYS = {
   SELECTED_PACK: "yourphotoai_selectedPack"
 };
 
+const EN = {
+  subtitle: "Create your unique AI portrait",
+  previewLabel: "PREVIEW",
+  previewPlaceholder:
+    "Add a photo and choose effects.\nAfter generation your portrait will appear here.",
+  generateStatus: "Generating portrait…",
+
+  btnStyle: "PORTRAIT STYLE",
+  btnSkin: "SKIN EFFECT",
+  btnMimic: "EXPRESSION",
+  btnGreetings: "GREETINGS",
+  btnHollywoodPro: "HOLLYWOOD PRO",
+  btnGenerate: "GENERATE",
+  btnAddPhoto: "ADD PHOTO",
+  btnPay: "PACKAGES",
+
+  sheetOptionsTitle: "Options",
+  sheetCategoryTitle: "Categories",
+
+  payTitle: "Choose a package",
+  paySectionTitle: "Generation packages",
+  payNext: "Continue",
+  payPack10Title: "10 generations",
+  payPack20Title: "20 generations",
+  payPack30Title: "30 generations",
+
+  agreementTitle: "Confirmation",
+  agreementText:
+    "Before payment, please confirm your age and consent.\n\n" +
+    "Important: YourPhotoAI creates AI portraits based on your photo. " +
+    "After the session ends, the final images will be sent to the email you specify.",
+  agreementEmailTitle: "Your email",
+  agreementCheckboxHtml:
+    'I am 16+ and I agree with the <a href="#">Terms</a>, ' +
+    '<a href="#">Privacy</a>, <a href="#">Refunds</a>.',
+  agreementSubmitDemo: "Continue",
+  agreementSubmitPaid: "Go to payment",
+  agreementHint:
+    "Payments are processed via Stripe. We do not see or store your card data.",
+
+  download: "Download portrait",
+  supportLabel: "Support:",
+
+  alertAddPhoto: "Please add a photo first.",
+  alertSelectPack: "Please select a package.",
+  alertNoActivePack:
+    "Please purchase a package first. After payment you can generate portraits.",
+  alertDemoFinished:
+    "Your free demo limit has been used. Please reload the page to start a new demo or purchase a package.",
+  alertPaidFinished:
+    "Your package is finished. Please purchase a new package to continue.",
+  alertGenerationFailed:
+    "Could not generate the portrait. Please try again.",
+
+  alertEmailMissing: "Please enter your email.",
+  alertAgreeMissing: "Please confirm the checkbox.",
+  alertStripeMissing: "Stripe is not loaded. Please refresh the page and try again.",
+  alertPaymentCreateFailed: "Could not create a payment. Please try again.",
+
+  paymentSuccess:
+    "Payment completed! 🎉 You can now generate portraits with your package."
+};
+
 export const UI_TEXT = {
-  en: {
-    subtitle: "Create your unique AI portrait",
-    previewLabel: "PREVIEW",
-    previewPlaceholder:
-      "Add a photo and choose effects.\nAfter generation your portrait will appear here.",
-    generateStatus: "Generating portrait…",
+  en: EN,
 
-    btnStyle: "PORTRAIT STYLE",
-    btnSkin: "SKIN EFFECT",
-    btnMimic: "EXPRESSION",
-    btnGreetings: "GREETINGS",
-    btnHollywoodPro: "HOLLYWOOD PRO",
-    btnContinueEdits: "CONTINUE EDITS",
-    btnGenerate: "GENERATE",
-    btnAddPhoto: "ADD PHOTO",
-    btnPay: "PACKAGES",
-
-    download: "Download portrait",
-
-    alertAddPhoto: "Please add a photo first.",
-    alertNoActivePack:
-      "Please purchase a package first. After payment you can generate portraits.",
-    alertPaidFinished:
-      "Your package is finished. Please purchase a new package to continue.",
-    alertGenerationFailed:
-      "Could not generate the portrait. Please try again.",
-
-    alertNoResultToContinue:
-      "Generate at least once first, then you can continue edits on the result."
-  },
-
+  // ✅ Full keys to prevent "undefined" UI
   de: {
+    ...EN,
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    btnContinueEdits: "WEITER BEARBEITEN",
-    alertNoResultToContinue: "Erstelle zuerst ein Ergebnis, dann kannst du darauf weiter bearbeiten."
+    btnAddPhoto: "FOTO HINZUFÜGEN",
+    btnGenerate: "GENERIEREN",
+    btnPay: "PAKETE",
+    btnStyle: "PORTRÄTSTIL",
+    btnSkin: "HAUT-EFFEKT",
+    btnMimic: "AUSDRUCK",
+    btnGreetings: "GRÜSSE",
+    download: "Porträt herunterladen",
+
+    alertEmailMissing: "Bitte gib deine E-Mail ein.",
+    alertAgreeMissing: "Bitte bestätige das Kästchen.",
+    alertStripeMissing: "Stripe ist nicht geladen. Bitte Seite neu laden.",
+    alertPaymentCreateFailed: "Zahlung konnte nicht erstellt werden. Bitte erneut versuchen."
   },
+
   es: {
+    ...EN,
     subtitle: "Crea tu retrato único con IA",
     btnHollywoodPro: "HOLLYWOOD PRO",
-    btnContinueEdits: "SEGUIR EDITANDO",
-    alertNoResultToContinue: "Genera primero un resultado y luego podrás seguir editando."
+    btnAddPhoto: "AÑADIR FOTO",
+    btnGenerate: "GENERAR",
+    btnPay: "PAQUETES",
+    btnStyle: "ESTILO",
+    btnSkin: "PIEL",
+    btnMimic: "EXPRESIÓN",
+    btnGreetings: "SALUDOS",
+    download: "Descargar retrato",
+
+    alertEmailMissing: "Introduce tu correo electrónico.",
+    alertAgreeMissing: "Confirma la casilla, por favor.",
+    alertStripeMissing: "Stripe no está cargado. Recarga la página.",
+    alertPaymentCreateFailed: "No se pudo crear el pago. Inténtalo de nuevo."
   },
+
   ru: {
+    ...EN,
     subtitle: "Создайте свой уникальный AI-портрет",
     btnHollywoodPro: "ГОЛЛИВУД PRO",
-    btnContinueEdits: "НАЛОЖЕНИЕ",
-    alertNoResultToContinue: "Сначала сделайте 1 генерацию, потом можно накладывать эффекты на результат."
+    btnAddPhoto: "ДОБАВИТЬ ФОТО",
+    btnGenerate: "СОЗДАТЬ",
+    btnPay: "ПАКЕТЫ",
+    btnStyle: "СТИЛЬ ПОРТРЕТА",
+    btnSkin: "КОЖА",
+    btnMimic: "МИМИКА",
+    btnGreetings: "ПОЗДРАВЛЕНИЯ",
+    download: "Скачать портрет",
+
+    alertEmailMissing: "Введите email.",
+    alertAgreeMissing: "Подтвердите галочку согласия.",
+    alertStripeMissing: "Stripe не загрузился. Обновите страницу и попробуйте снова.",
+    alertPaymentCreateFailed: "Не удалось создать оплату. Попробуйте ещё раз."
   }
 };
 
 export const GREETING_LABELS = {
-  en: { "new-year": "New Year 🎄", birthday: "Birthday 🎂", funny: "Funny 😜", scary: "Spooky 👻" },
+  en: { "new-year": "New Year 🎄", birthday: "Birthday 🎂", funny: "Funny 😜", scary: "Scary 👻" },
   de: { "new-year": "Neujahr 🎄", birthday: "Geburtstag 🎂", funny: "Witzig 😜", scary: "Gruselig 👻" },
   es: { "new-year": "Año Nuevo 🎄", birthday: "Cumpleaños 🎂", funny: "Divertido 😜", scary: "Terrorífico 👻" },
   ru: { "new-year": "Новый год 🎄", birthday: "День рождения 🎂", funny: "Смешное 😜", scary: "Страшное 👻" }
@@ -88,7 +161,7 @@ export const GREETING_TEXT = {
   "new-year": "Happy New Year!",
   birthday: "Happy Birthday!",
   funny: "You are AI-level awesome!",
-  scary: "Happy Halloween!"
+  scary: "Your AI twin is watching you..."
 };
 
 export const STYLE_LABELS_EN = {
@@ -145,10 +218,6 @@ export const appState = {
 
   originalFile: null,
   photoBase64: null,
-
-  // ✅ NEW: layering mode
-  useResultAsInput: false,
-  lastResultUrl: null,
 
   selectedPack: null,
 
