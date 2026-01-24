@@ -1,6 +1,5 @@
-// api/prediction.js
-// GET /api/prediction?id=...  -> returns status + image (when ready)
-// Used by frontend polling to avoid long-hanging requests.
+// api/prediction.js — Replicate prediction status (polling endpoint)
+// GET /api/prediction?id=...
 
 function pickImageUrl(output) {
   if (Array.isArray(output)) return output[0] || null;
@@ -18,12 +17,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    const id = (req.query && req.query.id) || "";
+    if (!id) return res.status(400).json({ error: "Missing id" });
+
     if (!process.env.REPLICATE_API_TOKEN) {
       return res.status(500).json({ error: "Missing REPLICATE_API_TOKEN" });
     }
-
-    const id = (req.query?.id || "").trim();
-    if (!id) return res.status(400).json({ error: "Missing prediction id" });
 
     const r = await fetch(`https://api.replicate.com/v1/predictions/${encodeURIComponent(id)}`, {
       method: "GET",
@@ -34,27 +33,25 @@ export default async function handler(req, res) {
     });
 
     const j = await r.json().catch(() => ({}));
-
     if (!r.ok) {
-      return res.status(r.status).json({
-        error: "Replicate GET failed",
-        details: j?.detail || j?.error || JSON.stringify(j)
-      });
+      const details = j?.detail || j?.error || JSON.stringify(j);
+      return res.status(r.status).json({ error: "Replicate read failed", details });
     }
 
     const image = pickImageUrl(j?.output);
+
     return res.status(200).json({
       ok: true,
-      id: j?.id,
+      id: j?.id || id,
       status: j?.status || "unknown",
       image: image || null,
-      replicateError: j?.error || null,
-      web: j?.urls?.web || null
+      error: j?.error || null,
+      logs: j?.logs || null
     });
   } catch (err) {
-    console.error("PREDICTION POLL ERROR:", err);
+    console.error("PREDICTION ERROR:", err);
     return res.status(500).json({
-      error: "Prediction poll failed",
+      error: "Prediction check failed",
       details: err?.message || String(err)
     });
   }
