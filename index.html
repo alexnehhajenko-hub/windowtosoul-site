@@ -5,14 +5,12 @@
   <title>YourPhotoAI – AI Portrait Lab</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- SEO meta -->
   <meta
     name="description"
     content="YourPhotoAI – online AI portrait lab. Upload your photo and get AI-generated portraits in different styles with skin effects, expressions and greetings. Pay once, use your package of generations during the session."
   >
   <link rel="canonical" href="https://yourphotoai.vip/">
 
-  <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-KQVWHVN6BT"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -21,20 +19,15 @@
     gtag('config', 'G-KQVWHVN6BT');
   </script>
 
-  <!-- App styles -->
   <link rel="stylesheet" href="/assets/style.css">
-
-  <!-- Stripe.js for payments -->
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
   <div class="app">
-    <!-- Header -->
     <header class="app-header">
       <h1 class="app-title">YOURPHOTOAI</h1>
       <div class="app-subtitle">Create your unique AI portrait</div>
 
-      <!-- Language switcher -->
       <div class="lang-switch">
         <button id="langEn" class="lang-btn lang-selected">EN</button>
         <button id="langDe" class="lang-btn">DE</button>
@@ -42,7 +35,6 @@
         <button id="langRu" class="lang-btn">RU</button>
       </div>
 
-      <!-- 🔔 Christmas / Holiday sale banner (EN) -->
       <div style="margin-top: 10px; display: flex; justify-content: center;">
         <div
           style="
@@ -68,7 +60,6 @@
         </div>
       </div>
 
-      <!-- Button: view static example gallery -->
       <div style="margin-top:12px; display:flex; justify-content:center;">
         <a
           href="#examplesGallery"
@@ -80,7 +71,6 @@
       </div>
     </header>
 
-    <!-- Portrait preview -->
     <section class="preview-box">
       <div class="preview-label">PREVIEW</div>
 
@@ -91,17 +81,14 @@
         After generation your portrait will appear here.
       </div>
 
-      <!-- Optional greeting text overlay -->
       <div class="greeting-overlay" id="greetingOverlay"></div>
 
-      <!-- Generation status overlay -->
       <div class="generate-status" id="generateStatus">
         <div class="spinner"></div>
         <div class="generate-status-text">Generating portrait…</div>
       </div>
     </section>
 
-    <!-- Email send block -->
     <div
       class="email-send-row"
       style="
@@ -159,7 +146,6 @@
       "
     ></div>
 
-    <!-- Hint -->
     <div
       style="
         margin: 8px auto 0;
@@ -173,12 +159,9 @@
       or <strong>send it to your email</strong> at any time during the session.
     </div>
 
-    <!-- Bottom block: effects + buttons -->
     <div class="controls" id="controls">
-      <!-- Chips with selected settings -->
       <div class="selection-row" id="selectionRow"></div>
 
-      <!-- Main buttons -->
       <section class="button-list">
         <button class="btn-main" id="btnStyle">
           <span class="btn-icon">🎨</span>
@@ -200,31 +183,27 @@
           <span>GREETINGS</span>
         </button>
 
-        <!-- ✅ Continue edits -->
         <button class="btn-main btn-secondary" id="btnContinueEdits">
           <span class="btn-icon">🧩</span>
           <span>CONTINUE EDITS</span>
         </button>
 
-        <!-- ✅ NEW: MAGAZINE PRO (one-click Photoshop) -->
+        <!-- ✅ MAGAZINE PRO (one-click editorial retouch) -->
         <button class="btn-main" id="btnMagazinePro">
           <span class="btn-icon">📰</span>
           <span>MAGAZINE PRO</span>
         </button>
 
-        <!-- ✅ HOLLYWOOD PRO -->
         <button class="btn-main" id="btnHollywoodPro">
           <span class="btn-icon">⭐️</span>
           <span>HOLLYWOOD PRO</span>
         </button>
 
-        <!-- Clear all effects -->
         <button class="btn-main" id="btnClearEffects">
           <span class="btn-icon">🧹</span>
           <span>CLEAR EFFECTS</span>
         </button>
 
-        <!-- ✅ RESTORE (OLD PHOTO) -->
         <button class="btn-main" id="btnRestore">
           <span class="btn-icon">🖼️</span>
           <span>RESTORE (OLD PHOTO)</span>
@@ -248,7 +227,6 @@
       </section>
     </div>
 
-    <!-- Download + My portraits -->
     <div class="download-row">
       <a
         id="downloadLink"
@@ -279,8 +257,10 @@
       </button>
     </div>
 
-    <!-- Static gallery with examples -->
-    <section id="examplesGallery" style="margin: 32px auto 24px; max-width: 900px; padding: 0 16px;">
+    <section
+      id="examplesGallery"
+      style="margin: 32px auto 24px; max-width: 900px; padding: 0 16px;"
+    >
       <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px; text-align: center;">
         Example portraits
       </h2>
@@ -289,20 +269,39 @@
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-        <figure style="margin:0;"><img src="/assets/gallery-1.jpg.jpg" alt="AI portrait example 1" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-2.jpg.jpg" alt="AI portrait example 2" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-3.jpg.jpg" alt="AI portrait example 3" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-4.jpg.jpg" alt="AI portrait example 4" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-5.jpg.jpg" alt="AI portrait example 5" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-6.jpg.jpg" alt="AI portrait example 6" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-7.jpg.jpg" alt="AI portrait example 7" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-8.jpg.jpg" alt="AI portrait example 8" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-9.jpg.jpg" alt="AI portrait example 9" style="width:100%; border-radius:12px; display:block;"></figure>
-        <figure style="margin:0;"><img src="/assets/gallery-10.jpg.jpg" alt="AI portrait example 10" style="width:100%; border-radius:12px; display:block;"></figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-1.jpg.jpg" alt="AI portrait example 1" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-2.jpg.jpg" alt="AI portrait example 2" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-3.jpg.jpg" alt="AI portrait example 3" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-4.jpg.jpg" alt="AI portrait example 4" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-5.jpg.jpg" alt="AI portrait example 5" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-6.jpg.jpg" alt="AI portrait example 6" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-7.jpg.jpg" alt="AI portrait example 7" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-8.jpg.jpg" alt="AI portrait example 8" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-9.jpg.jpg" alt="AI portrait example 9" style="width:100%; border-radius:12px; display:block;">
+        </figure>
+        <figure style="margin:0;">
+          <img src="/assets/gallery-10.jpg.jpg" alt="AI portrait example 10" style="width:100%; border-radius:12px; display:block;">
+        </figure>
       </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
       <div>© YourPhotoAI</div>
       <div class="support-block">
@@ -312,10 +311,8 @@
     </footer>
   </div>
 
-  <!-- Hidden file input -->
   <input type="file" id="fileInput" accept="image/*" style="display:none">
 
-  <!-- Bottom SHEET -->
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-header">
@@ -324,7 +321,9 @@
       </div>
       <div class="sheet-description" id="sheetDescription"></div>
 
-      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">Categories</div>
+      <div class="sheet-section-title" id="sheetCategoryTitle" style="display:none;">
+        Categories
+      </div>
       <div class="chip-row" id="sheetCategoryRow" style="display:none;"></div>
 
       <div class="sheet-section-title" id="sheetOptionsTitle">Options</div>
@@ -332,7 +331,6 @@
     </div>
   </div>
 
-  <!-- MODAL #1 -->
   <div class="pay-backdrop" id="payBackdrop">
     <div class="pay-modal">
       <div class="pay-header">
@@ -363,7 +361,6 @@
     </div>
   </div>
 
-  <!-- MODAL #2 -->
   <div class="agreement-backdrop" id="agreementBackdrop">
     <div class="agreement-modal">
       <div class="agreement-header">
@@ -406,7 +403,6 @@
     </div>
   </div>
 
-  <!-- Main JS -->
   <script type="module" src="/assets/main.js"></script>
   <script type="module" src="/assets/email-send.js"></script>
   <script type="module" src="/assets/gallery.js"></script>
