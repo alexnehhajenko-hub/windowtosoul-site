@@ -8,7 +8,7 @@ import {
   openGreetingSheet
 } from "./effects.js";
 import { handleGenerateClick, handleFileSelected } from "./generation.js";
-import { appState, UI_TEXT } from "./state.js";
+import { appState } from "./state.js";
 import {
   openPayModal,
   closePayModal,
@@ -32,6 +32,7 @@ export function attachMainHandlers() {
     });
   }
 
+  // ✅ HOLLYWOOD PRO: one-click pro retouch
   if (els.btnHollywoodPro) {
     els.btnHollywoodPro.addEventListener("click", () => {
       appState.mode = "generate";
@@ -43,18 +44,15 @@ export function attachMainHandlers() {
     });
   }
 
-  // ✅ Continue edits toggle
-  if (els.btnContinueEdits) {
-    els.btnContinueEdits.addEventListener("click", () => {
-      const t = UI_TEXT[appState.language] || UI_TEXT.en;
-
-      if (!appState.lastResultUrl) {
-        alert(t.alertNoResultToContinue || UI_TEXT.en.alertNoResultToContinue);
-        return;
-      }
-
-      appState.useResultAsInput = !appState.useResultAsInput;
+  // ✅ MAGAZINE PRO: magazine-ready portrait, NO styles, just beauty retouch
+  if (els.btnMagazinePro) {
+    els.btnMagazinePro.addEventListener("click", () => {
+      appState.mode = "generate";
+      appState.selectedStyle = "beauty";
+      appState.selectedEffects = ["magazine-pro"];
+      appState.selectedGreeting = null;
       refreshSelectionChips();
+      handleGenerateClick();
     });
   }
 
