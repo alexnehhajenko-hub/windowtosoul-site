@@ -1,5 +1,6 @@
 // assets/js/generation.js
-// Upload photo, call /api/generate OR /api/restore OR /api/magazine-pro (async polling)
+// Upload photo, call /api/generate OR /api/restore
+// ✅ Magazine Pro: use HQ input + face close-up reference to lock identity
 
 import {
   appState,
@@ -17,6 +18,8 @@ import {
 } from "./interface.js";
 import { openAgreementModal, openPayModal } from "./payment.js";
 
+const FETCH_TIMEOUT_MS = 300000; // 5 min safety timeout (prevents endless hang)
+
 export function handleFileSelected(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
@@ -32,11 +35,23 @@ export function handleFileSelected(event) {
   reader.onload = (e) => {
     const img = new Image();
     img.onload = () => {
-      const resizedDataUrl = resizeImageToMax(img, 1024);
-      appState.photoBase64 = resizedDataUrl;
+      // Default preview + most modes
+      const resized1024 = resizeImageToMax(img, 1024);
+
+      // ✅ HQ for Magazine Pro (stronger retouch, less identity drift)
+      const resized2048 = resizeImageToMax(img, 2048);
+
+      // ✅ Face reference crop (helps keep identity)
+      const faceCrop = makeFaceCropDataUrl(img, 1024);
+
+      appState.photoBase64 = resized1024;
+
+      // Store extra refs (dynamic props, no need to change state.js)
+      appState.photoBase64HQ = resized2048;
+      appState.photoFaceCrop = faceCrop;
 
       if (els.previewImage) {
-        els.previewImage.src = resizedDataUrl;
+        els.previewImage.src = resized1024;
         els.previewImage.style.display = "block";
       }
       if (els.previewPlaceholder) {
@@ -68,50 +83,31 @@ function resizeImageToMax(img, maxSize) {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", 0.9);
+  return canvas.toDataURL("image/jpeg", 0.92);
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+// Heuristic face crop (no extra libs): upper-center square crop
+function makeFaceCropDataUrl(img, outSize = 768) {
+  const srcW = img.width;
+  const srcH = img.height;
 
-async function pollPrediction(predId, t, { timeoutMs = 240000, intervalMs = 1500 } = {}) {
-  const started = Date.now();
+  // Square size: based on width (portrait/head usually in upper area)
+  const size = Math.min(srcW, Math.round(srcH * 0.70));
 
-  while (true) {
-    if (Date.now() - started > timeoutMs) {
-      throw new Error("Prediction timeout");
-    }
+  let x = Math.round((srcW - size) / 2);
+  let y = Math.round(srcH * 0.06); // near top
 
-    const r = await fetch(`/api/prediction?id=${encodeURIComponent(predId)}`, {
-      method: "GET"
-    });
+  // Clamp
+  x = Math.max(0, Math.min(x, srcW - size));
+  y = Math.max(0, Math.min(y, srcH - size));
 
-    let j = {};
-    try {
-      j = await r.json();
-    } catch {}
+  const canvas = document.createElement("canvas");
+  canvas.width = outSize;
+  canvas.height = outSize;
+  const ctx = canvas.getContext("2d");
 
-    if (!r.ok) {
-      const msg = j?.details || j?.error || `HTTP ${r.status}`;
-      throw new Error("Prediction check failed: " + msg);
-    }
-
-    const status = j?.status || "unknown";
-
-    if (status === "succeeded") {
-      if (!j?.image) throw new Error("Prediction succeeded but image is missing");
-      return j.image;
-    }
-
-    if (status === "failed" || status === "canceled") {
-      const msg = j?.error || j?.logs || "Prediction failed";
-      throw new Error(String(msg));
-    }
-
-    // starting | processing | unknown -> wait
-    await sleep(intervalMs);
-  }
+  ctx.drawImage(img, x, y, size, size, 0, 0, outSize, outSize);
+  return canvas.toDataURL("image/jpeg", 0.92);
 }
 
 export async function handleGenerateClick() {
@@ -125,11 +121,11 @@ export async function handleGenerateClick() {
   }
 
   const isRestore = appState.mode === "restore";
-  const isMagazinePro = !isRestore && Array.isArray(appState.selectedEffects)
-    ? appState.selectedEffects.includes("magazine-pro")
-    : false;
 
-  // Payment / credits gate: restore is free (as you already had)
+  // ✅ detect Magazine Pro
+  const effectsArr = Array.isArray(appState.selectedEffects) ? appState.selectedEffects : [];
+  const isMagazinePro = !isRestore && effectsArr.includes("magazine-pro");
+
   if (!isRestore) {
     if (DEMO_MODE) {
       if (!appState.userEmail || !appState.userAgreed) {
@@ -156,6 +152,9 @@ export async function handleGenerateClick() {
   appState.isGenerating = true;
   showGenerating(true);
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
     // ✅ Layering: if enabled and we have last result -> use it as input image
     // Restore always uses original uploaded photoBase64 (do not chain restore).
@@ -164,29 +163,37 @@ export async function handleGenerateClick() {
         ? appState.lastResultUrl
         : appState.photoBase64;
 
-    let endpoint = "/api/generate";
-    let payload = {
-      style: appState.selectedStyle || "beauty",
-      text: "",
-      photo: inputPhoto,
-      effects: appState.selectedEffects,
-      greeting: appState.selectedGreeting || null,
-      language: appState.language || "en"
-    };
+    // ✅ For Magazine Pro: use HQ input if available (only when using original upload)
+    const magazineInputPhoto =
+      !isRestore && !(appState.useResultAsInput && appState.lastResultUrl)
+        ? (appState.photoBase64HQ || appState.photoBase64)
+        : inputPhoto;
 
-    if (isRestore) {
-      endpoint = "/api/restore";
-      payload = { photo: appState.photoBase64, language: appState.language || "en" };
-    } else if (isMagazinePro) {
-      // ✅ Magazine Pro runs on separate ASYNC pipeline
-      endpoint = "/api/magazine-pro";
-      payload = { photo: inputPhoto };
-    }
+    // ✅ Face reference only when we still have original uploaded image
+    const faceRef =
+      isMagazinePro && !(appState.useResultAsInput && appState.lastResultUrl)
+        ? (appState.photoFaceCrop || null)
+        : null;
+
+    const payload = isRestore
+      ? { photo: appState.photoBase64, language: appState.language || "en" }
+      : {
+          style: appState.selectedStyle || "beauty",
+          text: "",
+          photo: isMagazinePro ? magazineInputPhoto : inputPhoto,
+          face: faceRef, // ✅ optional second ref to lock identity
+          effects: appState.selectedEffects,
+          greeting: appState.selectedGreeting || null,
+          language: appState.language || "en"
+        };
+
+    const endpoint = isRestore ? "/api/restore" : "/api/generate";
 
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
 
     if (!resp.ok) {
@@ -204,37 +211,18 @@ export async function handleGenerateClick() {
     }
 
     const data = await resp.json();
-
-    // ✅ SYNC path
-    if (data && data.image) {
-      showResultPortrait(data.image);
-
-      if (!isRestore) {
-        registerGeneration(data.image);
-        clearEffectsSelection();
-      } else {
-        appState.mode = "generate";
-        refreshSelectionChips();
-      }
-
-      return;
+    if (!data || !data.image) {
+      throw new Error("No image URL in response");
     }
 
-    // ✅ ASYNC path (restore + magazine-pro)
-    const predId = data?.prediction || data?.predictionId || null;
-    if (!predId) {
-      throw new Error("No image URL or prediction id in response");
-    }
+    showResultPortrait(data.image);
 
-    const imageUrl = await pollPrediction(predId, t, { timeoutMs: 240000, intervalMs: 1500 });
-
-    showResultPortrait(imageUrl);
-
-    // restore: do not spend credits
     if (!isRestore) {
-      registerGeneration(imageUrl);
+      registerGeneration(data.image);
       clearEffectsSelection();
-    } else {
+    }
+
+    if (isRestore) {
       appState.mode = "generate";
       refreshSelectionChips();
     }
@@ -242,6 +230,7 @@ export async function handleGenerateClick() {
     console.error("GENERATION ERROR:", err);
     alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
   } finally {
+    clearTimeout(timeoutId);
     showGenerating(false);
     appState.isGenerating = false;
   }
