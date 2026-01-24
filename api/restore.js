@@ -1,5 +1,6 @@
 // api/restore.js — Photo Restoration (V2 async, single-pass: restore + border cleanup)
-// Uses FLUX-Kontext-Pro (Replicate) but returns prediction id (frontend polls).
+// Uses FLUX-Kontext-Pro (Replicate) and returns prediction id (frontend polls).
+// ✅ Backward-compatible response fields: predictionId + imageUrl + output
 
 const MODEL_FLUX_KONTEXT_PRO = "black-forest-labs/flux-kontext-pro";
 
@@ -35,12 +36,13 @@ function pickImageUrl(output) {
   return null;
 }
 
-async function createOfficialPrediction(model, input, cancelAfter = "4m") {
+async function createOfficialPrediction(model, input, cancelAfter = "6m") {
   const r = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
       "Content-Type": "application/json",
+      // ✅ allow more time on Replicate side (doesn't block Vercel, just prevents early cancel)
       "Cancel-After": cancelAfter
     },
     body: JSON.stringify({ input })
@@ -60,6 +62,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    res.setHeader("Cache-Control", "no-store");
+
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -88,20 +92,40 @@ export default async function handler(req, res) {
       output_format: "jpg"
     };
 
-    const pred = await createOfficialPrediction(MODEL_FLUX_KONTEXT_PRO, input, "4m");
+    const pred = await createOfficialPrediction(MODEL_FLUX_KONTEXT_PRO, input, "6m");
+
+    // ✅ Usually null on create() for async models — that's OK
     const immediateImage = pickImageUrl(pred?.output);
 
+    // ✅ Backward-compatible keys:
+    // - predictionId: many frontends look for this name
+    // - imageUrl/output: some old code expects a ready url or an array
     return res.status(200).json({
       ok: true,
-      prediction: pred?.id,
+
+      // async tracking
+      prediction: pred?.id || null,
+      predictionId: pred?.id || null,
+      id: pred?.id || null,
       status: pred?.status || "starting",
       web: pred?.urls?.web || null,
+
+      // compatible output
       image: immediateImage || null,
-      mode: m
+      imageUrl: immediateImage || null,
+      output: immediateImage ? [immediateImage] : null,
+
+      // meta
+      mode: m,
+      async: true,
+      note: immediateImage
+        ? "image ready"
+        : "prediction created; poll /api/prediction with predictionId until succeeded"
     });
   } catch (err) {
     console.error("RESTORE ERROR:", err);
     return res.status(500).json({
+      ok: false,
       error: "Restore failed",
       details: err?.message || String(err)
     });
