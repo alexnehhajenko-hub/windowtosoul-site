@@ -42,6 +42,78 @@ body {
   opacity: 0.7;
 }
 
+/* ✅ Language dropdown (no HTML/JS changes needed) */
+.lang-switch {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.22);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  user-select: none;
+}
+
+.lang-btn {
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.92);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition:
+    background 0.12s ease-out,
+    border-color 0.12s ease-out,
+    transform 0.08s ease-out;
+}
+
+.lang-btn:hover {
+  background: rgba(255,255,255,0.07);
+  transform: translateY(-1px);
+}
+
+.lang-btn:active {
+  transform: translateY(0px);
+}
+
+.lang-btn:focus-visible {
+  outline: 2px solid rgba(180, 163, 255, 0.75);
+  outline-offset: 2px;
+}
+
+.lang-selected {
+  background: linear-gradient(135deg, #5560d8, #8b7fe7);
+  border-color: rgba(255,255,255,0.55);
+  color: #fff;
+}
+
+/* default: show only selected language as "one button" */
+.lang-switch .lang-btn {
+  display: none;
+}
+.lang-switch .lang-btn.lang-selected {
+  display: inline-flex;
+}
+
+/* tap/focus to expand */
+.lang-switch:focus-within .lang-btn,
+.lang-switch:hover .lang-btn {
+  display: inline-flex;
+}
+
+/* when expanded, keep neat spacing */
+.lang-switch:focus-within,
+.lang-switch:hover {
+  gap: 6px;
+}
+
 .preview-box {
   position: relative;
   border-radius: 20px;
