@@ -71,6 +71,63 @@ function resizeImageToMax(img, maxSize) {
   return canvas.toDataURL("image/jpeg", 0.9);
 }
 
+function extractImageUrl(data) {
+  if (!data) return null;
+  if (typeof data.image === "string" && data.image) return data.image;
+  if (typeof data.imageUrl === "string" && data.imageUrl) return data.imageUrl;
+  if (Array.isArray(data.output) && data.output[0]) return data.output[0];
+  if (typeof data.output === "string" && data.output) return data.output;
+  return null;
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function fetchPrediction(predictionId) {
+  // Try POST first (common)
+  try {
+    const r = await fetch("/api/prediction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: predictionId, prediction: predictionId, predictionId })
+    });
+    if (r.ok) return await r.json();
+  } catch (e) {}
+
+  // Fallback: GET ?id=...
+  try {
+    const r2 = await fetch(`/api/prediction?id=${encodeURIComponent(predictionId)}`, {
+      method: "GET"
+    });
+    if (r2.ok) return await r2.json();
+  } catch (e) {}
+
+  return null;
+}
+
+async function waitForPredictionImage(predictionId, timeoutMs = 90000) {
+  const started = Date.now();
+  let delay = 1200;
+
+  while (Date.now() - started < timeoutMs) {
+    const data = await fetchPrediction(predictionId);
+    const url = extractImageUrl(data);
+
+    if (url) return url;
+
+    const st = (data && (data.status || data.state)) ? String(data.status || data.state).toLowerCase() : "";
+    if (st === "failed" || st === "canceled" || st === "cancelled" || st === "error") {
+      throw new Error("Prediction failed");
+    }
+
+    await sleep(delay);
+    delay = Math.min(delay + 800, 5000);
+  }
+
+  throw new Error("Prediction timeout");
+}
+
 export async function handleGenerateClick() {
   if (appState.isGenerating) return;
 
@@ -151,14 +208,27 @@ export async function handleGenerateClick() {
     }
 
     const data = await resp.json();
-    if (!data || !data.image) {
+
+    // ✅ Generate: still expects immediate image
+    // ✅ Restore: may be async -> if no image, poll /api/prediction up to 90s
+    let imageUrl = extractImageUrl(data);
+
+    if (isRestore && !imageUrl) {
+      const pid = data?.predictionId || data?.prediction || data?.id;
+      if (!pid) {
+        throw new Error("No prediction id in restore response");
+      }
+      imageUrl = await waitForPredictionImage(pid, 90000); // >= 1 minute waiting
+    }
+
+    if (!imageUrl) {
       throw new Error("No image URL in response");
     }
 
-    showResultPortrait(data.image);
+    showResultPortrait(imageUrl);
 
     if (!isRestore) {
-      registerGeneration(data.image);
+      registerGeneration(imageUrl);
       clearEffectsSelection();
     }
 
