@@ -71,61 +71,35 @@ function resizeImageToMax(img, maxSize) {
   return canvas.toDataURL("image/jpeg", 0.9);
 }
 
-function extractImageUrl(data) {
-  if (!data) return null;
-  if (typeof data.image === "string" && data.image) return data.image;
-  if (typeof data.imageUrl === "string" && data.imageUrl) return data.imageUrl;
-  if (Array.isArray(data.output) && data.output[0]) return data.output[0];
-  if (typeof data.output === "string" && data.output) return data.output;
-  return null;
-}
-
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function fetchPrediction(predictionId) {
-  // Try POST first (common)
-  try {
-    const r = await fetch("/api/prediction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: predictionId, prediction: predictionId, predictionId })
-    });
-    if (r.ok) return await r.json();
-  } catch (e) {}
-
-  // Fallback: GET ?id=...
-  try {
-    const r2 = await fetch(`/api/prediction?id=${encodeURIComponent(predictionId)}`, {
-      method: "GET"
-    });
-    if (r2.ok) return await r2.json();
-  } catch (e) {}
-
-  return null;
-}
-
-async function waitForPredictionImage(predictionId, timeoutMs = 90000) {
+// ✅ Poll restore prediction (server-side proxy endpoint)
+async function pollPrediction(predId, maxMs = 240000) {
   const started = Date.now();
-  let delay = 1200;
+  let delay = 1500;
 
-  while (Date.now() - started < timeoutMs) {
-    const data = await fetchPrediction(predictionId);
-    const url = extractImageUrl(data);
+  while (Date.now() - started < maxMs) {
+    const r = await fetch(`/api/prediction?id=${encodeURIComponent(predId)}`, { method: "GET" });
+    const j = await r.json().catch(() => ({}));
 
-    if (url) return url;
+    if (!r.ok || !j?.ok) {
+      const details = j?.details || j?.error || "Prediction status error";
+      throw new Error(details);
+    }
 
-    const st = (data && (data.status || data.state)) ? String(data.status || data.state).toLowerCase() : "";
-    if (st === "failed" || st === "canceled" || st === "cancelled" || st === "error") {
-      throw new Error("Prediction failed");
+    const status = j.status;
+    if (status === "succeeded" && j.image) return j.image;
+    if (status === "failed" || status === "canceled") {
+      throw new Error(j.error || "Restore failed");
     }
 
     await sleep(delay);
-    delay = Math.min(delay + 800, 5000);
+    delay = Math.min(4500, Math.round(delay * 1.25));
   }
 
-  throw new Error("Prediction timeout");
+  throw new Error("Restore timeout (prediction still running)");
 }
 
 export async function handleGenerateClick() {
@@ -175,7 +149,12 @@ export async function handleGenerateClick() {
         : appState.photoBase64;
 
     const payload = isRestore
-      ? { photo: appState.photoBase64, language: appState.language || "en" }
+      ? {
+          photo: appState.photoBase64,
+          // ✅ send restore mode (neutral/warm/bw)
+          mode: appState.restoreMode || "neutral",
+          language: appState.language || "en"
+        }
       : {
           style: appState.selectedStyle || "beauty",
           text: "",
@@ -209,33 +188,32 @@ export async function handleGenerateClick() {
 
     const data = await resp.json();
 
-    // ✅ Generate: still expects immediate image
-    // ✅ Restore: may be async -> if no image, poll /api/prediction up to 90s
-    let imageUrl = extractImageUrl(data);
-
-    if (isRestore && !imageUrl) {
-      const pid = data?.predictionId || data?.prediction || data?.id;
-      if (!pid) {
-        throw new Error("No prediction id in restore response");
+    // ✅ Restore can be async: image may be null, but prediction id exists
+    if (isRestore) {
+      if (data?.image) {
+        showResultPortrait(data.image);
+      } else if (data?.prediction) {
+        const finalUrl = await pollPrediction(data.prediction, 240000);
+        showResultPortrait(finalUrl);
+      } else {
+        throw new Error("Restore returned no image and no prediction id");
       }
-      imageUrl = await waitForPredictionImage(pid, 90000); // >= 1 minute waiting
+
+      // after restore: back to generate
+      appState.mode = "generate";
+      refreshSelectionChips();
+      return;
     }
 
-    if (!imageUrl) {
+    // normal generate flow expects image
+    if (!data || !data.image) {
       throw new Error("No image URL in response");
     }
 
-    showResultPortrait(imageUrl);
+    showResultPortrait(data.image);
 
-    if (!isRestore) {
-      registerGeneration(imageUrl);
-      clearEffectsSelection();
-    }
-
-    if (isRestore) {
-      appState.mode = "generate";
-      refreshSelectionChips();
-    }
+    registerGeneration(data.image);
+    clearEffectsSelection();
   } catch (err) {
     console.error("GENERATION ERROR:", err);
     alert(t.alertGenerationFailed || UI_TEXT.en.alertGenerationFailed);
@@ -297,7 +275,10 @@ function registerGeneration(imageUrl) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.CREDITS_TOTAL, String(appState.creditsTotal));
     window.localStorage.setItem(STORAGE_KEYS.CREDITS_USED, String(appState.creditsUsed));
-    window.localStorage.setItem(STORAGE_KEYS.GENERATED_IMAGES, JSON.stringify(appState.generatedImages));
+    window.localStorage.setItem(
+      STORAGE_KEYS.GENERATED_IMAGES,
+      JSON.stringify(appState.generatedImages)
+    );
   } catch (e) {
     console.warn("Cannot store credits/images", e);
   }
