@@ -1,23 +1,25 @@
 // api/generate.js
 // V2 pipeline (Replicate):
-// - Styles + edits -> FLUX-2-Pro
-// - Magazine Pro (one-click Photoshop-like) -> FLUX-Kontext-Pro
+// - ALL styles + edits -> FLUX-2-Pro
 // Goal: iPhone/Photoshop-like retouch WITHOUT swapping identity.
+// ✅ Magazine Pro: accepts optional `face` close-up reference to lock identity
 
 import Replicate from "replicate";
 
 // ───────────── MODELS ─────────────
 const MODEL_FLUX2_PRO = "black-forest-labs/flux-2-pro";
-const MODEL_FLUX_KONTEXT_PRO = "black-forest-labs/flux-kontext-pro";
 
 // ───────────── STYLES ─────────────
 const STYLE_PREFIX = {
   beauty:
     "high-quality realistic photo retouch, keep the same person, keep the same background and clothes, natural colors, realistic texture, do not change identity",
   oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep the same person and recognizable face",
-  anime: "anime style portrait, clean line art, soft pastel shading, keep the same person and recognizable face",
-  poster: "cinematic movie poster portrait, dramatic lighting, high contrast, keep the same person and recognizable face",
-  classic: "classical old master portrait, realism, warm tones, keep the same person and recognizable face",
+  anime:
+    "anime style portrait, clean line art, soft pastel shading, keep the same person and recognizable face",
+  poster:
+    "cinematic movie poster portrait, dramatic lighting, high contrast, keep the same person and recognizable face",
+  classic:
+    "classical old master portrait, realism, warm tones, keep the same person and recognizable face",
   default:
     "realistic photo edit, detailed face, soft studio lighting, natural colors, keep the same person and recognizable face"
 };
@@ -42,14 +44,14 @@ const EFFECT_PROMPTS = {
     "reduce blotches/redness/spots. keep all details of eyes, eyelashes, eyebrows, lips, hair, glasses. " +
     "NO FACE SWAP. DO NOT change facial structure. Keep the same person and same expression.",
 
-  // ✅ Magazine Pro — “журнальная” ретушь без подмены лица
+  // ✅ Magazine Pro — “журнальная” ретушь без подмены лица (stronger + expression lock)
   "magazine-pro":
-    "MAGAZINE PRO RETOUCH (EDITORIAL ONE-CLICK): keep the SAME person 100% recognizable. " +
-    "Professional beauty retouch like magazine cover: remove deep wrinkles and fine lines strongly, reduce under-eye shadows, smooth uneven skin, remove blemishes, redness, spots. " +
+    "MAGAZINE PRO RETOUCH (EDITORIAL): keep the SAME person 100% recognizable. " +
+    "Lock original expression: mouth closed/neutral, NO forced smile, NO new teeth. " +
+    "Professional magazine retouch: remove deep wrinkles and fine lines VERY strongly, reduce under-eye shadows, smooth uneven skin, remove blemishes, redness, spots. " +
     "Correct white balance and skin tone: NO green/cyan cast, natural healthy skin tones, avoid oversaturation. " +
     "Improve face lighting gently (soft key light), increase clarity slightly, keep pores/texture (not plastic). " +
-    "Subtle slimming ONLY by reducing puffiness: slightly tighten cheeks/jawline/neck and body silhouette 5–10% MAX without changing bone structure or facial proportions. " +
-    "EXPRESSION LOCK: keep the same expression as input, mouth closed, no teeth, do NOT add smile. " +
+    "Subtle slimming ONLY by reducing puffiness: slightly tighten cheeks/jawline/neck without changing bone structure or facial proportions. " +
     "Do NOT change eye shape, nose, lips, jaw, cheekbones. NO face swap. Do NOT replace the face with another person. Keep hairstyle, eyebrows, glasses identical.",
 
   "no-wrinkles":
@@ -60,7 +62,8 @@ const EFFECT_PROMPTS = {
     "smooth and even skin tone, reduce blemishes and redness, keep realistic texture; do not change identity",
   "beauty-one-touch":
     "natural beauty retouch: gently smooth skin, remove small blemishes, reduce fine wrinkles, keep realism; do not change identity",
-  "glow-golden": "warm golden glow on the face, healthy skin, soft highlights; do not change identity",
+  "glow-golden":
+    "warm golden glow on the face, healthy skin, soft highlights; do not change identity",
   "cinematic-light":
     "cinematic soft key light and gentle shadows on the face, better contrast; do not change identity",
 
@@ -89,7 +92,7 @@ const GREETING_PROMPTS = {
     "add small handwritten English text 'You look amazing!' (small, not covering the face)",
   scary:
     "add a gentle spooky atmosphere (no gore). keep the person identical. subtle fog/background. " +
-    "add small handwritten English text 'Happy Halloween' (small, not covering the face)",
+    "add small elegant handwritten English text 'Happy Halloween' (small, not covering the face)",
 
   "devil-eyes":
     "ADD EFFECT ONLY: make the SAME person's eyes glow bright icy blue (subtle realistic glow). " +
@@ -115,20 +118,16 @@ const IDENTITY_PROMPT =
   "Do NOT change facial structure, head shape, eye shape, nose, lips, jawline, cheekbones. " +
   "Do NOT replace the face with another person/model. " +
   "Keep hairstyle, hairline, hair color, eyebrows, and glasses consistent. " +
-  "Keep the same camera angle and the same composition. Do NOT crop or zoom.";
-
-// Extra lock for Magazine Pro (prevents “new smile / new teeth / new face”)
-const MAGAZINE_LOCK =
-  "MAGAZINE LOCK: keep EXACT expression, keep mouth closed, no teeth, no new smile. " +
-  "Do NOT beautify by changing facial geometry. Retouch ONLY skin, light, and tiny puffiness. " +
-  "No green/cyan skin cast. Neutral realistic skin tones.";
+  "Keep the same camera angle and the same composition. Do NOT crop or zoom. " +
+  "If a second close-up face reference is provided, use it ONLY to preserve identity.";
 
 // ───────── UI SCREENSHOT CLEANUP ─────────
 const UI_CLEANUP_TAIL =
   "If the input looks like a screenshot of a website/app (buttons, panels, UI text), remove and repaint all interface elements and restore a natural background while keeping the person identical.";
 
 // ───────── SAFETY ─────────
-const SAFETY_TAIL = "fully clothed, no nudity, no sexual content, keep realism, avoid distorted anatomy";
+const SAFETY_TAIL =
+  "fully clothed, no nudity, no sexual content, keep realism, avoid distorted anatomy";
 
 // ───────── helpers ─────────
 function pickImageUrl(output) {
@@ -146,15 +145,43 @@ function buildEffectsPrompt(keys) {
   return keys.map((k) => EFFECT_PROMPTS[k]).filter(Boolean).join(". ");
 }
 
-// Robust FLUX-2-Pro call
-async function runFlux2Pro(replicate, image, prompt) {
+// Robust FLUX-2-Pro call (different models sometimes name image input differently)
+async function runFlux2Pro(replicate, image, face, prompt) {
+  const images = face ? [image, face] : [image];
+
   const tries = [
-    { input: { prompt, input_images: [image], output_format: "jpg", aspect_ratio: "match_input_image" } },
-    { input: { prompt, input_image: image, output_format: "jpg", aspect_ratio: "match_input_image" } },
-    { input: { prompt, image, output_format: "jpg", aspect_ratio: "match_input_image" } },
-    { input: { prompt, input_images: [image] } },
-    { input: { prompt, input_image: image } },
-    { input: { prompt, image } }
+    {
+      input: {
+        prompt,
+        input_images: images,
+        output_format: "jpg",
+        aspect_ratio: "match_input_image"
+      }
+    },
+    // fallback single-image field names (only if no face ref)
+    ...(face
+      ? []
+      : [
+          {
+            input: {
+              prompt,
+              input_image: image,
+              output_format: "jpg",
+              aspect_ratio: "match_input_image"
+            }
+          },
+          {
+            input: {
+              prompt,
+              image,
+              output_format: "jpg",
+              aspect_ratio: "match_input_image"
+            }
+          },
+          { input: { prompt, input_images: [image] } },
+          { input: { prompt, input_image: image } },
+          { input: { prompt, image } }
+        ])
   ];
 
   let lastErr = null;
@@ -171,31 +198,10 @@ async function runFlux2Pro(replicate, image, prompt) {
   throw lastErr || new Error("FLUX-2-Pro failed");
 }
 
-// Robust FLUX-Kontext-Pro call (better for “edit photo, keep identity”)
-async function runKontextPro(replicate, image, prompt) {
-  const tries = [
-    { input: { prompt, input_image: image, output_format: "jpg", aspect_ratio: "match_input_image" } },
-    { input: { prompt, image, output_format: "jpg", aspect_ratio: "match_input_image" } },
-    { input: { prompt, input_image: image } },
-    { input: { prompt, image } }
-  ];
-
-  let lastErr = null;
-  for (const payload of tries) {
-    try {
-      const out = await replicate.run(MODEL_FLUX_KONTEXT_PRO, payload);
-      const url = pickImageUrl(out);
-      if (url) return url;
-      lastErr = new Error("No image URL in model output");
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw lastErr || new Error("FLUX-Kontext-Pro failed");
-}
-
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   try {
     let body = req.body;
@@ -207,7 +213,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const { style, text, photo, effects, greeting } = body || {};
+    const { style, text, photo, face, effects, greeting } = body || {};
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return res.status(500).json({ error: "Missing REPLICATE_API_TOKEN in environment variables" });
@@ -229,26 +235,14 @@ export default async function handler(req, res) {
     const skinKey = skinEffects[0] || null;
     const skinPrompt = skinKey ? (EFFECT_PROMPTS[skinKey] || "") : "";
 
-    const isMagazine = skinKey === "magazine-pro";
-
-    // One final prompt
     const promptParts = [
-      // Magazine Pro should not “stylize”, keep it strictly photo-edit
-      isMagazine
-        ? "REAL PHOTO EDIT ONLY: keep original photo look, same background and clothes, no style transfer, no artistic look."
-        : stylePrefix,
-
+      stylePrefix,
       buildEffectsPrompt(otherEffects),
-
       skinPrompt ? ("MINIMAL EDIT: change ONLY skin/retouch. " + skinPrompt) : "",
-
-      isMagazine ? MAGAZINE_LOCK : "",
-
       greetingPrompt
         ? ("MINIMAL EDIT: if greeting/prop is selected, apply ONLY that prop/atmosphere without changing the person's face. " +
             greetingPrompt)
         : "",
-
       userPrompt,
       IDENTITY_PROMPT,
       UI_CLEANUP_TAIL,
@@ -257,11 +251,7 @@ export default async function handler(req, res) {
 
     const finalPrompt = promptParts.join(". ").trim();
 
-    // ✅ Route Magazine Pro to Kontext-Pro (more stable identity)
-    const url = isMagazine
-      ? await runKontextPro(replicate, photo, finalPrompt)
-      : await runFlux2Pro(replicate, photo, finalPrompt);
-
+    const url = await runFlux2Pro(replicate, photo, face || null, finalPrompt);
     return res.status(200).json({ ok: true, image: url });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
