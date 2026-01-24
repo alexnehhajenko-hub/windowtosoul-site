@@ -1,6 +1,5 @@
 // api/restore.js — Photo Restoration (V2 async, single-pass: restore + border cleanup)
-// Uses FLUX-Kontext-Pro (Replicate) and returns prediction id (frontend polls).
-// ✅ Backward-compatible response fields: predictionId + imageUrl + output
+// Uses FLUX-Kontext-Pro (Replicate) but returns prediction id (frontend polls).
 
 const MODEL_FLUX_KONTEXT_PRO = "black-forest-labs/flux-kontext-pro";
 
@@ -14,12 +13,25 @@ const RESTORE_PROMPT_BASE = [
   "crop only minimal to real photo content; if edges are missing, extend background naturally",
   "do NOT invent new subjects, do NOT add objects",
   "no text, no captions, no logos, no watermarks",
-  "photorealistic restoration only, no stylization"
+  "photorealistic restoration only, no stylization",
+  // ✅ anti-green / correct WB
+  "CRITICAL COLOR RULES: natural human skin tones, correct white balance, neutral gray balance",
+  "remove green/magenta color cast, avoid sickly green faces, avoid gray-green skin",
+  "keep lips natural, avoid neon/green shadows on face",
+  "keep overall colors realistic"
 ].join(", ");
 
-const COLOR_PRESET = [
+const COLOR_NEUTRAL = [
   "colorize realistically with natural skin tones",
-  "avoid oversaturation, keep classic photographic look"
+  "avoid oversaturation, keep classic photographic look",
+  "neutral white balance"
+].join(", ");
+
+const COLOR_WARM = [
+  "colorize realistically with natural skin tones",
+  "avoid oversaturation, keep classic photographic look",
+  "slightly warm skin tones (healthy, not orange)",
+  "warm white balance, but keep whites neutral"
 ].join(", ");
 
 const BW_PRESET = ["keep it black and white", "improve tonal range and contrast, classic film look"].join(
@@ -36,13 +48,12 @@ function pickImageUrl(output) {
   return null;
 }
 
-async function createOfficialPrediction(model, input, cancelAfter = "6m") {
+async function createOfficialPrediction(model, input, cancelAfter = "4m") {
   const r = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
       "Content-Type": "application/json",
-      // ✅ allow more time on Replicate side (doesn't block Vercel, just prevents early cancel)
       "Cancel-After": cancelAfter
     },
     body: JSON.stringify({ input })
@@ -62,8 +73,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    res.setHeader("Cache-Control", "no-store");
-
     let body = req.body;
     if (typeof body === "string") {
       try {
@@ -80,8 +89,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Missing REPLICATE_API_TOKEN" });
     }
 
-    const m = (mode || "colorize").toLowerCase();
-    const tonePreset = m === "bw" ? BW_PRESET : COLOR_PRESET;
+    const m = (mode || "neutral").toLowerCase();
+    const tonePreset = m === "bw" ? BW_PRESET : m === "warm" ? COLOR_WARM : COLOR_NEUTRAL;
 
     const prompt = [RESTORE_PROMPT_BASE, tonePreset].join(". ").trim();
 
@@ -92,40 +101,20 @@ export default async function handler(req, res) {
       output_format: "jpg"
     };
 
-    const pred = await createOfficialPrediction(MODEL_FLUX_KONTEXT_PRO, input, "6m");
-
-    // ✅ Usually null on create() for async models — that's OK
+    const pred = await createOfficialPrediction(MODEL_FLUX_KONTEXT_PRO, input, "4m");
     const immediateImage = pickImageUrl(pred?.output);
 
-    // ✅ Backward-compatible keys:
-    // - predictionId: many frontends look for this name
-    // - imageUrl/output: some old code expects a ready url or an array
     return res.status(200).json({
       ok: true,
-
-      // async tracking
-      prediction: pred?.id || null,
-      predictionId: pred?.id || null,
-      id: pred?.id || null,
+      prediction: pred?.id,
       status: pred?.status || "starting",
       web: pred?.urls?.web || null,
-
-      // compatible output
       image: immediateImage || null,
-      imageUrl: immediateImage || null,
-      output: immediateImage ? [immediateImage] : null,
-
-      // meta
-      mode: m,
-      async: true,
-      note: immediateImage
-        ? "image ready"
-        : "prediction created; poll /api/prediction with predictionId until succeeded"
+      mode: m
     });
   } catch (err) {
     console.error("RESTORE ERROR:", err);
     return res.status(500).json({
-      ok: false,
       error: "Restore failed",
       details: err?.message || String(err)
     });
