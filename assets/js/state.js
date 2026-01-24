@@ -136,7 +136,7 @@ export const UI_TEXT = {
     ...EN,
     subtitle: "Создайте свой уникальный AI-портрет",
     btnHollywoodPro: "ГОЛЛИВУД PRO",
-    btnMagazinePro: "ЖУРНАЛ PRO",
+    btnMagazinePro: "MAGAZINE PRO",
     btnAddPhoto: "ДОБАВИТЬ ФОТО",
     btnGenerate: "СОЗДАТЬ",
     btnPay: "ПАКЕТЫ",
@@ -177,7 +177,7 @@ export const STYLE_LABELS_EN = {
 
 export const EFFECT_CHIP_LABELS_EN = {
   "hollywood-pro": "Skin: Hollywood Pro",
-  "magazine-pro": "Magazine Pro",
+  "magazine-pro": "Skin: Magazine Pro",
 
   "no-wrinkles": "Effect: no wrinkles",
   younger: "Effect: younger",
@@ -237,11 +237,7 @@ export const appState = {
   userEmail: "",
   userAgreed: false,
 
-  layer: "home",
-
-  // layering support
-  lastResultUrl: null,
-  useResultAsInput: false
+  layer: "home"
 };
 
 export function loadStateFromStorage() {
