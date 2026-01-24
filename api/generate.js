@@ -2,7 +2,7 @@
 // V2 pipeline (Replicate):
 // - ALL styles + edits -> FLUX-2-Pro
 // Goal: iPhone/Photoshop-like retouch WITHOUT swapping identity.
-// ✅ Magazine Pro: accepts optional `face` close-up reference to lock identity
+// ✅ Magazine Pro: 2-pass server retouch (retouch + cleanup) to avoid added pimples/blemishes
 
 import Replicate from "replicate";
 
@@ -44,15 +44,17 @@ const EFFECT_PROMPTS = {
     "reduce blotches/redness/spots. keep all details of eyes, eyelashes, eyebrows, lips, hair, glasses. " +
     "NO FACE SWAP. DO NOT change facial structure. Keep the same person and same expression.",
 
-  // ✅ Magazine Pro — “журнальная” ретушь без подмены лица (stronger + expression lock)
+  // ✅ Magazine Pro — editorial retouch (stronger, neutral expression, no acne additions)
   "magazine-pro":
     "MAGAZINE PRO RETOUCH (EDITORIAL): keep the SAME person 100% recognizable. " +
-    "Lock original expression: mouth closed/neutral, NO forced smile, NO new teeth. " +
-    "Professional magazine retouch: remove deep wrinkles and fine lines VERY strongly, reduce under-eye shadows, smooth uneven skin, remove blemishes, redness, spots. " +
-    "Correct white balance and skin tone: NO green/cyan cast, natural healthy skin tones, avoid oversaturation. " +
-    "Improve face lighting gently (soft key light), increase clarity slightly, keep pores/texture (not plastic). " +
-    "Subtle slimming ONLY by reducing puffiness: slightly tighten cheeks/jawline/neck without changing bone structure or facial proportions. " +
-    "Do NOT change eye shape, nose, lips, jaw, cheekbones. NO face swap. Do NOT replace the face with another person. Keep hairstyle, eyebrows, glasses identical.",
+    "Lock original expression: neutral/relaxed mouth, NO forced smile, NO new teeth. " +
+    "Make the same person look fresher (about 7–12 years) WITHOUT changing facial structure. " +
+    "Remove wrinkles and fine lines VERY strongly, reduce under-eye shadows, smooth uneven skin, remove blemishes/redness/spots. " +
+    "Skin tone correction: natural healthy skin tones, correct white balance, NO green/cyan cast, avoid oversaturation. " +
+    "Keep realistic pores/texture (not plastic), but do NOT increase pores. " +
+    "Subtle slimming ONLY by reducing puffiness: slightly tighten cheeks/jawline/neck without changing bone structure or proportions. " +
+    "ABSOLUTE RULE: do NOT add acne, pimples, new spots, new moles, new freckles, new scars, or any new skin defects. " +
+    "Do NOT change eye shape, nose, lips, jaw, cheekbones. NO face swap. Keep hairstyle, eyebrows, glasses identical.",
 
   "no-wrinkles":
     "remove wrinkles and fine lines strongly, smoother younger-looking skin, keep natural texture, do not change identity",
@@ -145,7 +147,7 @@ function buildEffectsPrompt(keys) {
   return keys.map((k) => EFFECT_PROMPTS[k]).filter(Boolean).join(". ");
 }
 
-// Robust FLUX-2-Pro call (different models sometimes name image input differently)
+// Robust FLUX-2-Pro call
 async function runFlux2Pro(replicate, image, face, prompt) {
   const images = face ? [image, face] : [image];
 
@@ -158,7 +160,6 @@ async function runFlux2Pro(replicate, image, face, prompt) {
         aspect_ratio: "match_input_image"
       }
     },
-    // fallback single-image field names (only if no face ref)
     ...(face
       ? []
       : [
@@ -250,6 +251,24 @@ export default async function handler(req, res) {
     ].filter(Boolean);
 
     const finalPrompt = promptParts.join(". ").trim();
+
+    // ✅ 2-pass ONLY for magazine-pro (retouch + cleanup to remove AI-added pimples)
+    if (skinKey === "magazine-pro") {
+      const pass1 = await runFlux2Pro(replicate, photo, face || null, finalPrompt);
+
+      const cleanupPrompt =
+        [
+          "CLEANUP PASS: keep the SAME person and same expression 100% identical.",
+          "Remove ANY pimples/acne/blemishes/spots that may have been introduced by editing.",
+          "Make skin clean, smooth and even (magazine retouch), remove redness, keep natural healthy skin tone.",
+          "Do NOT add new defects, do NOT add pores, do NOT change facial structure, no face swap.",
+          IDENTITY_PROMPT,
+          SAFETY_TAIL
+        ].join(". ");
+
+      const pass2 = await runFlux2Pro(replicate, pass1, face || null, cleanupPrompt);
+      return res.status(200).json({ ok: true, image: pass2 });
+    }
 
     const url = await runFlux2Pro(replicate, photo, face || null, finalPrompt);
     return res.status(200).json({ ok: true, image: url });
