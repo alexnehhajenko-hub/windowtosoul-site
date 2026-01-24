@@ -44,11 +44,11 @@ export function attachMainHandlers() {
     });
   }
 
-  // ✅ MAGAZINE PRO: magazine-ready portrait, NO styles, just beauty retouch
+  // ✅ MAGAZINE PRO: one-click editorial retouch (no styles)
   if (els.btnMagazinePro) {
     els.btnMagazinePro.addEventListener("click", () => {
       appState.mode = "generate";
-      appState.selectedStyle = "beauty";
+      appState.selectedStyle = null;           // <- без стилей
       appState.selectedEffects = ["magazine-pro"];
       appState.selectedGreeting = null;
       refreshSelectionChips();
