@@ -63,7 +63,8 @@ const EN = {
     '<a href="#">Privacy</a>, <a href="#">Refunds</a>.',
   agreementSubmitDemo: "Continue",
   agreementSubmitPaid: "Go to payment",
-  agreementHint: "Payments are processed via Stripe. We do not see or store your card data.",
+  agreementHint:
+    "Payments are processed via Stripe. We do not see or store your card data.",
 
   download: "Download portrait",
   supportLabel: "Support:",
@@ -76,19 +77,22 @@ const EN = {
     "Your free demo limit has been used. Please reload the page to start a new demo or purchase a package.",
   alertPaidFinished:
     "Your package is finished. Please purchase a new package to continue.",
-  alertGenerationFailed: "Could not generate the portrait. Please try again.",
+  alertGenerationFailed:
+    "Could not generate the portrait. Please try again.",
 
   alertEmailMissing: "Please enter your email.",
   alertAgreeMissing: "Please confirm the checkbox.",
   alertStripeMissing: "Stripe is not loaded. Please refresh the page and try again.",
   alertPaymentCreateFailed: "Could not create a payment. Please try again.",
 
-  paymentSuccess: "Payment completed! 🎉 You can now generate portraits with your package."
+  paymentSuccess:
+    "Payment completed! 🎉 You can now generate portraits with your package."
 };
 
 export const UI_TEXT = {
   en: EN,
 
+  // ✅ Full keys to prevent "undefined" UI
   de: {
     ...EN,
     subtitle: "Erstelle dein einzigartiges KI-Porträt",
@@ -240,7 +244,9 @@ export const appState = {
 export function loadStateFromStorage() {
   try {
     const storedLang = window.localStorage.getItem(STORAGE_KEYS.LANGUAGE);
-    if (storedLang && SUPPORTED_LANGS.includes(storedLang)) appState.language = storedLang;
+    if (storedLang && SUPPORTED_LANGS.includes(storedLang)) {
+      appState.language = storedLang;
+    }
 
     const storedPaid = window.localStorage.getItem(STORAGE_KEYS.HAS_ACTIVE_PACK);
     if (storedPaid === "1") appState.hasActivePack = true;
@@ -267,7 +273,9 @@ export function loadStateFromStorage() {
     }
 
     const storedPack = window.localStorage.getItem(STORAGE_KEYS.SELECTED_PACK);
-    if (storedPack && PACK_SIZES[storedPack]) appState.selectedPack = storedPack;
+    if (storedPack && PACK_SIZES[storedPack]) {
+      appState.selectedPack = storedPack;
+    }
   } catch (e) {
     console.warn("Cannot read localStorage", e);
   }
