@@ -1,7 +1,7 @@
 // api/generate.js
 // V2 pipeline (Replicate):
 // - Styles + edits -> FLUX-2-Pro
-// - MAGAZINE PRO (one-click editorial retouch) -> FLUX-Kontext-Pro (better text-guided editing)
+// - MAGAZINE PRO -> FLUX.1 Kontext [pro] (better identity consistency for edits)
 // Goal: iPhone/Photoshop-like retouch WITHOUT swapping identity.
 
 import Replicate from "replicate";
@@ -13,9 +13,10 @@ const MODEL_FLUX_KONTEXT_PRO = "black-forest-labs/flux-kontext-pro";
 // ───────────── STYLES ─────────────
 const STYLE_PREFIX = {
   beauty:
-    "high-quality realistic photo retouch, keep the same person, keep the same background and clothes, natural colors, realistic texture, preserve identity",
+    "high-quality realistic photo retouch, keep the same person, keep the same background and clothes, natural colors, realistic texture, do not change identity",
   oil: "oil painting portrait, detailed, soft warm light, artistic, rich colors, keep the same person and recognizable face",
-  anime: "anime style portrait, clean line art, soft pastel shading, keep the same person and recognizable face",
+  anime:
+    "anime style portrait, clean line art, soft pastel shading, keep the same person and recognizable face",
   poster:
     "cinematic movie poster portrait, dramatic lighting, high contrast, keep the same person and recognizable face",
   classic:
@@ -39,41 +40,45 @@ const SKIN_KEYS = new Set([
 const EFFECT_PROMPTS = {
   // Hollywood Pro — strong retouch, but must keep identity
   "hollywood-pro":
-    "HOLLYWOOD PRO RETOUCH: strong wrinkle reduction (forehead, under eyes, crow's feet, nasolabial). " +
-    "Clean, even skin with realistic texture. Reduce redness/spots. Keep eyes, eyebrows, lips, hair and glasses identical. " +
-    "Preserve facial structure and expression.",
+    "HOLLYWOOD PRO RETOUCH: remove deep wrinkles and fine lines strongly (forehead, under eyes, crow's feet, nasolabial folds). " +
+    "make skin smooth, even and clean like premium beauty retouch, but keep natural texture (no plastic). " +
+    "reduce blotches/redness/spots. keep all details of eyes, eyelashes, eyebrows, lips, hair, glasses. " +
+    "NO FACE SWAP. DO NOT change facial structure. Keep the same person and same expression.",
 
-  // ✅ Magazine Pro — editorial retouch (positive wording to avoid FLUX-2-Pro 'negative prompt' issues)
+  // Magazine Pro — editorial retouch (must NOT change identity)
   "magazine-pro":
-    "MAGAZINE PRO RETOUCH (EDITORIAL): keep the SAME person fully recognizable with the same facial features and proportions. " +
-    "Create clean, healthy skin: remove wrinkles and fine lines strongly while keeping natural pores/texture. " +
-    "Remove blemishes, spots, redness, under-eye shadows; keep skin CLEAR (do not introduce acne or new marks). " +
-    "Correct white balance for natural skin tones (no green/cyan cast), keep classic photo colors. " +
-    "Improve soft face lighting (editorial beauty light), slightly increase clarity and micro-contrast. " +
-    "Subtle slimming by reducing puffiness only: gently tighten cheeks/jawline/neck a little, without changing bone structure. " +
-    "Keep the same expression (no forced smile), keep hairstyle, eyebrows, glasses identical.",
+    "MAGAZINE PRO RETOUCH (EDITORIAL / PHOTOSHOP-LIKE): keep the SAME person 100% recognizable. " +
+    "STRONG wrinkle removal (forehead, under eyes, crow's feet, nasolabial folds) while preserving natural skin texture (pores, no plastic). " +
+    "Remove blemishes/redness/spots. IMPORTANT: DO NOT ADD new pimples, acne, moles or skin defects. " +
+    "Fix skin color: natural healthy skin tone, NO green/cyan cast, correct white balance, avoid oversaturation. " +
+    "Lighting: subtle soft key light on face, slightly improved clarity, realistic shadows. " +
+    "Subtle slimming ONLY by reducing puffiness: slightly tighten cheeks/jawline/neck WITHOUT changing bone structure or facial proportions. " +
+    "EXPRESSION LOCK: keep the same expression, mouth shape and lips (NO forced smile). " +
+    "NO FACE SWAP. Do NOT replace the face. Keep hairstyle, eyebrows, glasses identical.",
 
   "no-wrinkles":
-    "remove wrinkles and fine lines strongly, smoother younger-looking skin with realistic texture, preserve identity",
+    "remove wrinkles and fine lines strongly, smoother younger-looking skin, keep natural texture, do not change identity",
   younger:
-    "make the same person look fresher (about 5–10 years), reduce sagging slightly, preserve identity and facial structure",
+    "make the same person look fresher (about 5–10 years), reduce sagging a bit, but keep exact identity and facial structure",
   "smooth-skin":
-    "smooth and even skin tone, reduce blemishes and redness, keep realistic texture, preserve identity",
+    "smooth and even skin tone, reduce blemishes and redness, keep realistic texture; do not change identity",
   "beauty-one-touch":
-    "natural beauty retouch: gently smooth skin, remove small blemishes, reduce fine wrinkles, keep realism, preserve identity",
-  "glow-golden": "warm golden glow, healthy skin, soft highlights, preserve identity",
-  "cinematic-light": "cinematic soft key light and gentle shadows, better contrast, preserve identity",
+    "natural beauty retouch: gently smooth skin, remove small blemishes, reduce fine wrinkles, keep realism; do not change identity",
+  "glow-golden":
+    "warm golden glow on the face, healthy skin, soft highlights; do not change identity",
+  "cinematic-light":
+    "cinematic soft key light and gentle shadows on the face, better contrast; do not change identity",
 
   // expression
-  "smile-soft": "same person with a subtle soft smile, preserve identity",
-  "smile-big": "same person with a big warm smile, preserve identity",
-  "smile-hollywood": "same person with a wide hollywood smile, preserve identity",
-  laugh: "same person laughing, preserve identity",
-  neutral: "same person with neutral relaxed face, preserve identity",
-  serious: "same person with a serious focused look, preserve identity",
-  "eyes-bigger": "slightly more open attentive eyes, preserve identity",
-  "eyes-brighter": "brighter expressive gaze, preserve identity",
-  "surprised-wow": "surprised wow expression, preserve identity"
+  "smile-soft": "same person with a subtle soft smile, keep identity",
+  "smile-big": "same person with a big warm smile, keep identity",
+  "smile-hollywood": "same person with a wide hollywood smile, keep identity",
+  laugh: "same person laughing, keep identity",
+  neutral: "same person with neutral relaxed face, keep identity",
+  serious: "same person with a serious focused look, keep identity",
+  "eyes-bigger": "slightly more open attentive eyes, keep identity",
+  "eyes-brighter": "brighter expressive gaze, keep identity",
+  "surprised-wow": "surprised wow expression, keep identity"
 };
 
 // ───────── GREETINGS / PROPS ─────────
@@ -91,29 +96,40 @@ const GREETING_PROMPTS = {
     "add a gentle spooky atmosphere (no gore). keep the person identical. subtle fog/background. " +
     "add small handwritten English text 'Happy Halloween' (small, not covering the face)",
 
+  // props / costumes (no text overlay)
   "devil-eyes":
-    "ADD EFFECT ONLY: make the SAME person's eyes glow bright icy blue (subtle realistic glow). keep eye shape identical.",
+    "ADD EFFECT ONLY: make the SAME person's eyes glow bright icy blue (subtle realistic glow). " +
+    "Do NOT change the eye shape, iris size, face, hair, or expression. No horror, no gore.",
   "santa-hat":
-    "ADD ACCESSORY ONLY: add a classic Santa hat on top of the head (realistic fabric, correct perspective). keep face identical.",
+    "ADD ACCESSORY ONLY: add a classic Santa hat on top of the head (realistic fabric, correct perspective). " +
+    "Keep face, hairline, hairstyle and identity identical. Do not cover the eyes/face.",
   "viking-helm":
-    "ADD ACCESSORY ONLY: add a tasteful Viking-style helmet/crown (no weapons). keep face identical.",
+    "ADD ACCESSORY ONLY: add a tasteful Viking-style helmet/crown on the head (no weapons). " +
+    "Keep face and identity identical. Keep lighting consistent. Do not change hairstyle or facial structure.",
   "samurai-helm":
-    "ADD ACCESSORY ONLY: add a Samurai kabuto helmet and subtle armor collar detail (no weapons). keep face identical.",
+    "ADD ACCESSORY ONLY: add a Samurai kabuto helmet and a subtle armor collar/shoulder detail (no weapons). " +
+    "Keep the same face and identity 100%. Do not change facial structure, skin, or expression.",
   "blue-demon":
-    "ADD BACKGROUND CHARACTER ONLY: add a small glowing blue creature in the BACKGROUND corner (not covering the face). Keep the person unchanged."
+    "ADD BACKGROUND CHARACTER ONLY: add a small glowing blue demon/creature in the BACKGROUND corner (not covering the face). " +
+    "Cute-stylized but still fits the photo lighting. No gore. Do NOT change the person."
 };
 
-// ───────── IDENTITY (positive wording) ─────────
+// ───────── IDENTITY (VERY STRONG) ─────────
 const IDENTITY_PROMPT =
-  "Identity lock: keep the same person. Keep facial structure, head shape, eye shape, nose, lips, jawline and cheekbones unchanged. " +
-  "Keep hairstyle, hairline, hair color, eyebrows and glasses consistent. Keep the same camera angle, framing and composition.";
+  "IMPORTANT: edit the input photo of the SAME person. " +
+  "The result must be clearly recognizable as the same person. " +
+  "Do NOT change facial structure, head shape, eye shape, nose, lips, jawline, cheekbones. " +
+  "Do NOT replace the face with another person/model. " +
+  "Keep hairstyle, hairline, hair color, eyebrows, and glasses consistent. " +
+  "Keep the same camera angle and the same composition. Do NOT crop or zoom.";
 
 // ───────── UI SCREENSHOT CLEANUP ─────────
 const UI_CLEANUP_TAIL =
-  "If the input is a screenshot with UI elements, repaint the UI away and restore a natural background while keeping the person unchanged.";
+  "If the input looks like a screenshot of a website/app (buttons, panels, UI text), remove and repaint all interface elements and restore a natural background while keeping the person identical.";
 
 // ───────── SAFETY ─────────
-const SAFETY_TAIL = "fully clothed, keep realism, avoid distorted anatomy";
+const SAFETY_TAIL =
+  "fully clothed, no nudity, no sexual content, keep realism, avoid distorted anatomy";
 
 // ───────── helpers ─────────
 function pickImageUrl(output) {
@@ -135,10 +151,29 @@ function buildEffectsPrompt(keys) {
 async function runFlux2Pro(replicate, image, prompt) {
   const tries = [
     {
-      input: { prompt, input_images: [image], output_format: "jpg", aspect_ratio: "match_input_image" }
+      input: {
+        prompt,
+        input_images: [image],
+        output_format: "jpg",
+        aspect_ratio: "match_input_image"
+      }
     },
-    { input: { prompt, input_image: image, output_format: "jpg", aspect_ratio: "match_input_image" } },
-    { input: { prompt, image, output_format: "jpg", aspect_ratio: "match_input_image" } },
+    {
+      input: {
+        prompt,
+        input_image: image,
+        output_format: "jpg",
+        aspect_ratio: "match_input_image"
+      }
+    },
+    {
+      input: {
+        prompt,
+        image,
+        output_format: "jpg",
+        aspect_ratio: "match_input_image"
+      }
+    },
     { input: { prompt, input_images: [image] } },
     { input: { prompt, input_image: image } },
     { input: { prompt, image } }
@@ -158,15 +193,27 @@ async function runFlux2Pro(replicate, image, prompt) {
   throw lastErr || new Error("FLUX-2-Pro failed");
 }
 
-// Robust FLUX-Kontext-Pro call (image editing)
-async function runKontextPro(replicate, image, prompt) {
+// Robust FLUX Kontext Pro call (better for true edits / identity consistency)
+async function runFluxKontextPro(replicate, image, prompt) {
   const tries = [
     {
-      input: { prompt, input_image: image, output_format: "jpg", aspect_ratio: "match_input_image" }
+      input: {
+        prompt,
+        input_image: image,
+        aspect_ratio: "match_input_image",
+        output_format: "jpg"
+      }
     },
-    { input: { prompt, image, output_format: "jpg", aspect_ratio: "match_input_image" } },
+    {
+      input: {
+        prompt,
+        input_images: [image],
+        aspect_ratio: "match_input_image",
+        output_format: "jpg"
+      }
+    },
     { input: { prompt, input_image: image } },
-    { input: { prompt, image } }
+    { input: { prompt, input_images: [image] } }
   ];
 
   let lastErr = null;
@@ -184,7 +231,9 @@ async function runKontextPro(replicate, image, prompt) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   try {
     let body = req.body;
@@ -218,32 +267,41 @@ export default async function handler(req, res) {
     const skinKey = skinEffects[0] || null;
     const skinPrompt = skinKey ? (EFFECT_PROMPTS[skinKey] || "") : "";
 
-    // ✅ If MAGAZINE PRO selected -> Kontext-Pro (more stable editing)
-    const isMagazine = skinKey === "magazine-pro";
+    const isMagazinePro = skinKey === "magazine-pro";
+
+    // For MAGAZINE PRO we want the cleanest "edit" prompt possible
+    const magazineLockTail =
+      "MAGAZINE PRO RULES: do NOT change identity, do NOT change expression, do NOT add any new skin defects (pimples/acne). " +
+      "Keep everything else unchanged.";
 
     const promptParts = [
-      // For Magazine Pro we keep stylePrefix minimal (beauty retouch), no art styles.
-      isMagazine ? STYLE_PREFIX.beauty : stylePrefix,
+      // keep your structure, but allow MAGAZINE PRO to focus on edit-quality
+      stylePrefix,
       buildEffectsPrompt(otherEffects),
-      skinPrompt ? ("Edit scope: apply only the described retouch while keeping identity. " + skinPrompt) : "",
+      skinPrompt ? ("MINIMAL EDIT: " + skinPrompt) : "",
       greetingPrompt
-        ? ("Edit scope: apply only the selected atmosphere/prop while keeping the person unchanged. " + greetingPrompt)
+        ? ("MINIMAL EDIT: if greeting/prop is selected, apply ONLY that prop/atmosphere without changing the person's face. " +
+            greetingPrompt)
         : "",
       userPrompt,
       IDENTITY_PROMPT,
       UI_CLEANUP_TAIL,
-      SAFETY_TAIL
+      SAFETY_TAIL,
+      isMagazinePro ? magazineLockTail : ""
     ].filter(Boolean);
 
     const finalPrompt = promptParts.join(". ").trim();
 
-    const url = isMagazine
-      ? await runKontextPro(replicate, photo, finalPrompt)
+    const url = isMagazinePro
+      ? await runFluxKontextPro(replicate, photo, finalPrompt)
       : await runFlux2Pro(replicate, photo, finalPrompt);
 
     return res.status(200).json({ ok: true, image: url });
   } catch (err) {
     console.error("GENERATION ERROR:", err);
-    return res.status(500).json({ error: "Generation failed", details: err?.message || String(err) });
+    return res.status(500).json({
+      error: "Generation failed",
+      details: err?.message || String(err)
+    });
   }
 }
