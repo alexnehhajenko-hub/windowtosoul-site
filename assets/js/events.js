@@ -44,11 +44,11 @@ export function attachMainHandlers() {
     });
   }
 
-  // ✅ MAGAZINE PRO: one-click editorial retouch (no styles)
+  // ✅ MAGAZINE PRO: one-click editorial retouch (now routed to Kontext Pro in api/generate.js)
   if (els.btnMagazinePro) {
     els.btnMagazinePro.addEventListener("click", () => {
       appState.mode = "generate";
-      appState.selectedStyle = null;           // <- без стилей
+      appState.selectedStyle = "beauty";
       appState.selectedEffects = ["magazine-pro"];
       appState.selectedGreeting = null;
       refreshSelectionChips();
